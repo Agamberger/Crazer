@@ -8,7 +8,7 @@ L'objectif produit est de lutter contre l'isolement social en simplifiant la pla
 
 ## 🛠️ Stack Technique
 
-- **Framework Mobile** : [React Native](https://reactnative.dev/) + [Expo](https://expo.dev/) (SDK 51+)
+- **Framework Mobile** : [React Native](https://reactnative.dev/) + [Expo](https://expo.dev/) (SDK 54)
 - **Langage** : [TypeScript](https://www.typescriptlang.org/) (Mode strict activé)
 - **Navigation** : [Expo Router v3+](https://docs.expo.dev/router/introduction/) (Navigation basée sur le système de fichiers, routage fortement typé, deep linking natif)
 - **Gestion d'État Global** : [Zustand](https://github.com/pmndrs/zustand) (Découplage léger par feature)

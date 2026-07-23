@@ -1,5 +1,3 @@
-import '@testing-library/jest-native/extend-expect';
-
 // Mock Expo Router
 jest.mock('expo-router', () => ({
   useRouter: () => ({
