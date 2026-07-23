@@ -31,6 +31,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="carte"
+        options={{
+          title: 'Carte',
+          headerTitle: 'Carte & Explorer',
+        }}
+      />
+      <Tabs.Screen
         name="finances"
         options={{
           title: 'Finances',

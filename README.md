@@ -12,6 +12,7 @@ L'objectif produit est de lutter contre l'isolement social en simplifiant la pla
 - **Langage** : [TypeScript](https://www.typescriptlang.org/) (Mode strict activé)
 - **Base de données & Auth** : [Supabase](https://supabase.com/) (`@supabase/supabase-js` avec persistance `AsyncStorage`)
 - **Navigation** : [Expo Router v3+](https://docs.expo.dev/router/introduction/) (Navigation basée sur le système de fichiers, routage fortement typé, deep linking natif)
+- **Cartographie & Maps** : [MapLibre React Native](https://github.com/maplibre/maplibre-react-native) + Tuiles vectorielles & raster OpenStreetMap (CartoDB Dark Matter / Positron)
 - **Gestion d'État Global** : [Zustand](https://github.com/pmndrs/zustand) (Découplage léger par feature)
 - **Tests** : [Jest](https://jestjs.io/) + [React Native Testing Library](https://callstack.github.io/react-native-testing-library/)
 - **Linter & Formatage** : [ESLint](https://eslint.org/) + [Prettier](https://prettier.io/)
@@ -25,9 +26,10 @@ Crazer/
 ├── app/                        # Écrans et routes (Expo Router)
 │   ├── (auth)/                 # Écrans d'authentification (login, register)
 │   ├── (tabs)/                 # Navigation principale par onglets
-│   │   ├── _layout.tsx         # Barre d'onglets (Sorties, Activités, Finances, Journal, Profil)
+│   │   ├── _layout.tsx         # Barre d'onglets (Sorties, Activités, Carte, Finances, Journal, Profil)
 │   │   ├── index.tsx           # Écran principal : Mes Sorties
 │   │   ├── activites.tsx       # Écran Découverte & Vote d'activités
+│   │   ├── carte.tsx           # Écran Carte interactive OpenStreetMap (MapLibre)
 │   │   ├── finances.tsx        # Écran Gestion des dépenses de groupe (Tricount)
 │   │   ├── journal.tsx         # Écran Journal d'aventure
 │   │   └── profil.tsx          # Écran Profil & Badges
@@ -37,6 +39,7 @@ Crazer/
 │   │   ├── auth/               # Authentification & Inscription Supabase
 │   │   ├── sorties/            # Gestion des sorties, invitations, RSVPs
 │   │   ├── activites/          # Recherche d'activités, filtres, swipe & vote
+│   │   ├── carte/              # Carte interactive MapLibre, POIs, thèmes OSM, filtres & recherche
 │   │   ├── itineraire/         # Planification d'itinéraires multi-activités
 │   │   ├── finances/           # Gestion financière de groupe (Tricount)
 │   │   ├── journal/            # Journal d'aventure (souvenirs, photos, notes)

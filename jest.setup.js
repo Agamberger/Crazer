@@ -21,10 +21,22 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 if (typeof global.WebSocket === 'undefined') {
   // @ts-ignore
   global.WebSocket = class WebSocket {
-    constructor() {}
-    close() {}
-    send() {}
-    addEventListener() {}
-    removeEventListener() {}
+    constructor() { }
+    close() { }
+    send() { }
+    addEventListener() { }
+    removeEventListener() { }
   };
 }
+
+// Mock MapLibre React Native
+jest.mock('@maplibre/maplibre-react-native', () => ({
+  setAccessToken: jest.fn(),
+  Map: 'MapView',
+  MapView: 'MapView',
+  Camera: 'Camera',
+  Marker: 'MarkerView',
+  MarkerView: 'MarkerView',
+  PointAnnotation: 'PointAnnotation',
+  ViewAnnotation: 'ViewAnnotation',
+}));
