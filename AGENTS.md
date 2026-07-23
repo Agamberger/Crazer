@@ -42,3 +42,17 @@ Lorsqu'un bug est signalé ou détecté dans le projet :
 
 - **Respect de `CONVENTIONS.md`** : L'agent doit vérifier que tout le code produit respecte rigoureusement la convention de nommage, l'architecture feature-first, l'usage des absolute imports (`@/*`), et le typage TypeScript strict sans `any`.
 - **Non-Régression** : L'agent doit s'assurer que ses modifications ne cassent aucun test existant dans le projet (`npm test`). Si un test doit être mis à jour suite à un changement d'exigence volontaire, cela doit être explicitement signalé à l'utilisateur.
+
+---
+
+## 5. ⚡ Supabase & CLI — Gestion de la Base de Données
+
+- **Workflow des Migrations CLI** :
+  - **Toute modification de schéma** (création/modification de table, colonne, fonction, politique RLS) doit obligatoirement faire l'objet d'une migration via le CLI Supabase (`npx supabase migration new <nom>` ou `npm run db:migration`).
+  - ❌ **INTERDIT** : Modifier la base de données distante à la volée sans créer le fichier de migration SQL correspondant dans `supabase/migrations/`.
+- **Régénération des Types TypeScript** :
+  - Après toute modification de schéma ou de migration, l'agent doit régénérer les types TypeScript via `npm run db:types` et valider l'absence d'erreurs de typage avec `npm run typecheck`.
+- **Row Level Security (RLS)** :
+  - RLS doit obligatoirement être activé sur chaque nouvelle table (`ALTER TABLE ... ENABLE ROW LEVEL SECURITY;`) avec les politiques de sécurité appropriées.
+- **Référence Technique** : Se référer systématiquement au guide [docs/SUPABASE.md](docs/SUPABASE.md).
+

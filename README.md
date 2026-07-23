@@ -109,5 +109,7 @@ npm run format       # Formatage Prettier
 ## 📜 Guides et Conventions
 
 Avant de contribuer au projet, merci de consulter :
+- ⚡ [docs/SUPABASE.md](docs/SUPABASE.md) : Guide Supabase, commandes CLI, migrations SQL et bonnes pratiques.
 - 📖 [CONVENTIONS.md](CONVENTIONS.md) : Normes de nommage, architecture, Zustand, tests, accessibilité et commits.
 - 🤖 [AGENTS.md](AGENTS.md) : Directives strictes pour les agents IA (TDD bugfix, aucune modification directe sur main, pas de commit/push sans validation humaine).
+
