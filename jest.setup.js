@@ -1,4 +1,9 @@
 // Mock Expo Router
+const React = require('react');
+const MockTabs = ({ children }: any) => React.createElement('Tabs', null, children);
+MockTabs.Screen = ({ name, options }: any) =>
+  React.createElement('Tabs.Screen', { testID: `tab-screen-${name}`, name, options });
+
 jest.mock('expo-router', () => ({
   useRouter: () => ({
     push: jest.fn(),
@@ -8,7 +13,7 @@ jest.mock('expo-router', () => ({
   useSearchParams: () => ({}),
   usePathname: () => '/',
   Link: 'Link',
-  Tabs: 'Tabs',
+  Tabs: MockTabs,
   Stack: 'Stack',
 }));
 

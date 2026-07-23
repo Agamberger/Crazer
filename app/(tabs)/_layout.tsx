@@ -1,5 +1,6 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/shared/constants/theme';
 
 export default function TabLayout() {
@@ -21,6 +22,9 @@ export default function TabLayout() {
         options={{
           title: 'Sorties',
           headerTitle: 'Mes Sorties',
+          tabBarIcon: ({ color, focused, size }) => (
+            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -28,6 +32,9 @@ export default function TabLayout() {
         options={{
           title: 'Activités',
           headerTitle: 'Découvrir',
+          tabBarIcon: ({ color, focused, size }) => (
+            <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -35,6 +42,9 @@ export default function TabLayout() {
         options={{
           title: 'Carte',
           headerTitle: 'Carte & Explorer',
+          tabBarIcon: ({ color, focused, size }) => (
+            <Ionicons name={focused ? 'map' : 'map-outline'} size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -42,6 +52,9 @@ export default function TabLayout() {
         options={{
           title: 'Finances',
           headerTitle: 'Dépenses du groupe',
+          tabBarIcon: ({ color, focused, size }) => (
+            <Ionicons name={focused ? 'wallet' : 'wallet-outline'} size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -49,6 +62,9 @@ export default function TabLayout() {
         options={{
           title: 'Journal',
           headerTitle: "Journal d'aventure",
+          tabBarIcon: ({ color, focused, size }) => (
+            <Ionicons name={focused ? 'book' : 'book-outline'} size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -56,6 +72,9 @@ export default function TabLayout() {
         options={{
           title: 'Profil',
           headerTitle: 'Mon Profil',
+          tabBarIcon: ({ color, focused, size }) => (
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
+          ),
         }}
       />
     </Tabs>
