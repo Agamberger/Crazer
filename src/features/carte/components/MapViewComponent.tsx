@@ -1,35 +1,38 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import * as MapLibreRN from '@maplibre/maplibre-react-native';
-import { colors, spacing, typography } from '@/shared/constants/theme';
+import { colors, typography } from '@/shared/constants/theme';
 import { PoiItem } from '../types/carte';
 import { useMapStore, MAP_STYLE_URLS } from '../store/useMapStore';
 
 // Safe component extraction for v11+ named exports or legacy default exports or mocks
-const MapComponent: any =
-  MapLibreRN.Map ||
-  MapLibreRN.MapView ||
-  (MapLibreRN as any).default?.Map ||
-  (MapLibreRN as any).default?.MapView ||
+const mapLibreObj = MapLibreRN as unknown as Record<string, unknown>;
+const defaultObj = mapLibreObj?.default as Record<string, unknown> | undefined;
+
+const MapComponent: React.ElementType =
+  (mapLibreObj?.Map as React.ElementType) ||
+  (mapLibreObj?.MapView as React.ElementType) ||
+  (defaultObj?.Map as React.ElementType) ||
+  (defaultObj?.MapView as React.ElementType) ||
   View;
 
-const CameraComponent: any =
-  MapLibreRN.Camera ||
-  (MapLibreRN as any).default?.Camera ||
+const CameraComponent: React.ElementType =
+  (mapLibreObj?.Camera as React.ElementType) ||
+  (defaultObj?.Camera as React.ElementType) ||
   View;
 
-const MarkerComponent: any =
-  MapLibreRN.Marker ||
-  MapLibreRN.MarkerView ||
-  (MapLibreRN as any).default?.Marker ||
-  (MapLibreRN as any).default?.MarkerView ||
+const MarkerComponent: React.ElementType =
+  (mapLibreObj?.Marker as React.ElementType) ||
+  (mapLibreObj?.MarkerView as React.ElementType) ||
+  (defaultObj?.Marker as React.ElementType) ||
+  (defaultObj?.MarkerView as React.ElementType) ||
   View;
 
 // Ensure access token is set (null for open source OpenStreetMap tiles)
 try {
-  const setToken = MapLibreRN.setAccessToken || (MapLibreRN as any).default?.setAccessToken;
+  const setToken = mapLibreObj?.setAccessToken || defaultObj?.setAccessToken;
   if (typeof setToken === 'function') {
-    setToken(null);
+    (setToken as (token: null) => void)(null);
   }
 } catch {
   // Ignored if in mock/test environment
@@ -138,7 +141,7 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
@@ -146,7 +149,7 @@ const styles = StyleSheet.create({
   },
   markerSelected: {
     backgroundColor: colors.primary,
-    borderColor: '#FFFFFF',
+    borderColor: colors.white,
     transform: [{ scale: 1.25 }],
     zIndex: 10,
   },

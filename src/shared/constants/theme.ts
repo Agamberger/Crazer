@@ -14,6 +14,10 @@ export const colors = {
   warning: '#FDCB6E',
   error: '#D63031',
   errorBackground: '#3D1B1F',
+  transparent: 'transparent',
+  white: '#FFFFFF',
+  black: '#000000',
+  shadow: '#000000',
 };
 
 export const spacing = {

@@ -12,11 +12,11 @@ export interface PoiDetailCardProps {
 }
 
 const CATEGORY_LABELS: Record<string, { name: string; badgeColor: string }> = {
-  resto: { name: 'Restaurant', badgeColor: '#FF7675' },
-  bar: { name: 'Bar & Lounge', badgeColor: '#FD79A8' },
-  activite: { name: 'Activité', badgeColor: '#6C5CE7' },
-  nature: { name: 'Outdoor', badgeColor: '#00B894' },
-  culture: { name: 'Culture', badgeColor: '#FDCB6E' },
+  resto: { name: 'Restaurant', badgeColor: colors.secondary },
+  bar: { name: 'Bar & Lounge', badgeColor: colors.accent },
+  activite: { name: 'Activité', badgeColor: colors.primary },
+  nature: { name: 'Outdoor', badgeColor: colors.success },
+  culture: { name: 'Culture', badgeColor: colors.warning },
   all: { name: 'Lieu', badgeColor: colors.primary },
 };
 
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
     shadowRadius: 10,
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   badgeText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: typography.fontSizes.xs,
     fontWeight: typography.fontWeights.bold,
   },
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   primaryButtonText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: typography.fontSizes.sm,
     fontWeight: typography.fontWeights.semibold,
   },
