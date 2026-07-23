@@ -16,13 +16,51 @@ if (!process.env.EXPO_PUBLIC_SUPABASE_URL || !process.env.EXPO_PUBLIC_SUPABASE_A
 }
 
 /**
+ * Adapter de stockage hybride (Mobile + Web) pour éviter l'erreur Native module null d'AsyncStorage sur Web.
+ */
+const storageAdapter = {
+  getItem: async (key: string): Promise<string | null> => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return window.localStorage.getItem(key);
+    }
+    try {
+      return await AsyncStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  setItem: async (key: string, value: string): Promise<void> => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(key, value);
+      return;
+    }
+    try {
+      await AsyncStorage.setItem(key, value);
+    } catch {
+      // Ignorer les erreurs de stockage local
+    }
+  },
+  removeItem: async (key: string): Promise<void> => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.removeItem(key);
+      return;
+    }
+    try {
+      await AsyncStorage.removeItem(key);
+    } catch {
+      // Ignorer les erreurs de suppression
+    }
+  },
+};
+
+/**
  * Client Supabase singleton pour l'application Crazer.
- * Utilise AsyncStorage pour la persistance de session d'authentification sur mobile.
+ * Utilise l'adapter de stockage hybride pour la persistance de session d'authentification sur Mobile et Web.
  */
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: AsyncStorage,
-    autoRefreshToken: true,
+    storage: storageAdapter,
+    autoRefreshToken: process.env.NODE_ENV !== 'test',
     persistSession: true,
     detectSessionInUrl: false,
   },
