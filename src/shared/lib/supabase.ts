@@ -1,6 +1,6 @@
 import 'react-native-url-polyfill/auto';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
 import { Database } from '@/shared/types';
 
 // Extraction des variables d'environnement Expo
@@ -15,40 +15,60 @@ if (!process.env.EXPO_PUBLIC_SUPABASE_URL || !process.env.EXPO_PUBLIC_SUPABASE_A
   }
 }
 
+// Fallback mémoire si AsyncStorage natif n'est pas disponible (Web / Expo Go)
+const memoryStorage = new Map<string, string>();
+
 /**
- * Adapter de stockage hybride (Mobile + Web) pour éviter l'erreur Native module null d'AsyncStorage sur Web.
+ * Adapter de stockage hybride résilient (Mobile Native + Web + Fallback Mémoire)
  */
 const storageAdapter = {
   getItem: async (key: string): Promise<string | null> => {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      return window.localStorage.getItem(key);
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        return window.localStorage.getItem(key);
+      }
+      return memoryStorage.get(key) || null;
     }
     try {
-      return await AsyncStorage.getItem(key);
+      // Require dynamique pour éviter l'initialisation du module natif sur Web
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const val = await AsyncStorage.getItem(key);
+      return val;
     } catch {
-      return null;
+      return memoryStorage.get(key) || null;
     }
   },
   setItem: async (key: string, value: string): Promise<void> => {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      window.localStorage.setItem(key, value);
+    memoryStorage.set(key, value);
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(key, value);
+      }
       return;
     }
     try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       await AsyncStorage.setItem(key, value);
     } catch {
-      // Ignorer les erreurs de stockage local
+      // Le fallback mémoire conserve déjà la valeur
     }
   },
   removeItem: async (key: string): Promise<void> => {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      window.localStorage.removeItem(key);
+    memoryStorage.delete(key);
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem(key);
+      }
       return;
     }
     try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       await AsyncStorage.removeItem(key);
     } catch {
-      // Ignorer les erreurs de suppression
+      // Ignorer
     }
   },
 };

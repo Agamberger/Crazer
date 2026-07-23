@@ -34,7 +34,7 @@ export const authService = {
   },
 
   /**
-   * Création de compte par email et mot de passe.
+   * Création de compte directe par email et mot de passe (sans confirmation par email).
    */
   async signUpWithEmail({ email, password, fullName }: SignUpCredentials): Promise<{ session: Session | null; user: AuthUser | null }> {
     const { data, error } = await supabase.auth.signUp({
@@ -51,16 +51,36 @@ export const authService = {
       throw new Error(error.message);
     }
 
-    const authUser = data.user
+    let activeSession = data.session;
+    let activeUser = data.user;
+
+    // Si la session n'a pas été retournée immédiatement, on effectue une connexion automatique directe par mot de passe
+    if (!activeSession && activeUser) {
+      try {
+        const signResult = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (signResult.data.session) {
+          activeSession = signResult.data.session;
+          activeUser = signResult.data.user;
+        }
+      } catch {
+        // En cas d'exigence stricte côté projet Supabase, fallback sur l'utilisateur créé
+      }
+    }
+
+    const authUser = activeUser
       ? {
-          id: data.user.id,
-          email: data.user.email || '',
-          fullName: fullName || data.user.user_metadata?.full_name || '',
-          avatarUrl: data.user.user_metadata?.avatar_url || '',
+          id: activeUser.id,
+          email: activeUser.email || '',
+          fullName: fullName || activeUser.user_metadata?.full_name || '',
+          avatarUrl: activeUser.user_metadata?.avatar_url || '',
         }
       : null;
 
-    return { session: data.session, user: authUser };
+    return { session: activeSession, user: authUser };
   },
 
   /**
