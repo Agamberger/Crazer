@@ -1,25 +1,39 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { useProfilStore } from '@/features/profil';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useAuth } from '@/features/auth';
 import { useGamificationStore } from '@/features/gamification';
+import { useProfilStore } from '@/features/profil';
+import { Button } from '@/shared/components/Button';
 import { Card } from '@/shared/components/Card';
 import { colors, spacing, typography } from '@/shared/constants/theme';
 
 export default function ProfilScreen() {
-  const user = useProfilStore((state) => state.currentUser);
+  const { user: authUser, logout, isLoading } = useAuth();
+  const mockUser = useProfilStore((state) => state.currentUser);
   const badges = useGamificationStore((state) => state.badges);
 
+  const displayName = authUser?.fullName || mockUser.name || 'Utilisateur';
+  const displayEmail = authUser?.email || mockUser.email || '';
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch {
+      // Erreur capturée dans le store Zustand
+    }
+  };
+
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       <Card style={styles.card}>
-        <Text style={styles.name}>{user.name}</Text>
-        <Text style={styles.email}>{user.email}</Text>
-        <Text style={styles.stats}>👥 {user.friendsCount} amis sur Crazer</Text>
+        <Text style={styles.name}>{displayName}</Text>
+        <Text style={styles.email}>{displayEmail}</Text>
+        <Text style={styles.stats}>👥 {mockUser.friendsCount} amis sur Crazer</Text>
       </Card>
 
       <Text style={styles.sectionTitle}>{"Centres d'intérêt"}</Text>
       <View style={styles.tagsContainer}>
-        {user.interests.map((interest, index) => (
+        {mockUser.interests.map((interest, index) => (
           <View key={index} style={styles.tag}>
             <Text style={styles.tagText}>{interest}</Text>
           </View>
@@ -35,7 +49,16 @@ export default function ProfilScreen() {
           <Text style={styles.badgeDescription}>{badge.description}</Text>
         </Card>
       ))}
-    </View>
+
+      <Button
+        title="Se déconnecter"
+        variant="outline"
+        loading={isLoading}
+        onPress={handleLogout}
+        style={styles.logoutButton}
+        testID="btn-logout"
+      />
+    </ScrollView>
   );
 }
 
@@ -59,13 +82,17 @@ const styles = StyleSheet.create({
   },
   container: {
     backgroundColor: colors.background,
-    flex: 1,
+    flexGrow: 1,
     padding: spacing.md,
   },
   email: {
     color: colors.textSecondary,
     fontSize: typography.fontSizes.sm,
     marginBottom: spacing.xs,
+  },
+  logoutButton: {
+    borderColor: colors.error,
+    marginTop: spacing.xl,
   },
   name: {
     color: colors.textPrimary,

@@ -13,6 +13,7 @@ export const colors = {
   success: '#00B894',
   warning: '#FDCB6E',
   error: '#D63031',
+  errorBackground: '#3D1B1F',
 };
 
 export const spacing = {

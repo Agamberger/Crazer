@@ -9,7 +9,7 @@ describe('Supabase Client', () => {
   });
 
   it('doit posséder les méthodes d’interaction de base de données', () => {
-    const tableQuery = supabase.from('sorties');
+    const tableQuery = supabase.from('profiles');
     expect(tableQuery.select).toBeDefined();
     expect(tableQuery.insert).toBeDefined();
     expect(tableQuery.update).toBeDefined();
