@@ -1,0 +1,49 @@
+name: GitOps - Supabase Database Migrations
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'supabase/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'supabase/**'
+
+jobs:
+  lint-migrations:
+    name: Lint & Verify Migrations (PR)
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: ⚡ Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: 🔍 Lint database migrations
+        run: supabase db lint
+
+  deploy-migrations:
+    name: Deploy Migrations to Supabase (Production)
+    needs: lint-migrations
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: ⚡ Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: 🚀 Push Migrations to Supabase Project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          supabase link --project-ref pqczmkchxhfufaufljxr
+          supabase db push

@@ -54,6 +54,12 @@ Des raccourcis npm ont été configurés dans `package.json` pour simplifier tou
   npm run db:types
   ```
 
-### 4. 🔀 Versionning & Suivi Git
-- Tous les fichiers de migration sous `supabase/migrations/` font partie intégrante du dépôt Git.
-- Toute modification du schéma doit être accompagnée de sa migration SQL et de la mise à jour correspondante de `src/shared/types/database.types.ts` dans le même commit ou branche de feature.
+### 4. 🔀 Versionning & Workflow GitOps
+- **Git = Source de vérité absolue** : Le schéma de base de données est versionné sous `supabase/migrations/`.
+- **Pipeline CI/CD Supabase (`.github/workflows/supabase-db.yml`)** :
+  - **Sur Pull Request** : Le CLI Supabase effectue un linting automatique (`supabase db lint`) pour valider la sécurité et la syntaxe des nouvelles migrations.
+  - **Sur Merge / Push dans `main`** : GitHub Actions applique automatiquement les migrations sur le projet Supabase de production avec `supabase db push`.
+- **Secrets GitHub requis pour le GitOps** :
+  - `SUPABASE_ACCESS_TOKEN` : Token d'accès CLI Supabase.
+  - `SUPABASE_DB_PASSWORD` : Mot de passe de la base de données Postgres Supabase.
+
