@@ -2,6 +2,8 @@
  * Types et entités clés du domaine Crazer.
  */
 
+export * from './database.types';
+
 /** Utilisateur Crazer */
 export interface User {
   id: string;

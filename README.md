@@ -10,6 +10,7 @@ L'objectif produit est de lutter contre l'isolement social en simplifiant la pla
 
 - **Framework Mobile** : [React Native](https://reactnative.dev/) + [Expo](https://expo.dev/) (SDK 54)
 - **Langage** : [TypeScript](https://www.typescriptlang.org/) (Mode strict activé)
+- **Base de données & Auth** : [Supabase](https://supabase.com/) (`@supabase/supabase-js` avec persistance `AsyncStorage`)
 - **Navigation** : [Expo Router v3+](https://docs.expo.dev/router/introduction/) (Navigation basée sur le système de fichiers, routage fortement typé, deep linking natif)
 - **Gestion d'État Global** : [Zustand](https://github.com/pmndrs/zustand) (Découplage léger par feature)
 - **Tests** : [Jest](https://jestjs.io/) + [React Native Testing Library](https://callstack.github.io/react-native-testing-library/)
@@ -61,7 +62,18 @@ Crazer/
 
 ## ⚡ Prise en main & Commandes Utiles
 
-### 1. Installation des dépendances
+### 1. Configuration des variables d'environnement
+Copiez le fichier `.env.example` en `.env.local` et renseignez les clés Supabase :
+```bash
+cp .env.example .env.local
+```
+Exemple de contenu `.env.local` :
+```env
+EXPO_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+### 2. Installation des dépendances
 ```bash
 npm install
 ```
