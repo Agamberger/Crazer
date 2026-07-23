@@ -41,7 +41,7 @@ export default function TabLayout() {
         name="journal"
         options={{
           title: 'Journal',
-          headerTitle: 'Journal d\'aventure',
+          headerTitle: "Journal d'aventure",
         }}
       />
       <Tabs.Screen

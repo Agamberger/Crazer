@@ -1,0 +1,34 @@
+name: CI - Code Quality & Tests
+
+on:
+  push:
+    branches: [ main, feature/*, fix/*, chore/* ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-lint:
+    name: Lint, Typecheck & Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🔍 ESLint Check
+        run: npm run lint
+
+      - name: 🏷️ TypeScript Typecheck
+        run: npm run typecheck
+
+      - name: 🧪 Run Jest Unit Tests
+        run: npm test
