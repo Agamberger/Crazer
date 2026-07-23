@@ -1,0 +1,2 @@
+# Crazer
+Outing planner app
