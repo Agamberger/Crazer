@@ -109,6 +109,10 @@ export interface PlaceSearchResult {
   tags: string[];
   source: PlaceSource;
   distance_m: number | null; // null si pas de coordonnées fournies
+  description?: string | null;
+  opening_hours?: any;
+  phone?: string | null;
+  website?: string | null;
 }
 
 // ──────────────────────────────────────────────

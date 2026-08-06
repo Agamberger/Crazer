@@ -20,8 +20,8 @@ import { PlaceCategory, SearchPlacesParams } from '@/shared/types/place';
 const DEFAULT_RADIUS_M = 2000;
 // Délai debounce pour la recherche texte (ms)
 const SEARCH_DEBOUNCE_MS = 300;
-// Position de repli si la géolocalisation échoue ou est refusée (Paris centre)
-const FALLBACK_LOCATION = { latitude: 48.8566, longitude: 2.3522 };
+// Position de repli si la géolocalisation échoue ou est refusée (France centre)
+const FALLBACK_LOCATION = { latitude: 46.603354, longitude: 1.888334 };
 
 export interface UsePlacesReturn {
   /** Places chargées (format PoiItem pour les composants UI) */
@@ -56,13 +56,12 @@ export function usePlaces(): UsePlacesReturn {
   const setPois = useMapStore((state) => state.setPois);
   const setCenterRegion = useMapStore((state) => state.setCenterRegion);
   const setUserLocation = useMapStore((state) => state.setUserLocation);
-  const centerRegion = useMapStore((state) => state.centerRegion);
 
   // ─── Géolocalisation ────────────────────────────────────────────────────────
 
   /**
    * Demande la permission de géolocalisation et retourne les coordonnées.
-   * En cas de refus ou d'erreur, retourne null (la carte se centrera sur Paris).
+   * En cas de refus ou d'erreur, retourne null.
    */
   const requestLocation = useCallback(async (): Promise<{
     latitude: number;
@@ -73,9 +72,26 @@ export function usePlaces(): UsePlacesReturn {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        // Pas d'erreur affichée — l'utilisateur a simplement refusé
         return null;
       }
+
+      // Essayer d'abord la dernière position connue pour un centrage instantané
+      try {
+        const lastKnown = await Location.getLastKnownPositionAsync({});
+        if (lastKnown) {
+          const coords = {
+            latitude: lastKnown.coords.latitude,
+            longitude: lastKnown.coords.longitude,
+          };
+          setUserCoords(coords);
+          setUserLocation(coords);
+          setCenterRegion({ ...coords, zoomLevel: 14 });
+        }
+      } catch {
+        // Ignorer si indisponible
+      }
+
+      // Obtenir la position GPS exacte
       const position = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
@@ -85,16 +101,20 @@ export function usePlaces(): UsePlacesReturn {
       };
       setUserCoords(coords);
       setUserLocation(coords);
-      setCenterRegion({ ...coords, zoomLevel: centerRegion.zoomLevel });
+      setCenterRegion({ ...coords, zoomLevel: 14 });
       return coords;
     } catch (err) {
+      const current = useMapStore.getState().userLocation;
+      if (current) {
+        return current;
+      }
       const msg = err instanceof Error ? err.message : 'Erreur de géolocalisation';
       setError(msg);
       return null;
     } finally {
       setIsLocating(false);
     }
-  }, [centerRegion.zoomLevel, setCenterRegion, setUserLocation]);
+  }, [setCenterRegion, setUserLocation]);
 
   // ─── Chargement des places à proximité ─────────────────────────────────────
 
@@ -107,8 +127,9 @@ export function usePlaces(): UsePlacesReturn {
       setIsLoading(true);
       setError(null);
       try {
-        const targetLat = lat ?? userCoords?.latitude ?? FALLBACK_LOCATION.latitude;
-        const targetLng = lng ?? userCoords?.longitude ?? FALLBACK_LOCATION.longitude;
+        const currentUserCoords = userCoords || useMapStore.getState().userLocation;
+        const targetLat = lat ?? currentUserCoords?.latitude ?? FALLBACK_LOCATION.latitude;
+        const targetLng = lng ?? currentUserCoords?.longitude ?? FALLBACK_LOCATION.longitude;
 
         const results = await fetchNearbyPlaces(
           targetLat,

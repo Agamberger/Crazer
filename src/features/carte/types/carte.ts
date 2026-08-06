@@ -16,6 +16,11 @@ export interface PoiItem {
   description: string;
   priceRange: string;
   imageUrl?: string;
+  images?: string[];
+  openingHours?: string[];
+  isOpenNow?: boolean;
+  phone?: string;
+  website?: string;
 }
 
 export interface MapRegion {
@@ -53,9 +58,15 @@ export function placeToPoiItem(place: PlaceSearchResult): PoiItem {
     address: [place.address, place.city].filter(Boolean).join(', ') || '',
     rating: place.rating ?? 0,
     reviewsCount: place.reviews_count,
-    description: '',
+    description: place.description || '',
     priceRange: place.price_range ?? '',
     imageUrl: place.images?.[0],
+    images: place.images ?? [],
+    openingHours: Array.isArray(place.opening_hours)
+      ? place.opening_hours
+      : (place.opening_hours as any)?.weekday_text || undefined,
+    phone: place.phone || undefined,
+    website: place.website || undefined,
   };
 }
 

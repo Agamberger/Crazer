@@ -1,10 +1,38 @@
 import { useMapStore, INITIAL_POIS } from '../store/useMapStore';
 import { PoiItem } from '../types/carte';
 
+const samplePois: PoiItem[] = [
+  {
+    id: 'poi-1',
+    title: 'Le Perchoir Marais',
+    category: 'bar',
+    latitude: 48.8566,
+    longitude: 2.3522,
+    address: '33 Rue de la Verrerie, 75004 Paris',
+    rating: 4.6,
+    reviewsCount: 128,
+    description: 'Rooftop avec cocktails signature',
+    priceRange: '€€€',
+  },
+  {
+    id: 'poi-2',
+    title: 'BAM Karaoke Box',
+    category: 'activite',
+    latitude: 48.8689,
+    longitude: 2.3421,
+    address: "50 Rue d'Aboukir, 75002 Paris",
+    rating: 4.8,
+    reviewsCount: 240,
+    description: 'Boxs privatifs Karaoke',
+    priceRange: '€€',
+  },
+];
+
 describe('useMapStore', () => {
   beforeEach(() => {
     useMapStore.getState().resetFilters();
     useMapStore.setState({
+      pois: samplePois,
       mapStyleMode: 'dark',
       savedWaypoints: [],
       selectedPoiId: null,
@@ -13,11 +41,10 @@ describe('useMapStore', () => {
     });
   });
 
-  test('doit initialiser le store avec les POIs par défaut', () => {
-    const state = useMapStore.getState();
-    expect(state.pois).toEqual(INITIAL_POIS);
-    expect(state.selectedCategory).toBe('all');
-    expect(state.mapStyleMode).toBe('dark');
+  test('doit initialiser le store avec un tableau vide de POIs', () => {
+    expect(INITIAL_POIS).toEqual([]);
+    expect(useMapStore.getState().selectedCategory).toBe('all');
+    expect(useMapStore.getState().mapStyleMode).toBe('dark');
   });
 
   test('doit filtrer les POIs par catégorie', () => {
@@ -37,7 +64,7 @@ describe('useMapStore', () => {
   });
 
   test('doit basculer un waypoint enregistré (bookmark)', () => {
-    const samplePoi: PoiItem = INITIAL_POIS[0];
+    const samplePoi: PoiItem = samplePois[0];
 
     useMapStore.getState().toggleSavedWaypoint(samplePoi);
     expect(useMapStore.getState().savedWaypoints).toContainEqual(samplePoi);

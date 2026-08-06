@@ -21,23 +21,29 @@ jest.mock('../services/placeService', () => ({
   searchPlaces: jest.fn(),
 }));
 
-// ── Mock useMapStore ─────────────────────────────────────────────────────────
-const mockSetPois = jest.fn();
-const mockSetCenterRegion = jest.fn();
-const mockSetUserLocation = jest.fn();
+jest.mock('../store/useMapStore', () => {
+  const state = {
+    setPois: jest.fn(),
+    setCenterRegion: jest.fn(),
+    setUserLocation: jest.fn(),
+    centerRegion: { latitude: 48.8566, longitude: 2.3522, zoomLevel: 12 },
+    userLocation: null,
+  };
+  const useMapStoreMock: any = (selector: any) => selector(state);
+  useMapStoreMock.getState = () => state;
+  return {
+    useMapStore: useMapStoreMock,
+  };
+});
 
-jest.mock('../store/useMapStore', () => ({
-  useMapStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({
-      setPois: mockSetPois,
-      setCenterRegion: mockSetCenterRegion,
-      setUserLocation: mockSetUserLocation,
-      centerRegion: { latitude: 48.8566, longitude: 2.3522, zoomLevel: 12 },
-    }),
-}));
-
+import { useMapStore } from '../store/useMapStore';
 import * as Location from 'expo-location';
 import { fetchNearbyPlaces, searchPlaces } from '../services/placeService';
+
+const mockState = (useMapStore as any).getState();
+const mockSetPois = mockState.setPois;
+const mockSetCenterRegion = mockState.setCenterRegion;
+const mockSetUserLocation = mockState.setUserLocation;
 
 const mockLocation = Location as jest.Mocked<typeof Location>;
 const mockFetchNearby = fetchNearbyPlaces as jest.MockedFunction<typeof fetchNearbyPlaces>;

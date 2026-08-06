@@ -60,5 +60,17 @@ describe('MapViewComponent', () => {
 
     expect(getByTestId('map-view-container')).toBeTruthy();
   });
+
+  test('doit afficher le marqueur de la position utilisateur si définie', () => {
+    const { useMapStore } = require('../store/useMapStore');
+    useMapStore.getState().setUserLocation({ latitude: 48.86, longitude: 2.35 });
+
+    const handleSelect = jest.fn();
+    const { getByLabelText } = render(
+      <MapViewComponent pois={mockPois} onSelectPoi={handleSelect} />
+    );
+
+    expect(getByLabelText('Votre position')).toBeTruthy();
+  });
 });
 
