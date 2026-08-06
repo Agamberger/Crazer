@@ -27,7 +27,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       const { session, user } = await authService.signUpWithEmail(credentials);
       set({ session, user, isLoading: false, error: null });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Erreur lors de la création du compte.";
+      const message = err instanceof Error ? err.message : 'Erreur lors de la création du compte.';
       set({ isLoading: false, error: message });
       throw err;
     }
@@ -53,17 +53,17 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       set({ session, user, isInitialized: true, isLoading: false });
 
       // Écouter les changements d'état Supabase Auth
-      authService.onAuthStateChange((_event, session) => {
-        if (!session) {
+      authService.onAuthStateChange((event, newSession) => {
+        if (event === 'SIGNED_OUT' || (!newSession && event !== 'INITIAL_SESSION')) {
           set({ session: null, user: null });
-        } else if (session.user) {
+        } else if (newSession?.user) {
           set({
-            session,
+            session: newSession,
             user: {
-              id: session.user.id,
-              email: session.user.email || '',
-              fullName: session.user.user_metadata?.full_name || '',
-              avatarUrl: session.user.user_metadata?.avatar_url || '',
+              id: newSession.user.id,
+              email: newSession.user.email || '',
+              fullName: newSession.user.user_metadata?.full_name || '',
+              avatarUrl: newSession.user.user_metadata?.avatar_url || '',
             },
           });
         }
