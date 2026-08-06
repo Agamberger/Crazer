@@ -83,7 +83,7 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
         }
       }
     } catch {
-      // Ignorer les erreurs de parsing
+      // Ignored
     }
   };
 

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { authService } from '../services/authService';
-import { AuthStore, SignInCredentials, SignUpCredentials } from '../types';
+import { AUTH_EVENTS, AuthStore, SignInCredentials, SignUpCredentials } from '../types';
 
 export const useAuthStore = create<AuthStore>((set, get) => ({
   user: null,
@@ -54,7 +54,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
       // Écouter les changements d'état Supabase Auth
       authService.onAuthStateChange((event, newSession) => {
-        if (event === 'SIGNED_OUT' || (!newSession && event !== 'INITIAL_SESSION')) {
+        if (event === AUTH_EVENTS.SIGNED_OUT || (!newSession && event !== AUTH_EVENTS.INITIAL_SESSION)) {
           set({ session: null, user: null });
         } else if (newSession?.user) {
           set({
