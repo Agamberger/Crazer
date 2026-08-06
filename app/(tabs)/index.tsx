@@ -1,17 +1,30 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { useFriends, PendingFriendRequestsBanner } from '@/features/profil';
 import { SortieCard, useSortiesStore } from '@/features/sorties';
 import { Button } from '@/shared/components/Button';
 import { colors, spacing, typography } from '@/shared/constants/theme';
 
 export default function SortiesScreen() {
   const sorties = useSortiesStore((state) => state.sorties);
+  const { pendingRequests, fetchFriendsList, acceptFriendRequest, removeFriendship } = useFriends();
+
+  useEffect(() => {
+    fetchFriendsList();
+  }, [fetchFriendsList]);
 
   return (
     <View style={styles.container}>
+      <PendingFriendRequestsBanner
+        pendingRequests={pendingRequests}
+        onAccept={acceptFriendRequest}
+        onReject={removeFriendship}
+      />
+
       <View style={styles.headerArea}>
         <Text style={styles.subtitle}>Organise et rejoins des sorties entre amis !</Text>
       </View>
+
       <FlatList
         data={sorties}
         keyExtractor={(item) => item.id}
@@ -44,7 +57,7 @@ const styles = StyleSheet.create({
   },
   headerArea: {
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
+    paddingTop: spacing.sm,
   },
   listContent: {
     padding: spacing.md,
@@ -52,6 +65,6 @@ const styles = StyleSheet.create({
   subtitle: {
     color: colors.textSecondary,
     fontSize: typography.fontSizes.md,
-    marginBottom: spacing.md,
+    marginBottom: spacing.xs,
   },
 });

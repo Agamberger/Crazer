@@ -6,7 +6,7 @@ import { PoiItem } from '../types/carte';
 import { useMapStore, MAP_STYLE_URLS } from '../store/useMapStore';
 
 // Safe dynamic resolution of MapLibre React Native for native & Expo Go compatibility
-let MapLibreRN: any = null;
+let MapLibreRN: unknown = null;
 let isMapLibreAvailable = false;
 
 try {
@@ -74,7 +74,7 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
   const styleURL = MAP_STYLE_URLS[mapStyleMode];
 
   // Handle messages sent from WebView Leaflet map
-  const handleWebViewMessage = (event: any) => {
+  const handleWebViewMessage = (event: { nativeEvent: { data: string } }) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
       if (data.type === 'SELECT_POI') {
@@ -351,9 +351,9 @@ const styles = StyleSheet.create({
   },
   osmBadge: {
     position: 'absolute',
-    bottom: 12,
-    right: 12,
-    backgroundColor: 'rgba(30, 32, 40, 0.85)',
+    top: 90,
+    right: 16,
+    
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 16,
