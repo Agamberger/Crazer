@@ -99,6 +99,10 @@ interface MapState {
   userLocation: { latitude: number; longitude: number } | null;
   savedWaypoints: PoiItem[];
 
+  // États asynchrones (Supabase / géolocalisation)
+  isLoading: boolean;
+  error: string | null;
+
   // Actions
   setSelectedCategory: (category: PoiCategory) => void;
   setSelectedPoiId: (id: string | null) => void;
@@ -106,6 +110,9 @@ interface MapState {
   setMapStyleMode: (mode: MapStyleMode) => void;
   setCenterRegion: (region: MapRegion) => void;
   setUserLocation: (location: { latitude: number; longitude: number } | null) => void;
+  setPois: (pois: PoiItem[]) => void;
+  setIsLoading: (value: boolean) => void;
+  setError: (message: string | null) => void;
   toggleSavedWaypoint: (poi: PoiItem) => void;
   resetFilters: () => void;
   getFilteredPois: () => PoiItem[];
@@ -121,12 +128,19 @@ export const useMapStore = create<MapState>((set, get) => ({
   userLocation: null,
   savedWaypoints: [],
 
+  // États asynchrones initiaux
+  isLoading: false,
+  error: null,
+
   setSelectedCategory: (category) => set({ selectedCategory: category }),
   setSelectedPoiId: (id) => set({ selectedPoiId: id }),
   setSearchQuery: (query) => set({ searchQuery: query }),
   setMapStyleMode: (mode) => set({ mapStyleMode: mode }),
   setCenterRegion: (region) => set({ centerRegion: region }),
   setUserLocation: (location) => set({ userLocation: location }),
+  setPois: (pois) => set({ pois }),
+  setIsLoading: (value) => set({ isLoading: value }),
+  setError: (message) => set({ error: message }),
 
   toggleSavedWaypoint: (poi) =>
     set((state) => {

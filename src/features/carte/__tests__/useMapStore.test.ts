@@ -8,6 +8,8 @@ describe('useMapStore', () => {
       mapStyleMode: 'dark',
       savedWaypoints: [],
       selectedPoiId: null,
+      isLoading: false,
+      error: null,
     });
   });
 
@@ -60,5 +62,46 @@ describe('useMapStore', () => {
     expect(state.selectedCategory).toBe('all');
     expect(state.searchQuery).toBe('');
     expect(state.selectedPoiId).toBeNull();
+  });
+
+  // ── Nouveaux états asynchrones ──────────────────────────────────────────────
+
+  test('setPois — remplace la liste des POIs', () => {
+    const newPoi: PoiItem = {
+      id: 'custom-1',
+      title: 'Bar Test Supabase',
+      category: 'bar',
+      latitude: 48.86,
+      longitude: 2.35,
+      address: '1 Rue Test',
+      rating: 4.0,
+      reviewsCount: 10,
+      description: 'Un bar test',
+      priceRange: '€',
+    };
+
+    useMapStore.getState().setPois([newPoi]);
+
+    expect(useMapStore.getState().pois).toEqual([newPoi]);
+  });
+
+  test('setIsLoading — met à jour l\'état de chargement', () => {
+    expect(useMapStore.getState().isLoading).toBe(false);
+
+    useMapStore.getState().setIsLoading(true);
+    expect(useMapStore.getState().isLoading).toBe(true);
+
+    useMapStore.getState().setIsLoading(false);
+    expect(useMapStore.getState().isLoading).toBe(false);
+  });
+
+  test('setError — stocke et efface un message d\'erreur', () => {
+    expect(useMapStore.getState().error).toBeNull();
+
+    useMapStore.getState().setError('Erreur de connexion Supabase');
+    expect(useMapStore.getState().error).toBe('Erreur de connexion Supabase');
+
+    useMapStore.getState().setError(null);
+    expect(useMapStore.getState().error).toBeNull();
   });
 });
