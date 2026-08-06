@@ -147,6 +147,30 @@ describe('Composants UI - Recherche d utilisateurs et Amis', () => {
   });
 
   describe('UserSearchModal', () => {
+    it('doit afficher la liste des amis existants lorsque la recherche est vide', () => {
+      useFriendsStore.setState({
+        friends: [
+          {
+            id: 'user-99',
+            email: 'julien@crazer.app',
+            fullName: 'Julien Moreau',
+            avatarUrl: null,
+            friendshipStatus: 'accepted',
+            friendshipId: 'f-999',
+          },
+        ],
+      });
+
+      const { getByTestId, getByText } = render(
+        <UserSearchModal visible={true} onClose={jest.fn()} />
+      );
+
+      expect(getByTestId('friends-list-section')).toBeTruthy();
+      expect(getByText('Julien Moreau')).toBeTruthy();
+      expect(getByText('julien@crazer.app')).toBeTruthy();
+      expect(getByText('Ami ✓')).toBeTruthy();
+    });
+
     it('doit afficher la modal et permettre de chercher un utilisateur et d ouvrir son profil', async () => {
       const mockResults = [
         {
@@ -165,7 +189,7 @@ describe('Composants UI - Recherche d utilisateurs et Amis', () => {
         <UserSearchModal visible={true} onClose={onCloseMock} />
       );
 
-      expect(getByText('Rechercher des amis')).toBeTruthy();
+      expect(getByText('Mes Amis & Recherche')).toBeTruthy();
 
       const input = getByTestId('input-user-search');
       fireEvent.changeText(input, 'Luc');

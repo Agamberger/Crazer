@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FlatList, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors, spacing, typography } from '@/shared/constants/theme';
 import { useFriends } from '../hooks/useFriends';
 import { UserSearchResult } from '../types';
@@ -15,6 +15,7 @@ export interface UserSearchModalProps {
 export const UserSearchModal: React.FC<UserSearchModalProps> = ({ visible, onClose }) => {
   const {
     searchResults,
+    friends,
     searchQuery,
     isSearching,
     error,
@@ -41,6 +42,7 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({ visible, onClo
 
   const currentSelectedUserInResults = selectedUser
     ? searchResults.find((u) => u.id === selectedUser.id) ||
+      friends.find((u) => u.id === selectedUser.id) ||
       pendingRequests.find((u) => u.id === selectedUser.id) ||
       selectedUser
     : null;
@@ -49,11 +51,11 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({ visible, onClo
     <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={handleClose}>
       <View style={styles.container} testID="modal-user-search">
         <View style={styles.header}>
-          <Text style={styles.title}>Rechercher des amis</Text>
+          <Text style={styles.title}>Mes Amis & Recherche</Text>
           <TouchableOpacity
             onPress={handleClose}
             style={styles.closeButton}
-            accessibilityLabel="Fermer la fenêtre de recherche"
+            accessibilityLabel="Fermer la fenêtre d amitié"
             accessibilityRole="button"
             testID="btn-close-search-modal"
           >
@@ -80,32 +82,46 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({ visible, onClo
         )}
 
         {searchQuery.trim().length === 0 ? (
-          <View style={styles.content}>
+          <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
             {pendingRequests.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Demandes reçues ({pendingRequests.length})</Text>
-                <FlatList
-                  data={pendingRequests}
-                  keyExtractor={(item) => item.id}
-                  renderItem={({ item }) => (
-                    <UserListItem
-                      user={item}
-                      onPressSelect={(u) => setSelectedUser(u)}
-                      onAcceptRequest={acceptFriendRequest}
-                      onRemoveFriend={removeFriendship}
-                    />
-                  )}
-                />
+              <View style={styles.section} testID="pending-requests-section">
+                <Text style={styles.sectionTitle}>📩 Demandes reçues ({pendingRequests.length})</Text>
+                {pendingRequests.map((item) => (
+                  <UserListItem
+                    key={item.id}
+                    user={item}
+                    onPressSelect={(u) => setSelectedUser(u)}
+                    onAcceptRequest={acceptFriendRequest}
+                    onRemoveFriend={removeFriendship}
+                  />
+                ))}
               </View>
             )}
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>🔍</Text>
-              <Text style={styles.emptyTitle}>Trouvez vos amis sur Crazer</Text>
-              <Text style={styles.emptySubtitle}>
-                Saisissez un prénom, un nom ou une adresse email pour rechercher des utilisateurs, consulter leur profil et les ajouter à vos amis.
-              </Text>
-            </View>
-          </View>
+
+            {friends.length > 0 && (
+              <View style={styles.section} testID="friends-list-section">
+                <Text style={styles.sectionTitle}>👥 Mes Amis ({friends.length})</Text>
+                {friends.map((item) => (
+                  <UserListItem
+                    key={item.id}
+                    user={item}
+                    onPressSelect={(u) => setSelectedUser(u)}
+                    onRemoveFriend={removeFriendship}
+                  />
+                ))}
+              </View>
+            )}
+
+            {pendingRequests.length === 0 && friends.length === 0 && (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyIcon}>🔍</Text>
+                <Text style={styles.emptyTitle}>Trouvez vos amis sur Crazer</Text>
+                <Text style={styles.emptySubtitle}>
+                  Saisissez un prénom, un nom ou une adresse email pour rechercher des utilisateurs, consulter leur profil et les ajouter à vos amis.
+                </Text>
+              </View>
+            )}
+          </ScrollView>
         ) : searchResults.length === 0 && !isSearching ? (
           <View style={styles.emptyState} testID="no-results-state">
             <Text style={styles.emptyIcon}>🙁</Text>
@@ -176,6 +192,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xl,
   },
   emptySubtitle: {
     color: colors.textMuted,
@@ -206,6 +223,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   listContainer: {
+    paddingBottom: spacing.lg,
+  },
+  scrollContent: {
     paddingBottom: spacing.lg,
   },
   searchContainer: {
