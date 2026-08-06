@@ -45,3 +45,13 @@ jest.mock('@maplibre/maplibre-react-native', () => ({
   PointAnnotation: 'PointAnnotation',
   ViewAnnotation: 'ViewAnnotation',
 }));
+
+// Mock react-native-webview
+jest.mock('react-native-webview', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    WebView: (props: any) => React.createElement(View, { testID: 'leaflet-webview', ...props }),
+  };
+});
+

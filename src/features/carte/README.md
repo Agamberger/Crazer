@@ -5,10 +5,11 @@ Ce module gère l'affichage de la carte interactive, des POIs (Points d'Intérê
 ## 🏗️ Architecture des Composants
 
 - **`MapViewComponent`** : Composant cartographique principal.
-  - *Comportement dynamique* : Tente d'utiliser `@maplibre/maplibre-react-native` avec tuiles OpenStreetMap / CartoDB. Si l'application tourne dans **Expo Go** ou un environnement sans binaire natif pré-compilé (`MLRNCameraModule`), un fallback interactif fluide s'active automatiquement sans provoquer de crash au chargement du module.
+  - *Mode Natif (Dev Client)* : Utilise `@maplibre/maplibre-react-native` pour un rendu vectoriel 3D haute performance.
+  - *Mode Expo Go (Développement)* : Intègre automatiquement une carte **OpenStreetMap / Leaflet** interactive via `react-native-webview` (tuiles CartoDB Dark Matter / Positron / OpenStreetMap). Cela permet d'avoir une **vraie carte totalement fonctionnelle directement dans Expo Go**, sans aucun crash ni compilation de binaire natif requis !
 - **`MapHeaderSearch`** : Barre de recherche et filtres de catégories.
 - **`PoiDetailCard`** : Carte d'affichage des détails d'un lieu sélectionné (note, avis, prix, boutons d'action).
-- **`StyleSelector`** : Widget de sélection du style de carte (Dark, Light, Satellite).
+- **`StyleSelector`** : Widget de sélection du style de carte (Dark, Light, Outdoor).
 - **`useMapStore`** : Store Zustand pour l'état de la carte (POIs, filtres, mode de style, centrage).
 
 ## 🧪 Tests
