@@ -40,6 +40,14 @@
             "useFrameworks": "dynamic"
           }
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Crazer utilise votre position pour afficher les lieux à proximité.",
+          "locationWhenInUsePermission": "Crazer utilise votre position pour afficher les lieux à proximité.",
+          "isAndroidBackgroundLocationEnabled": false
+        }
       ]
     ],
     "experiments": {

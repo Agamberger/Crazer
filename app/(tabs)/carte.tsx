@@ -1,13 +1,12 @@
-import React from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useEffect, useRef } from 'react';
+import { View, StyleSheet, Alert, StatusBar, Animated } from 'react-native';
 import { colors, spacing } from '@/shared/constants/theme';
 import {
   MapViewComponent,
   MapHeaderSearch,
   PoiDetailCard,
-  StyleSelector,
   useMapStore,
+  usePlaces,
   PoiItem,
 } from '@/features/carte';
 
@@ -17,6 +16,26 @@ export default function CarteScreen() {
   const getFilteredPois = useMapStore((state) => state.getFilteredPois);
   const setSelectedPoiId = useMapStore((state) => state.setSelectedPoiId);
   const setCenterRegion = useMapStore((state) => state.setCenterRegion);
+
+  const { requestLocation, loadNearby } = usePlaces();
+  const isInitialized = React.useRef(false);
+
+  const expandAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (isInitialized.current) return;
+    isInitialized.current = true;
+
+    const initMapData = async () => {
+      const coords = await requestLocation();
+      if (coords) {
+        await loadNearby(coords.latitude, coords.longitude);
+      } else {
+        await loadNearby();
+      }
+    };
+    initMapData();
+  }, [requestLocation, loadNearby]);
 
   const filteredPois = getFilteredPois();
   const selectedPoi = pois.find((p) => p.id === selectedPoiId) || null;
@@ -32,60 +51,59 @@ export default function CarteScreen() {
 
   const handleAddToOuting = (poi: PoiItem) => {
     Alert.alert(
-      'Ajouter à une sortie',
-      `"${poi.title}" a été préparé pour être ajouté à votre prochaine sortie !`,
-      [{ text: 'Super !', style: 'default' }]
+      'Ajouter à la sortie',
+      `Le lieu "${poi.title}" a été préparé pour votre sortie !`
     );
   };
 
   const handleGetDirections = (poi: PoiItem) => {
     Alert.alert(
       'Itinéraire',
-      `Calcul de l'itinéraire vers ${poi.address}...`,
-      [{ text: 'C\'est parti', style: 'default' }]
+      `Calcul de l'itinéraire vers ${poi.address}...`
     );
   };
 
+  const headerTranslateY = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -35],
+  });
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        {/* Header Search & Category Filter */}
-        <View style={styles.headerOverlay}>
-          <MapHeaderSearch />
+    <View style={styles.container}>
+      {/* Map View spanning 100% full screen edge-to-edge */}
+      <MapViewComponent
+        pois={filteredPois}
+        onSelectPoi={handleSelectPoi}
+      />
+
+      {/* Header Search & Category Filter Overlay positioned at very top */}
+      <Animated.View
+        style={[
+          styles.headerOverlay,
+          { transform: [{ translateY: headerTranslateY }] },
+        ]}
+        pointerEvents="box-none"
+      >
+        <MapHeaderSearch />
+      </Animated.View>
+
+      {/* Detail Card Overlay at Bottom */}
+      {selectedPoi && (
+        <View style={styles.bottomCardOverlay}>
+          <PoiDetailCard
+            poi={selectedPoi}
+            onClose={() => setSelectedPoiId(null)}
+            onAddToOuting={handleAddToOuting}
+            onGetDirections={handleGetDirections}
+            expandAnim={expandAnim}
+          />
         </View>
-
-        {/* Map View */}
-        <MapViewComponent
-          pois={filteredPois}
-          onSelectPoi={handleSelectPoi}
-        />
-
-        {/* Style Selector Widget Floating at Top Right / Center */}
-        <View style={styles.styleSelectorOverlay}>
-          <StyleSelector />
-        </View>
-
-        {/* Detail Card Overlay at Bottom */}
-        {selectedPoi && (
-          <View style={styles.bottomCardOverlay}>
-            <PoiDetailCard
-              poi={selectedPoi}
-              onClose={() => setSelectedPoiId(null)}
-              onAddToOuting={handleAddToOuting}
-              onGetDirections={handleGetDirections}
-            />
-          </View>
-        )}
-      </View>
-    </SafeAreaView>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
   container: {
     flex: 1,
     position: 'relative',
@@ -93,22 +111,19 @@ const styles = StyleSheet.create({
   },
   headerOverlay: {
     position: 'absolute',
-    top: spacing.xs,
+    top: (StatusBar.currentHeight || 20) + 4,
     left: 0,
     right: 0,
-    zIndex: 20,
-  },
-  styleSelectorOverlay: {
-    position: 'absolute',
-    top: 120,
-    right: spacing.md,
-    zIndex: 15,
+    zIndex: 50,
   },
   bottomCardOverlay: {
     position: 'absolute',
-    bottom: spacing.xs,
+    top: 0,
+    bottom: 0,
     left: 0,
     right: 0,
-    zIndex: 30,
+    justifyContent: 'flex-end',
+    pointerEvents: 'box-none',
+    zIndex: 40,
   },
 });
