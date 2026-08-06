@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '@/features/auth';
 import { useGamificationStore } from '@/features/gamification';
-import { useProfilStore } from '@/features/profil';
+import { useProfilStore, UserSearchModal, useFriends } from '@/features/profil';
 import { Button } from '@/shared/components/Button';
 import { Card } from '@/shared/components/Card';
 import { colors, spacing, typography } from '@/shared/constants/theme';
@@ -11,9 +11,17 @@ export default function ProfilScreen() {
   const { user: authUser, logout, isLoading } = useAuth();
   const mockUser = useProfilStore((state) => state.currentUser);
   const badges = useGamificationStore((state) => state.badges);
+  const { friends, pendingRequests, fetchFriendsList } = useFriends();
+
+  const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
+
+  useEffect(() => {
+    fetchFriendsList();
+  }, [fetchFriendsList]);
 
   const displayName = authUser?.fullName || mockUser.name || 'Utilisateur';
   const displayEmail = authUser?.email || mockUser.email || '';
+  const friendsCount = authUser ? friends.length : mockUser.friendsCount;
 
   const handleLogout = async () => {
     try {
@@ -28,7 +36,18 @@ export default function ProfilScreen() {
       <Card style={styles.card}>
         <Text style={styles.name}>{displayName}</Text>
         <Text style={styles.email}>{displayEmail}</Text>
-        <Text style={styles.stats}>👥 {mockUser.friendsCount} amis sur Crazer</Text>
+        <Text style={styles.stats}>
+          👥 {friendsCount} {friendsCount > 1 ? 'amis' : 'ami'} sur Crazer
+          {pendingRequests.length > 0 ? ` (${pendingRequests.length} en attente)` : ''}
+        </Text>
+
+        <Button
+          title="🔍 Rechercher des amis"
+          variant="primary"
+          onPress={() => setIsSearchModalVisible(true)}
+          style={styles.searchFriendsButton}
+          testID="btn-open-search-friends"
+        />
       </Card>
 
       <Text style={styles.sectionTitle}>{"Centres d'intérêt"}</Text>
@@ -57,6 +76,11 @@ export default function ProfilScreen() {
         onPress={handleLogout}
         style={styles.logoutButton}
         testID="btn-logout"
+      />
+
+      <UserSearchModal
+        visible={isSearchModalVisible}
+        onClose={() => setIsSearchModalVisible(false)}
       />
     </ScrollView>
   );
@@ -98,6 +122,10 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: typography.fontSizes.xl,
     fontWeight: typography.fontWeights.bold,
+  },
+  searchFriendsButton: {
+    marginTop: spacing.sm,
+    width: '100%',
   },
   sectionTitle: {
     color: colors.textPrimary,
