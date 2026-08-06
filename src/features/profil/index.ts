@@ -7,3 +7,6 @@ export * from './components/UserSearchInput';
 export * from './components/UserListItem';
 export * from './components/UserSearchModal';
 export * from './components/UserProfileDetailModal';
+export * from './components/ProfileHeaderCard';
+export * from './components/InterestsSection';
+export * from './components/BadgesSection';
