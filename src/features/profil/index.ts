@@ -10,3 +10,4 @@ export * from './components/UserProfileDetailModal';
 export * from './components/ProfileHeaderCard';
 export * from './components/InterestsSection';
 export * from './components/BadgesSection';
+export * from './components/PendingFriendRequestsBanner';
