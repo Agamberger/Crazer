@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FlatList, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors, spacing, typography } from '@/shared/constants/theme';
 import { useFriends } from '../hooks/useFriends';
+import { UserSearchResult } from '../types';
 import { UserListItem } from './UserListItem';
+import { UserProfileDetailModal } from './UserProfileDetailModal';
 import { UserSearchInput } from './UserSearchInput';
 
 export interface UserSearchModalProps {
@@ -25,7 +27,10 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({ visible, onClo
     resetSearch,
   } = useFriends();
 
+  const [selectedUser, setSelectedUser] = useState<UserSearchResult | null>(null);
+
   const handleClose = () => {
+    setSelectedUser(null);
     resetSearch();
     onClose();
   };
@@ -33,6 +38,12 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({ visible, onClo
   const handleClear = () => {
     resetSearch();
   };
+
+  const currentSelectedUserInResults = selectedUser
+    ? searchResults.find((u) => u.id === selectedUser.id) ||
+      pendingRequests.find((u) => u.id === selectedUser.id) ||
+      selectedUser
+    : null;
 
   return (
     <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={handleClose}>
@@ -79,6 +90,7 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({ visible, onClo
                   renderItem={({ item }) => (
                     <UserListItem
                       user={item}
+                      onPressSelect={(u) => setSelectedUser(u)}
                       onAcceptRequest={acceptFriendRequest}
                       onRemoveFriend={removeFriendship}
                     />
@@ -90,7 +102,7 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({ visible, onClo
               <Text style={styles.emptyIcon}>🔍</Text>
               <Text style={styles.emptyTitle}>Trouvez vos amis sur Crazer</Text>
               <Text style={styles.emptySubtitle}>
-                Saisissez un prénom, un nom ou une adresse email pour rechercher des utilisateurs et les ajouter à vos amis.
+                Saisissez un prénom, un nom ou une adresse email pour rechercher des utilisateurs, consulter leur profil et les ajouter à vos amis.
               </Text>
             </View>
           </View>
@@ -113,6 +125,7 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({ visible, onClo
             renderItem={({ item }) => (
               <UserListItem
                 user={item}
+                onPressSelect={(u) => setSelectedUser(u)}
                 onAddFriend={sendFriendRequest}
                 onAcceptRequest={acceptFriendRequest}
                 onRemoveFriend={removeFriendship}
@@ -121,6 +134,16 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({ visible, onClo
             )}
           />
         )}
+
+        <UserProfileDetailModal
+          user={currentSelectedUserInResults}
+          visible={selectedUser !== null}
+          onClose={() => setSelectedUser(null)}
+          onAddFriend={sendFriendRequest}
+          onAcceptRequest={acceptFriendRequest}
+          onRemoveFriend={removeFriendship}
+          onCancelRequest={removeFriendship}
+        />
       </View>
     </Modal>
   );

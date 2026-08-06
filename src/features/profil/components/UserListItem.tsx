@@ -1,11 +1,12 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Button } from '@/shared/components/Button';
 import { colors, spacing, typography } from '@/shared/constants/theme';
 import { UserSearchResult } from '../types';
 
 export interface UserListItemProps {
   user: UserSearchResult;
+  onPressSelect?: (user: UserSearchResult) => void;
   onAddFriend?: (userId: string) => void;
   onAcceptRequest?: (friendshipId: string) => void;
   onRemoveFriend?: (friendshipId: string, userId: string) => void;
@@ -14,6 +15,7 @@ export interface UserListItemProps {
 
 export const UserListItem: React.FC<UserListItemProps> = ({
   user,
+  onPressSelect,
   onAddFriend,
   onAcceptRequest,
   onRemoveFriend,
@@ -85,17 +87,25 @@ export const UserListItem: React.FC<UserListItemProps> = ({
 
   return (
     <View style={styles.container} testID={`user-item-${user.id}`}>
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>{getInitials(user.fullName, user.email)}</Text>
-      </View>
-      <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>
-          {displayName}
-        </Text>
-        <Text style={styles.email} numberOfLines={1}>
-          {user.email}
-        </Text>
-      </View>
+      <TouchableOpacity
+        style={styles.profileTouchable}
+        onPress={() => onPressSelect?.(user)}
+        accessibilityLabel={`Voir le profil de ${displayName}`}
+        accessibilityRole="button"
+        testID={`user-profile-touchable-${user.id}`}
+      >
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{getInitials(user.fullName, user.email)}</Text>
+        </View>
+        <View style={styles.info}>
+          <Text style={styles.name} numberOfLines={1}>
+            {displayName}
+          </Text>
+          <Text style={styles.email} numberOfLines={1}>
+            {user.email}
+          </Text>
+        </View>
+      </TouchableOpacity>
       {renderActionButton()}
     </View>
   );
@@ -142,5 +152,10 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: typography.fontSizes.sm,
     fontWeight: typography.fontWeights.semibold,
+  },
+  profileTouchable: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
   },
 });

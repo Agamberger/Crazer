@@ -6,3 +6,4 @@ export * from './types';
 export * from './components/UserSearchInput';
 export * from './components/UserListItem';
 export * from './components/UserSearchModal';
+export * from './components/UserProfileDetailModal';

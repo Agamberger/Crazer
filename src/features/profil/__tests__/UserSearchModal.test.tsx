@@ -3,6 +3,7 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { UserSearchInput } from '../components/UserSearchInput';
 import { UserListItem } from '../components/UserListItem';
 import { UserSearchModal } from '../components/UserSearchModal';
+import { UserProfileDetailModal } from '../components/UserProfileDetailModal';
 import { useFriendsStore } from '../store/useFriendsStore';
 import { friendsService } from '../services/friendsService';
 
@@ -79,6 +80,24 @@ describe('Composants UI - Recherche d utilisateurs et Amis', () => {
       expect(onAddFriendMock).toHaveBeenCalledWith('user-2');
     });
 
+    it('doit déclencher onPressSelect lors du clic sur la zone profil d un utilisateur', () => {
+      const onPressSelectMock = jest.fn();
+      const user = {
+        id: 'user-2',
+        email: 'sophie@crazer.app',
+        fullName: 'Sophie Bernard',
+        avatarUrl: null,
+        friendshipStatus: 'none' as const,
+      };
+
+      const { getByTestId } = render(
+        <UserListItem user={user} onPressSelect={onPressSelectMock} />
+      );
+
+      fireEvent.press(getByTestId('user-profile-touchable-user-2'));
+      expect(onPressSelectMock).toHaveBeenCalledWith(user);
+    });
+
     it('doit afficher Ami ✓ lorsque le statut est accepted', () => {
       const user = {
         id: 'user-2',
@@ -94,8 +113,41 @@ describe('Composants UI - Recherche d utilisateurs et Amis', () => {
     });
   });
 
+  describe('UserProfileDetailModal', () => {
+    it('doit afficher les détails du profil utilisateur et permettre l ajout d ami', () => {
+      const onAddFriendMock = jest.fn();
+      const onCloseMock = jest.fn();
+      const user = {
+        id: 'user-50',
+        email: 'claire@crazer.app',
+        fullName: 'Claire Petit',
+        avatarUrl: null,
+        friendshipStatus: 'none' as const,
+      };
+
+      const { getByText, getByTestId } = render(
+        <UserProfileDetailModal
+          user={user}
+          visible={true}
+          onClose={onCloseMock}
+          onAddFriend={onAddFriendMock}
+        />
+      );
+
+      expect(getByText('Claire Petit')).toBeTruthy();
+      expect(getByText('claire@crazer.app')).toBeTruthy();
+      expect(getByText('+ Ajouter en ami')).toBeTruthy();
+
+      fireEvent.press(getByTestId('btn-detail-add-friend'));
+      expect(onAddFriendMock).toHaveBeenCalledWith('user-50');
+
+      fireEvent.press(getByTestId('btn-close-profile-detail'));
+      expect(onCloseMock).toHaveBeenCalled();
+    });
+  });
+
   describe('UserSearchModal', () => {
-    it('doit afficher la modal et permettre de chercher un utilisateur', async () => {
+    it('doit afficher la modal et permettre de chercher un utilisateur et d ouvrir son profil', async () => {
       const mockResults = [
         {
           id: 'user-10',
@@ -121,6 +173,13 @@ describe('Composants UI - Recherche d utilisateurs et Amis', () => {
       await waitFor(() => {
         expect(friendsService.searchUsers).toHaveBeenCalledWith('Luc', 'current-user-id');
         expect(getByText('Luc Thomas')).toBeTruthy();
+      });
+
+      // Cliquer sur le profil de Luc
+      fireEvent.press(getByTestId('user-profile-touchable-user-10'));
+
+      await waitFor(() => {
+        expect(getByText("Profil de l'utilisateur")).toBeTruthy();
       });
     });
   });
