@@ -1,4 +1,13 @@
-import { Session } from '@supabase/supabase-js';
+import { AuthChangeEvent, Session } from '@supabase/supabase-js';
+
+export const AUTH_EVENTS = {
+  SIGNED_IN: 'SIGNED_IN',
+  SIGNED_OUT: 'SIGNED_OUT',
+  INITIAL_SESSION: 'INITIAL_SESSION',
+  TOKEN_REFRESHED: 'TOKEN_REFRESHED',
+  USER_UPDATED: 'USER_UPDATED',
+  PASSWORD_RECOVERY: 'PASSWORD_RECOVERY',
+} as const satisfies Record<string, AuthChangeEvent>;
 
 export interface AuthUser {
   id: string;

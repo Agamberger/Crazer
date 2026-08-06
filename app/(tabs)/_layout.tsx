@@ -48,26 +48,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="finances"
-        options={{
-          title: 'Finances',
-          headerTitle: 'Dépenses du groupe',
-          tabBarIcon: ({ color, focused, size }) => (
-            <Ionicons name={focused ? 'wallet' : 'wallet-outline'} size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="journal"
-        options={{
-          title: 'Journal',
-          headerTitle: "Journal d'aventure",
-          tabBarIcon: ({ color, focused, size }) => (
-            <Ionicons name={focused ? 'book' : 'book-outline'} size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="profil"
         options={{
           title: 'Profil',

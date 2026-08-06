@@ -3,7 +3,7 @@ import { render } from '@testing-library/react-native';
 import TabLayout from '../_layout';
 
 describe('TabLayout Navbar Icons', () => {
-  const tabs = ['index', 'activites', 'carte', 'finances', 'journal', 'profil'];
+  const tabs = ['index', 'activites', 'carte', 'profil'];
 
   tabs.forEach((tabName) => {
     test(`doit définir un icon de navbar (tabBarIcon) pour la tab ${tabName}`, () => {
