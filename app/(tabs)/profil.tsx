@@ -27,7 +27,7 @@ export default function ProfilScreen() {
 
   const displayName = authUser?.fullName || mockUser.name || 'Utilisateur';
   const displayEmail = authUser?.email || mockUser.email || '';
-  const friendsCount = authUser ? friends.length : mockUser.friendsCount;
+  const friendsCount = authUser ? friends.length : 0;
   const unlockedBadgesCount = badges.filter((b) => Boolean(b.unlockedAt)).length;
 
   const handleLogout = async () => {
