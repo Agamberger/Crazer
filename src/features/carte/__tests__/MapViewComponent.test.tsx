@@ -51,4 +51,14 @@ describe('MapViewComponent', () => {
     fireEvent.press(getByLabelText('Sélectionner Pizza Mama'));
     expect(handleSelect).toHaveBeenCalledWith(mockPois[0]);
   });
+
+  test('doit gérer le rendu des POIs même si la liste est vide', () => {
+    const handleSelect = jest.fn();
+    const { getByTestId } = render(
+      <MapViewComponent pois={[]} onSelectPoi={handleSelect} />
+    );
+
+    expect(getByTestId('map-view-container')).toBeTruthy();
+  });
 });
+

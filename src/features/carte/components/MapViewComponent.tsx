@@ -1,13 +1,32 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import * as MapLibreRN from '@maplibre/maplibre-react-native';
 import { colors, typography } from '@/shared/constants/theme';
 import { PoiItem } from '../types/carte';
 import { useMapStore, MAP_STYLE_URLS } from '../store/useMapStore';
 
-// Safe component extraction for v11+ named exports or legacy default exports or mocks
-const mapLibreObj = MapLibreRN as unknown as Record<string, unknown>;
-const defaultObj = mapLibreObj?.default as Record<string, unknown> | undefined;
+// Safe dynamic resolution of MapLibre React Native for native & Expo Go compatibility
+let MapLibreRN: any = null;
+let isMapLibreAvailable = false;
+
+try {
+  MapLibreRN = require('@maplibre/maplibre-react-native');
+  const mapObj = MapLibreRN as unknown as Record<string, unknown>;
+  const defObj = mapObj?.default as Record<string, unknown> | undefined;
+
+  const MapComp = mapObj?.Map || mapObj?.MapView || defObj?.Map || defObj?.MapView;
+  if (MapComp) {
+    isMapLibreAvailable = true;
+    const setToken = mapObj?.setAccessToken || defObj?.setAccessToken;
+    if (typeof setToken === 'function') {
+      (setToken as (token: null) => void)(null);
+    }
+  }
+} catch {
+  isMapLibreAvailable = false;
+}
+
+const mapLibreObj = (MapLibreRN || {}) as Record<string, unknown>;
+const defaultObj = (mapLibreObj?.default || {}) as Record<string, unknown>;
 
 const MapComponent: React.ElementType =
   (mapLibreObj?.Map as React.ElementType) ||
@@ -27,16 +46,6 @@ const MarkerComponent: React.ElementType =
   (defaultObj?.Marker as React.ElementType) ||
   (defaultObj?.MarkerView as React.ElementType) ||
   View;
-
-// Ensure access token is set (null for open source OpenStreetMap tiles)
-try {
-  const setToken = mapLibreObj?.setAccessToken || defaultObj?.setAccessToken;
-  if (typeof setToken === 'function') {
-    (setToken as (token: null) => void)(null);
-  }
-} catch {
-  // Ignored if in mock/test environment
-}
 
 export interface MapViewComponentProps {
   pois: PoiItem[];
@@ -62,43 +71,97 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
 
   const styleURL = MAP_STYLE_URLS[mapStyleMode];
 
+  // If MapLibre Native Module is available, render native vector map
+  if (isMapLibreAvailable) {
+    return (
+      <View style={styles.container} testID="map-view-container">
+        <MapComponent
+          style={styles.map}
+          mapStyle={styleURL}
+          styleURL={styleURL}
+          logo={false}
+          logoEnabled={false}
+          attribution={true}
+          attributionEnabled={true}
+          compass={true}
+          compassEnabled={true}
+          testID="maplibre-map-view"
+        >
+          <CameraComponent
+            center={[centerRegion.longitude, centerRegion.latitude]}
+            centerCoordinate={[centerRegion.longitude, centerRegion.latitude]}
+            zoom={centerRegion.zoomLevel}
+            zoomLevel={centerRegion.zoomLevel}
+            animationMode="flyTo"
+            animationDuration={1000}
+          />
+
+          {pois.map((poi) => {
+            const isSelected = selectedPoiId === poi.id;
+            const emoji = CATEGORY_EMOJIS[poi.category] || CATEGORY_EMOJIS.all;
+
+            return (
+              <MarkerComponent
+                key={poi.id}
+                id={poi.id}
+                lngLat={[poi.longitude, poi.latitude]}
+                coordinate={[poi.longitude, poi.latitude]}
+              >
+                <TouchableOpacity
+                  style={[
+                    styles.markerContainer,
+                    isSelected && styles.markerSelected,
+                  ]}
+                  onPress={() => onSelectPoi(poi)}
+                  accessibilityLabel={`Sélectionner ${poi.title}`}
+                  accessibilityRole="button"
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.markerEmoji}>{emoji}</Text>
+                  {isSelected && (
+                    <View style={styles.selectedBadge}>
+                      <Text style={styles.selectedBadgeText} numberOfLines={1}>
+                        {poi.title}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </MarkerComponent>
+            );
+          })}
+        </MapComponent>
+      </View>
+    );
+  }
+
+  // Fallback interactive grid map view when native MapLibre module is absent (Expo Go)
   return (
     <View style={styles.container} testID="map-view-container">
-      <MapComponent
-        style={styles.map}
-        mapStyle={styleURL}
-        styleURL={styleURL}
-        logo={false}
-        logoEnabled={false}
-        attribution={true}
-        attributionEnabled={true}
-        compass={true}
-        compassEnabled={true}
-        testID="maplibre-map-view"
-      >
-        <CameraComponent
-          center={[centerRegion.longitude, centerRegion.latitude]}
-          centerCoordinate={[centerRegion.longitude, centerRegion.latitude]}
-          zoom={centerRegion.zoomLevel}
-          zoomLevel={centerRegion.zoomLevel}
-          animationMode="flyTo"
-          animationDuration={1000}
-        />
+      <View style={styles.fallbackGrid}>
+        <View style={styles.gridOverlay} />
+        
+        {/* Environment notification badge */}
+        <View style={styles.fallbackBadge}>
+          <Text style={styles.fallbackBadgeText}>📍 Carte Interactive (Mode Expo Go)</Text>
+        </View>
 
-        {pois.map((poi) => {
-          const isSelected = selectedPoiId === poi.id;
-          const emoji = CATEGORY_EMOJIS[poi.category] || CATEGORY_EMOJIS.all;
+        {/* POIs mapped onto interactive layout */}
+        <View style={styles.markersCanvas}>
+          {pois.map((poi, idx) => {
+            const isSelected = selectedPoiId === poi.id;
+            const emoji = CATEGORY_EMOJIS[poi.category] || CATEGORY_EMOJIS.all;
 
-          return (
-            <MarkerComponent
-              key={poi.id}
-              id={poi.id}
-              lngLat={[poi.longitude, poi.latitude]}
-              coordinate={[poi.longitude, poi.latitude]}
-            >
+            // Simple layout positioning calculation based on coordinates
+            const offsetX = ((poi.longitude - 2.35) * 1200) + 160 + (idx * 30 % 100);
+            const offsetY = ((48.86 - poi.latitude) * 1200) + 200 + (idx * 40 % 120);
+
+            return (
               <TouchableOpacity
+                key={poi.id}
                 style={[
                   styles.markerContainer,
+                  styles.fallbackMarker,
+                  { left: Math.max(20, Math.min(offsetX, 300)), top: Math.max(80, Math.min(offsetY, 450)) },
                   isSelected && styles.markerSelected,
                 ]}
                 onPress={() => onSelectPoi(poi)}
@@ -115,10 +178,10 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
                   </View>
                 )}
               </TouchableOpacity>
-            </MarkerComponent>
-          );
-        })}
-      </MapComponent>
+            );
+          })}
+        </View>
+      </View>
     </View>
   );
 };
@@ -131,6 +194,41 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
+  },
+  fallbackGrid: {
+    flex: 1,
+    backgroundColor: '#181A20',
+    position: 'relative',
+  },
+  gridOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.15,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  fallbackBadge: {
+    position: 'absolute',
+    top: 90,
+    left: 16,
+    backgroundColor: 'rgba(30, 32, 40, 0.85)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    zIndex: 10,
+  },
+  fallbackBadgeText: {
+    color: colors.textMuted,
+    fontSize: 11,
+    fontWeight: typography.fontWeights.medium,
+  },
+  markersCanvas: {
+    flex: 1,
+    position: 'relative',
+  },
+  fallbackMarker: {
+    position: 'absolute',
   },
   markerContainer: {
     width: 40,
@@ -173,3 +271,4 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeights.bold,
   },
 });
+
