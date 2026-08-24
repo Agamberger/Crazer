@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, act, waitFor } from '@testing-library/react-native';
+import { render, waitFor } from '@testing-library/react-native';
 import * as Location from 'expo-location';
 import CarteScreen from '../../../../app/(tabs)/carte';
 

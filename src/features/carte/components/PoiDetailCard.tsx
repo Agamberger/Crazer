@@ -23,6 +23,9 @@ export interface PoiDetailCardProps {
   expandAnim?: Animated.Value;
 }
 
+const OPEN_BADGE_BG = 'rgba(34, 197, 94, 0.15)';
+const CLOSED_BADGE_BG = 'rgba(239, 68, 68, 0.15)';
+
 const CATEGORY_LABELS: Record<string, { name: string; badgeColor: string }> = {
   resto: { name: 'Restaurant', badgeColor: colors.secondary },
   bar: { name: 'Bar & Lounge', badgeColor: colors.accent },
@@ -311,7 +314,7 @@ export const PoiDetailCard: React.FC<PoiDetailCardProps> = ({
               accessibilityLabel="Afficher ou masquer les horaires d'ouverture"
               accessibilityRole="button"
             >
-              <Text style={styles.hoursTitle}>🕒 Horaires d'ouverture</Text>
+              <Text style={styles.hoursTitle}>{"🕒 Horaires d'ouverture"}</Text>
               <Text style={styles.hoursChevron}>
                 {showHours || isExpanded ? '▲' : '▼'}
               </Text>
@@ -437,10 +440,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   openBadge: {
-    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    backgroundColor: OPEN_BADGE_BG,
   },
   closedBadge: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    backgroundColor: CLOSED_BADGE_BG,
   },
   openStatusText: {
     fontSize: typography.fontSizes.xs,

@@ -5,12 +5,11 @@
  * et de gestion d'erreurs sans appel réseau réel.
  */
 
-import { searchPlaces, fetchNearbyPlaces, createCustomPlace, upsertPlace } from '../services/placeService';
+import { searchPlaces, fetchNearbyPlaces, createCustomPlace } from '../services/placeService';
 
 // ── Mock Supabase ────────────────────────────────────────────────────────────
 const mockRpc = jest.fn();
 const mockInsert = jest.fn();
-const mockUpsert = jest.fn();
 const mockSelect = jest.fn();
 const mockSingle = jest.fn();
 const mockFrom = jest.fn();
