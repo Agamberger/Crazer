@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -75,6 +70,92 @@ export type Database = {
           {
             foreignKeyName: "friendships_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outing_participants: {
+        Row: {
+          id: string
+          invited_at: string
+          outing_id: string
+          responded_at: string | null
+          status: Database["public"]["Enums"]["participant_status"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          invited_at?: string
+          outing_id: string
+          responded_at?: string | null
+          status?: Database["public"]["Enums"]["participant_status"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          invited_at?: string
+          outing_id?: string
+          responded_at?: string | null
+          status?: Database["public"]["Enums"]["participant_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outing_participants_outing_id_fkey"
+            columns: ["outing_id"]
+            isOneToOne: false
+            referencedRelation: "outings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outing_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outings: {
+        Row: {
+          cover_image: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          start_date: string
+          status: Database["public"]["Enums"]["outing_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          cover_image?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          start_date: string
+          status?: Database["public"]["Enums"]["outing_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          cover_image?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          start_date?: string
+          status?: Database["public"]["Enums"]["outing_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outings_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -171,6 +252,73 @@ export type Database = {
         }
         Relationships: []
       }
+      planned_outings: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          duration_min: number | null
+          id: string
+          notes: string | null
+          outing_id: string
+          place_id: string | null
+          scheduled_for: string
+          status: Database["public"]["Enums"]["planned_outing_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          duration_min?: number | null
+          id?: string
+          notes?: string | null
+          outing_id: string
+          place_id?: string | null
+          scheduled_for: string
+          status?: Database["public"]["Enums"]["planned_outing_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          duration_min?: number | null
+          id?: string
+          notes?: string | null
+          outing_id?: string
+          place_id?: string | null
+          scheduled_for?: string
+          status?: Database["public"]["Enums"]["planned_outing_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planned_outings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planned_outings_outing_id_fkey"
+            columns: ["outing_id"]
+            isOneToOne: false
+            referencedRelation: "outings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planned_outings_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -221,47 +369,6 @@ export type Database = {
           srtext?: string | null
         }
         Relationships: []
-      friendships: {
-        Row: {
-          created_at: string
-          friend_id: string
-          id: string
-          status: 'pending' | 'accepted' | 'rejected'
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          friend_id: string
-          id?: string
-          status?: 'pending' | 'accepted' | 'rejected'
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          friend_id?: string
-          id?: string
-          status?: 'pending' | 'accepted' | 'rejected'
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "friendships_friend_id_fkey"
-            columns: ["friend_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "friendships_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          }
-        ]
       }
     }
     Views: {
@@ -568,6 +675,7 @@ export type Database = {
       }
       geomfromewkt: { Args: { "": string }; Returns: unknown }
       gettransactionid: { Args: never; Returns: unknown }
+      is_outing_member: { Args: { p_outing_id: string }; Returns: boolean }
       longtransactionsenabled: { Args: never; Returns: boolean }
       populate_geometry_columns:
         | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }
@@ -1230,6 +1338,8 @@ export type Database = {
       }
     }
     Enums: {
+      outing_status: "draft" | "planned" | "ongoing" | "done" | "cancelled"
+      participant_status: "invited" | "accepted" | "declined" | "maybe"
       place_category:
         | "resto"
         | "bar"
@@ -1244,6 +1354,7 @@ export type Database = {
         | "here"
         | "geoapify"
         | "custom"
+      planned_outing_status: "pending" | "confirmed" | "skipped" | "cancelled"
     }
     CompositeTypes: {
       geometry_dump: {
@@ -1382,6 +1493,8 @@ export const Constants = {
   },
   public: {
     Enums: {
+      outing_status: ["draft", "planned", "ongoing", "done", "cancelled"],
+      participant_status: ["invited", "accepted", "declined", "maybe"],
       place_category: [
         "resto",
         "bar",
@@ -1398,6 +1511,8 @@ export const Constants = {
         "geoapify",
         "custom",
       ],
+      planned_outing_status: ["pending", "confirmed", "skipped", "cancelled"],
     },
   },
 } as const
+
