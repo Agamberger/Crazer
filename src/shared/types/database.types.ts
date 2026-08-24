@@ -676,6 +676,14 @@ export type Database = {
       geomfromewkt: { Args: { "": string }; Returns: unknown }
       gettransactionid: { Args: never; Returns: unknown }
       is_outing_member: { Args: { p_outing_id: string }; Returns: boolean }
+      is_outing_organizer: {
+        Args: { p_outing_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      is_outing_participant: {
+        Args: { p_outing_id: string; p_user_id: string }
+        Returns: boolean
+      }
       longtransactionsenabled: { Args: never; Returns: boolean }
       populate_geometry_columns:
         | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }

@@ -14,24 +14,17 @@ export interface User {
   friendsCount: number;
 }
 
-/** Statut d'une Sortie */
-export type SortieStatus = 'draft' | 'voting' | 'planned' | 'completed' | 'cancelled';
+import { Database } from './database.types';
 
-/** Sortie : rassemblement d'une ou plusieurs personnes */
-export interface Sortie {
-  id: string;
-  title: string;
-  description?: string;
-  isPrivate: boolean;
-  creatorId: string;
-  participantIds: string[];
-  status: SortieStatus;
-  scheduledDate?: string;
-  meetingPoint?: string;
-  activityIds: string[];
-  itineraryId?: string;
-  createdAt: string;
-}
+/** Types Supabase pour Outings */
+export type OutingRow = Database['public']['Tables']['outings']['Row'];
+export type OutingInsert = Database['public']['Tables']['outings']['Insert'];
+export type OutingStatus = Database['public']['Enums']['outing_status'];
+
+/** Alias rétro-compatible */
+export type SortieRow = OutingRow;
+export type Sortie = OutingRow;
+
 
 /** Activité : quelque chose à faire (proposé par un établissement, etc.) */
 export interface Activite {
