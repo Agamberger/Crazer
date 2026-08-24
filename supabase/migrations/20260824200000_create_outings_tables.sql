@@ -127,6 +127,23 @@ CREATE TABLE public.outing_participants (
 CREATE INDEX outing_participants_outing_idx ON public.outing_participants (outing_id);
 CREATE INDEX outing_participants_user_idx   ON public.outing_participants (user_id);
 
+-- Helper SECURITY DEFINER pour éviter les récursions RLS
+CREATE OR REPLACE FUNCTION public.is_outing_organizer(p_outing_id UUID, p_user_id UUID)
+RETURNS BOOLEAN LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.outings
+    WHERE id = p_outing_id AND created_by = p_user_id
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_outing_participant(p_outing_id UUID, p_user_id UUID)
+RETURNS BOOLEAN LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.outing_participants
+    WHERE outing_id = p_outing_id AND user_id = p_user_id
+  );
+$$;
+
 -- ============================================================
 -- ROW LEVEL SECURITY — outing_participants
 -- ============================================================
@@ -138,10 +155,7 @@ CREATE POLICY "Participants peuvent voir les membres d'une sortie"
   TO authenticated
   USING (
     auth.uid() = user_id
-    OR EXISTS (
-      SELECT 1 FROM public.outings o
-      WHERE o.id = outing_id AND o.created_by = auth.uid()
-    )
+    OR public.is_outing_organizer(outing_id, auth.uid())
   );
 
 -- L'organisateur peut inviter des participants
@@ -149,10 +163,7 @@ CREATE POLICY "Organisateur peut inviter des participants"
   ON public.outing_participants FOR INSERT
   TO authenticated
   WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.outings o
-      WHERE o.id = outing_id AND o.created_by = auth.uid()
-    )
+    public.is_outing_organizer(outing_id, auth.uid())
   );
 
 -- Un participant peut mettre à jour son propre statut ; l'organisateur peut tout modifier
@@ -161,10 +172,7 @@ CREATE POLICY "Mise à jour statut participant"
   TO authenticated
   USING (
     auth.uid() = user_id
-    OR EXISTS (
-      SELECT 1 FROM public.outings o
-      WHERE o.id = outing_id AND o.created_by = auth.uid()
-    )
+    OR public.is_outing_organizer(outing_id, auth.uid())
   );
 
 -- L'organisateur peut retirer un participant
@@ -172,10 +180,7 @@ CREATE POLICY "Organisateur peut retirer un participant"
   ON public.outing_participants FOR DELETE
   TO authenticated
   USING (
-    EXISTS (
-      SELECT 1 FROM public.outings o
-      WHERE o.id = outing_id AND o.created_by = auth.uid()
-    )
+    public.is_outing_organizer(outing_id, auth.uid())
   );
 
 -- ============================================================
@@ -185,10 +190,7 @@ CREATE POLICY "Participants peuvent lire la sortie"
   ON public.outings FOR SELECT
   TO authenticated
   USING (
-    EXISTS (
-      SELECT 1 FROM public.outing_participants op
-      WHERE op.outing_id = id AND op.user_id = auth.uid()
-    )
+    public.is_outing_participant(id, auth.uid())
   );
 
 -- ============================================================

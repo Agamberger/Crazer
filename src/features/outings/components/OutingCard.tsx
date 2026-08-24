@@ -1,32 +1,45 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Card } from '@/shared/components/Card';
 import { colors, spacing, typography } from '@/shared/constants/theme';
-import { Sortie } from '@/shared/types';
+import { OutingRow } from '@/shared/types';
 
-interface SortieCardProps {
-  sortie: Sortie;
+interface OutingCardProps {
+  outing: OutingRow;
   onPress?: () => void;
 }
 
-export const SortieCard: React.FC<SortieCardProps> = ({ sortie }) => {
-  return (
+export const OutingCard: React.FC<OutingCardProps> = ({ outing, onPress }) => {
+  const formattedDate = outing.start_date
+    ? new Date(outing.start_date).toLocaleDateString('fr-FR', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : '';
+
+  const content = (
     <Card style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>{sortie.title}</Text>
+        <Text style={styles.title}>{outing.title}</Text>
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>{sortie.status.toUpperCase()}</Text>
+          <Text style={styles.badgeText}>{outing.status.toUpperCase()}</Text>
         </View>
       </View>
-      {sortie.description ? <Text style={styles.description}>{sortie.description}</Text> : null}
+      {outing.description ? <Text style={styles.description}>{outing.description}</Text> : null}
       <View style={styles.footer}>
-        <Text style={styles.footerText}>👥 {sortie.participantIds.length} participants</Text>
-        {sortie.meetingPoint ? (
-          <Text style={styles.footerText}>📍 {sortie.meetingPoint}</Text>
-        ) : null}
+        {formattedDate ? <Text style={styles.footerText}>📅 {formattedDate}</Text> : null}
       </View>
     </Card>
   );
+
+  if (onPress) {
+    return <TouchableOpacity onPress={onPress} activeOpacity={0.8}>{content}</TouchableOpacity>;
+  }
+
+  return content;
 };
 
 const styles = StyleSheet.create({
