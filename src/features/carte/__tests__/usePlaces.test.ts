@@ -5,7 +5,7 @@
  * la logique du hook sans appels réseau ou GPS réels.
  */
 
-import { renderHook, act, waitFor } from '@testing-library/react-native';
+import { renderHook, act } from '@testing-library/react-native';
 import { usePlaces } from '../hooks/usePlaces';
 
 // ── Mock expo-location ───────────────────────────────────────────────────────
@@ -21,16 +21,19 @@ jest.mock('../services/placeService', () => ({
   searchPlaces: jest.fn(),
 }));
 
+const mockStoreState = {
+  setPois: jest.fn(),
+  setCenterRegion: jest.fn(),
+  setUserLocation: jest.fn(),
+  centerRegion: { latitude: 48.8566, longitude: 2.3522, zoomLevel: 12 },
+  userLocation: null,
+};
+
 jest.mock('../store/useMapStore', () => {
-  const state = {
-    setPois: jest.fn(),
-    setCenterRegion: jest.fn(),
-    setUserLocation: jest.fn(),
-    centerRegion: { latitude: 48.8566, longitude: 2.3522, zoomLevel: 12 },
-    userLocation: null,
-  };
-  const useMapStoreMock: any = (selector: any) => selector(state);
-  useMapStoreMock.getState = () => state;
+  const useMapStoreMock = Object.assign(
+    <T>(selector: (state: typeof mockStoreState) => T) => selector(mockStoreState),
+    { getState: () => mockStoreState }
+  );
   return {
     useMapStore: useMapStoreMock,
   };
@@ -40,9 +43,8 @@ import { useMapStore } from '../store/useMapStore';
 import * as Location from 'expo-location';
 import { fetchNearbyPlaces, searchPlaces } from '../services/placeService';
 
-const mockState = (useMapStore as any).getState();
+const mockState = (useMapStore as unknown as { getState: () => typeof mockStoreState }).getState();
 const mockSetPois = mockState.setPois;
-const mockSetCenterRegion = mockState.setCenterRegion;
 const mockSetUserLocation = mockState.setUserLocation;
 
 const mockLocation = Location as jest.Mocked<typeof Location>;

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Alert, StatusBar, Animated } from 'react-native';
-import { colors, spacing } from '@/shared/constants/theme';
+import { colors } from '@/shared/constants/theme';
 import {
   MapViewComponent,
   MapHeaderSearch,
