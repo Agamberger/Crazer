@@ -13,21 +13,25 @@ CREATE TABLE IF NOT EXISTS public.friendships (
 ALTER TABLE public.friendships ENABLE ROW LEVEL SECURITY;
 
 -- Politiques RLS
+DROP POLICY IF EXISTS "Users can view their own friendships" ON public.friendships;
 CREATE POLICY "Users can view their own friendships"
   ON public.friendships FOR SELECT
   TO authenticated
   USING (auth.uid() = user_id OR auth.uid() = friend_id);
 
+DROP POLICY IF EXISTS "Users can insert friend requests" ON public.friendships;
 CREATE POLICY "Users can insert friend requests"
   ON public.friendships FOR INSERT
   TO authenticated
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their friendship status" ON public.friendships;
 CREATE POLICY "Users can update their friendship status"
   ON public.friendships FOR UPDATE
   TO authenticated
   USING (auth.uid() = user_id OR auth.uid() = friend_id);
 
+DROP POLICY IF EXISTS "Users can delete their friendships" ON public.friendships;
 CREATE POLICY "Users can delete their friendships"
   ON public.friendships FOR DELETE
   TO authenticated
