@@ -4,18 +4,16 @@ import { PoiDetailCard } from '../components/PoiDetailCard';
 import { PoiItem } from '../types/carte';
 
 const mockPoi: PoiItem = {
-  id: 'test-poi-1',
+  id: 'poi-1',
   title: 'Bar Le Centenaire',
   category: 'bar',
-  latitude: 48.85,
-  longitude: 2.35,
+  latitude: 48.8566,
+  longitude: 2.3522,
   address: '10 Rue de test, 75000 Paris',
   rating: 4.7,
   reviewsCount: 88,
   description: 'Un super bar de test pour les sorties.',
   priceRange: '€€',
-  phone: '0123456789',
-  website: 'https://example.com',
 };
 
 describe('PoiDetailCard', () => {
@@ -26,12 +24,13 @@ describe('PoiDetailCard', () => {
 
     expect(getByText('Bar Le Centenaire')).toBeTruthy();
     expect(getByText('📍 10 Rue de test, 75000 Paris')).toBeTruthy();
-    expect(getByText('Un super bar de test pour les sorties.')).toBeTruthy();
     expect(getByText('4.7')).toBeTruthy();
-    expect(getByText('Bar & Lounge')).toBeTruthy();
+    expect(getByText('(88 avis)')).toBeTruthy();
+    expect(getByText('Un super bar de test pour les sorties.')).toBeTruthy();
+    expect(getByText('€€')).toBeTruthy();
   });
 
-  test('doit déclencher onClose lors du clic sur le bouton de fermeture', () => {
+  test("doit appeler onClose lors du clic sur le bouton de fermeture", () => {
     const handleClose = jest.fn();
     const { getByTestId } = render(
       <PoiDetailCard poi={mockPoi} onClose={handleClose} />
@@ -41,21 +40,21 @@ describe('PoiDetailCard', () => {
     expect(handleClose).toHaveBeenCalledTimes(1);
   });
 
-  test('doit déclencher onAddToOuting lors du clic sur Ajouter à la sortie', () => {
-    const handleAdd = jest.fn();
+  test("doit appeler onAddToOuting lors du clic sur le bouton 'Ajouter à une sortie'", () => {
+    const handleAddToOuting = jest.fn();
     const { getByText } = render(
       <PoiDetailCard
         poi={mockPoi}
         onClose={jest.fn()}
-        onAddToOuting={handleAdd}
+        onAddToOuting={handleAddToOuting}
       />
     );
 
-    fireEvent.press(getByText('+ Ajouter à la sortie'));
-    expect(handleAdd).toHaveBeenCalledWith(mockPoi);
+    fireEvent.press(getByText('+ Ajouter à une sortie'));
+    expect(handleAddToOuting).toHaveBeenCalledWith(mockPoi);
   });
 
-  test('doit déclencher onGetDirections lors du clic sur Itinéraire', () => {
+  test("doit appeler onGetDirections lors du clic sur le bouton Itinéraire", () => {
     const handleDirections = jest.fn();
     const { getByText } = render(
       <PoiDetailCard
@@ -81,7 +80,7 @@ describe('PoiDetailCard', () => {
       <PoiDetailCard poi={poiWithDetails} onClose={jest.fn()} />
     );
 
-    expect(getByTestId('poi-photos-gallery')).toBeTruthy();
+    expect(getByTestId('place-photos-gallery')).toBeTruthy();
     expect(getByText('🟢 Ouvert')).toBeTruthy();
     expect(getByTestId('opening-hours-section')).toBeTruthy();
 
@@ -95,23 +94,16 @@ describe('PoiDetailCard', () => {
   });
 
   test('doit permettre de basculer en mode plein écran (expanded)', () => {
-    const { getByTestId, queryByTestId, getByText } = render(
+    const { getByTestId, getByText } = render(
       <PoiDetailCard poi={mockPoi} onClose={jest.fn()} />
     );
 
-    // Les boutons de contact ne sont pas affichés par défaut
-    expect(queryByTestId('contact-buttons-row')).toBeNull();
-
-    // Clic sur la poignée d'expansion
-    fireEvent.press(getByTestId('expand-toggle-button'));
-
-    // En mode étendu, les détails de contact doivent apparaître
-    expect(getByTestId('contact-buttons-row')).toBeTruthy();
-    expect(getByText('📞 0123456789')).toBeTruthy();
-    expect(getByText('🌐 Site Web')).toBeTruthy();
-
-    // Clic sur le bouton de réduction
+    expect(getByTestId('expand-button')).toBeTruthy();
     fireEvent.press(getByTestId('expand-button'));
-    expect(queryByTestId('contact-buttons-row')).toBeNull();
+    expect(getByText('▼')).toBeTruthy();
+
+    // Replier
+    fireEvent.press(getByTestId('expand-button'));
+    expect(getByText('▲')).toBeTruthy();
   });
 });

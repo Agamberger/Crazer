@@ -3,6 +3,7 @@ import { outingService } from '../services/outingService';
 import {
   OutingRow,
   OutingUpdate,
+  PlannedOutingInsert,
   PlannedOutingRow,
   PlannedOutingUpdate,
 } from '@/shared/types';
@@ -266,6 +267,54 @@ describe('useOutingsStore', () => {
           status: 'pending',
         })
       );
+      expect(result).toEqual(createdStep);
+      expect(useOutingsStore.getState().plannedOutings).toEqual([createdStep]);
+    });
+
+    it('addPlannedOuting adds a custom planned outing to store state', async () => {
+      const parentOuting: OutingRow = {
+        id: 'out-1',
+        title: 'Sortie',
+        description: null,
+        start_date: '2026-08-30T18:00:00.000Z',
+        created_by: 'user-1',
+        status: 'draft',
+        cover_image: null,
+        created_at: '2026-08-24T20:00:00Z',
+        updated_at: '2026-08-24T20:00:00Z',
+      };
+      useOutingsStore.setState({ outings: [parentOuting], plannedOutings: [] });
+
+      const payload: PlannedOutingInsert = {
+        outing_id: 'out-1',
+        place_id: 'place-uuid-1',
+        title: 'Restaurant Le Marais',
+        description: 'Dîner sympa',
+        notes: 'Réservé au nom de Thomas',
+        scheduled_for: '2026-08-30T20:00:00.000Z',
+        duration_min: 120,
+        status: 'confirmed',
+        created_by: 'user-1',
+      };
+
+      const createdStep: PlannedOutingRow = {
+        id: 'po-custom',
+        ...payload,
+        description: 'Dîner sympa',
+        notes: 'Réservé au nom de Thomas',
+        duration_min: 120,
+        status: 'confirmed',
+        place_id: 'place-uuid-1',
+        created_by: 'user-1',
+        created_at: '2026-08-24T20:00:00Z',
+        updated_at: '2026-08-24T20:00:00Z',
+      };
+
+      (outingService.createPlannedOuting as jest.Mock).mockResolvedValue(createdStep);
+
+      const result = await useOutingsStore.getState().addPlannedOuting(payload);
+
+      expect(outingService.createPlannedOuting).toHaveBeenCalledWith(payload);
       expect(result).toEqual(createdStep);
       expect(useOutingsStore.getState().plannedOutings).toEqual([createdStep]);
     });

@@ -11,10 +11,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/shared/components/Button';
 import { Card } from '@/shared/components/Card';
-import { ThemedDateTimePicker } from '@/shared/components/ThemedDateTimePicker';
+import { DateTimePickerModal } from '@/shared/components/DateTimePicker';
 import { colors, spacing, typography } from '@/shared/constants/theme';
 import {
-  Constants,
   PLANNED_OUTING_STATUS_CONFIG,
   PlannedOutingRow,
   PlannedOutingStatus,
@@ -25,12 +24,37 @@ export interface PlannedOutingEditFormProps {
   plannedOuting: PlannedOutingRow;
   parentOutingTitle?: string;
   onSubmit: (updates: PlannedOutingUpdate) => Promise<void> | void;
-  onDelete?: () => Promise<void> | void;
-  onCancel?: () => void;
+  onDelete?: (id: string) => Promise<void> | void;
+  onCancel: () => void;
   isLoading?: boolean;
-  isDeleting?: boolean;
   error?: string | null;
+  submitTestID?: string;
+  cancelTestID?: string;
+  deleteTestID?: string;
 }
+
+const STATUS_OPTIONS: { value: PlannedOutingStatus; label: string; emoji: string }[] = [
+  {
+    value: 'pending',
+    label: PLANNED_OUTING_STATUS_CONFIG.pending?.label || 'En attente',
+    emoji: PLANNED_OUTING_STATUS_CONFIG.pending?.emoji || '⏳',
+  },
+  {
+    value: 'confirmed',
+    label: PLANNED_OUTING_STATUS_CONFIG.confirmed?.label || 'Confirmée',
+    emoji: PLANNED_OUTING_STATUS_CONFIG.confirmed?.emoji || '✅',
+  },
+  {
+    value: 'skipped',
+    label: PLANNED_OUTING_STATUS_CONFIG.skipped?.label || 'Ignorée',
+    emoji: PLANNED_OUTING_STATUS_CONFIG.skipped?.emoji || '⏭️',
+  },
+  {
+    value: 'cancelled',
+    label: PLANNED_OUTING_STATUS_CONFIG.cancelled?.label || 'Annulée',
+    emoji: PLANNED_OUTING_STATUS_CONFIG.cancelled?.emoji || '❌',
+  },
+];
 
 const DURATION_PRESETS = [
   { label: '15 min', value: 15 },
@@ -42,13 +66,6 @@ const DURATION_PRESETS = [
   { label: '3h', value: 180 },
 ];
 
-const STATUS_OPTIONS: { value: PlannedOutingStatus; label: string; emoji: string }[] =
-  Constants.public.Enums.planned_outing_status.map((status: PlannedOutingStatus) => ({
-    value: status,
-    label: PLANNED_OUTING_STATUS_CONFIG[status]?.label || status,
-    emoji: PLANNED_OUTING_STATUS_CONFIG[status]?.emoji || '📌',
-  }));
-
 export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
   plannedOuting,
   parentOutingTitle,
@@ -56,142 +73,137 @@ export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
   onDelete,
   onCancel,
   isLoading = false,
-  isDeleting = false,
   error = null,
+  submitTestID,
+  cancelTestID,
+  deleteTestID,
 }) => {
-  const [title, setTitle] = useState(plannedOuting.title || '');
+  const [title, setTitle] = useState(plannedOuting.title);
   const [description, setDescription] = useState(plannedOuting.description || '');
   const [notes, setNotes] = useState(plannedOuting.notes || '');
-  const [durationMin, setDurationMin] = useState<number | null>(plannedOuting.duration_min ?? 60);
-  const [status, setStatus] = useState<PlannedOutingStatus>(plannedOuting.status || 'pending');
+  const [scheduledFor, setScheduledFor] = useState(new Date(plannedOuting.scheduled_for));
+  const [durationMin, setDurationMin] = useState<number | null>(plannedOuting.duration_min);
+  const [status, setStatus] = useState<PlannedOutingStatus>(plannedOuting.status);
 
-  const [scheduledDate, setScheduledDate] = useState<Date>(() => {
-    if (plannedOuting.scheduled_for) {
-      const parsed = new Date(plannedOuting.scheduled_for);
-      if (!isNaN(parsed.getTime())) {
-        return parsed;
-      }
-    }
-    return new Date();
-  });
-
-  const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
+  const [formError, setFormError] = useState<string | null>(null);
   const [showPicker, setShowPicker] = useState(false);
-  const [validationError, setValidationError] = useState<string | null>(null);
-
-  const handleSubmit = async () => {
-    setValidationError(null);
-
-    if (!title.trim()) {
-      setValidationError("Le nom de l'étape est obligatoire.");
-      return;
-    }
-
-    const updates: PlannedOutingUpdate = {
-      title: title.trim(),
-      description: description.trim() ? description.trim() : null,
-      notes: notes.trim() ? notes.trim() : null,
-      scheduled_for: scheduledDate.toISOString(),
-      duration_min: durationMin && durationMin > 0 ? durationMin : null,
-      status,
-    };
-
-    await onSubmit(updates);
-  };
-
-  const handleConfirmDelete = () => {
-    if (!onDelete) return;
-
-    Alert.alert(
-      "Supprimer l'étape",
-      'Êtes-vous sûr de vouloir supprimer cette étape ? Cette action est irréversible.',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: () => {
-            onDelete();
-          },
-        },
-      ]
-    );
-  };
+  const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
 
   const handleOpenPicker = (mode: 'date' | 'time') => {
     setPickerMode(mode);
     setShowPicker(true);
   };
 
-  const handleDateConfirm = (newDate: Date) => {
-    setScheduledDate(newDate);
+  const handleDateTimeConfirm = (date: Date) => {
+    setScheduledFor(date);
     setShowPicker(false);
   };
 
-  const formattedDate = scheduledDate.toLocaleDateString('fr-FR', {
+  const handleSubmit = async () => {
+    if (!title.trim()) {
+      setFormError("Le nom de l'étape est obligatoire.");
+      return;
+    }
+    setFormError(null);
+
+    await onSubmit({
+      title: title.trim(),
+      description: description.trim() || null,
+      notes: notes.trim() || null,
+      scheduled_for: scheduledFor.toISOString(),
+      duration_min: durationMin,
+      status,
+    });
+  };
+
+  const handleDelete = () => {
+    if (!onDelete) return;
+
+    Alert.alert(
+      "Supprimer l'étape",
+      `Êtes-vous sûr de vouloir supprimer "${plannedOuting.title}" ?`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: () => onDelete(plannedOuting.id),
+        },
+      ]
+    );
+  };
+
+  const formattedDate = scheduledFor.toLocaleDateString('fr-FR', {
     weekday: 'short',
     day: 'numeric',
-    month: 'long',
+    month: 'short',
     year: 'numeric',
   });
 
-  const formattedTime = scheduledDate.toLocaleTimeString('fr-FR', {
+  const formattedTime = scheduledFor.toLocaleTimeString('fr-FR', {
     hour: '2-digit',
     minute: '2-digit',
   });
 
-  const displayError = validationError || error;
-
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      {/* Top back button and parent outing context */}
-      <View style={styles.topBar}>
-        {onCancel && (
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={onCancel}
-            accessibilityRole="button"
-            accessibilityLabel="Retour à la sortie"
-            testID="btn-back-to-outing"
-          >
-            <Ionicons name="arrow-back" size={20} color={colors.primary} />
-            <Text style={styles.backButtonText}>Retour</Text>
-          </TouchableOpacity>
-        )}
-        {parentOutingTitle && (
-          <Text style={styles.parentContext} numberOfLines={1}>
+    <ScrollView
+      style={styles.scrollContainer}
+      contentContainerStyle={styles.contentContainer}
+      keyboardShouldPersistTaps="handled"
+      testID="planned-outing-edit-form"
+    >
+      {/* Back button and parent info header */}
+      <View style={styles.headerNav}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={onCancel}
+          accessibilityLabel="Retour à la sortie"
+          accessibilityRole="button"
+          testID="btn-back-to-outing"
+        >
+          <Ionicons name="arrow-back" size={20} color={colors.primary} />
+          <Text style={styles.backButtonText}>Retour</Text>
+        </TouchableOpacity>
+        {parentOutingTitle ? (
+          <Text style={styles.parentOutingSubtitle} numberOfLines={1}>
             Sortie : {parentOutingTitle}
           </Text>
-        )}
+        ) : null}
       </View>
 
-      <Card style={styles.card}>
-        {/* Planned outing title */}
-        <View style={styles.titleContainer}>
-          <Text style={styles.sectionHeaderLabel}>Étape du programme</Text>
+      <Card style={styles.formCard}>
+        {/* Form header */}
+        <View style={styles.cardHeader}>
+          <Text style={styles.formTitle}>Modifier l&apos;étape</Text>
+        </View>
+
+        {/* Global error banner */}
+        {(formError || error) && (
+          <View style={styles.errorBanner} testID="error-container">
+            <Ionicons name="alert-circle" size={16} color={colors.error} />
+            <Text style={styles.errorBannerText}>{formError || error}</Text>
+          </View>
+        )}
+
+        {/* Title input */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>
+            Nom de l&apos;étape <Text style={styles.requiredAsterisk}>*</Text>
+          </Text>
           <TextInput
-            style={styles.titleInput}
-            placeholder="Nom de l'étape..."
+            style={styles.input}
+            placeholder="Ex: Bar Le Centenaire, Escape Game..."
             placeholderTextColor={colors.textMuted}
             value={title}
-            onChangeText={(text) => {
-              setTitle(text);
-              if (validationError) setValidationError(null);
-            }}
+            onChangeText={setTitle}
             accessibilityLabel="Nom de l'étape"
             testID="input-planned-title"
           />
         </View>
 
-        {displayError ? (
-          <View style={styles.errorContainer} testID="error-container">
-            <Text style={styles.errorText}>{displayError}</Text>
-          </View>
-        ) : null}
-
-        {/* Planned outing status */}
+        {/* Status selector */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Statut de l'étape</Text>
+          <Text style={styles.label}>Statut de l&apos;étape</Text>
           <View style={styles.statusGrid}>
             {STATUS_OPTIONS.map((item) => {
               const isSelected = status === item.value;
@@ -209,7 +221,8 @@ export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
                       isSelected && styles.statusBadgeTextActive,
                     ]}
                   >
-                    {item.emoji} {item.label}
+                    <Text>{item.emoji} </Text>
+                    <Text>{item.label}</Text>
                   </Text>
                 </TouchableOpacity>
               );
@@ -279,32 +292,29 @@ export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
               </Text>
             </TouchableOpacity>
           </View>
+
+          <DateTimePickerModal
+            visible={showPicker}
+            mode={pickerMode}
+            value={scheduledFor}
+            onConfirm={handleDateTimeConfirm}
+            onCancel={() => setShowPicker(false)}
+          />
         </View>
 
-        {/* Crazer themed date & time picker modal */}
-        <ThemedDateTimePicker
-          visible={showPicker}
-          value={scheduledDate}
-          mode={pickerMode}
-          onConfirm={handleDateConfirm}
-          onCancel={() => setShowPicker(false)}
-        />
-
-        {/* Estimated duration */}
+        {/* Duration selector */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Durée estimée</Text>
-          <View style={styles.durationPresetsRow}>
+          <View style={styles.durationPresetsGrid}>
             {DURATION_PRESETS.map((preset) => {
               const isSelected = durationMin === preset.value;
               return (
                 <TouchableOpacity
                   key={preset.value}
-                  style={[
-                    styles.durationChip,
-                    isSelected && styles.durationChipActive,
-                  ]}
+                  style={[styles.durationChip, isSelected && styles.durationChipActive]}
                   onPress={() => setDurationMin(preset.value)}
-                  testID={`chip-duration-${preset.value}`}\n                  activeOpacity={0.7}
+                  testID={`chip-duration-${preset.value}`}
+                  activeOpacity={0.7}
                 >
                   <Text
                     style={[
@@ -321,7 +331,7 @@ export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
           <View style={styles.customDurationContainer}>
             <TextInput
               style={styles.durationInput}
-              placeholder="Personnalisé (ex: 75)"
+              placeholder="Personnalisé (min)"
               placeholderTextColor={colors.textMuted}
               keyboardType="numeric"
               value={durationMin !== null ? durationMin.toString() : ''}
@@ -336,12 +346,12 @@ export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
           </View>
         </View>
 
-        {/* Description & planned activities */}
+        {/* Description */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Description</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder="Détails de l'étape, adresse ou activités prévues..."
+            placeholder="Détails de l'étape ou activités prévues..."
             placeholderTextColor={colors.textMuted}
             value={description}
             onChangeText={setDescription}
@@ -353,7 +363,7 @@ export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
           />
         </View>
 
-        {/* Private notes & practical details */}
+        {/* Practical notes */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Notes & infos pratiques</Text>
           <TextInput
@@ -370,19 +380,16 @@ export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
           />
         </View>
 
-        {/* Save and cancel actions */}
+        {/* Actions */}
         <View style={styles.actionButtons}>
-          {onCancel && (
-            <Button
-              title="Annuler"
-              variant="outline"
-              size="sm"
-              onPress={onCancel}
-              style={styles.actionButton}
-              testID="btn-cancel-planned-edit"
-            />
-          )}
-
+          <Button
+            title="Annuler"
+            variant="outline"
+            size="sm"
+            onPress={onCancel}
+            style={styles.actionButton}
+            testID={cancelTestID || 'btn-cancel-planned'}
+          />
           <Button
             title="Enregistrer"
             variant="primary"
@@ -390,24 +397,22 @@ export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
             loading={isLoading}
             onPress={handleSubmit}
             style={styles.actionButton}
-            testID="btn-submit-planned-edit"
+            testID={submitTestID || 'btn-submit-planned'}
           />
         </View>
 
-        {/* Destructive delete button */}
+        {/* Danger zone : Delete */}
         {onDelete && (
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={handleConfirmDelete}
-            disabled={isDeleting}
-            testID="btn-delete-planned-edit"
-            activeOpacity={0.7}
-          >
-            <Ionicons name="trash-outline" size={16} color={colors.error} />
-            <Text style={styles.deleteButtonText}>
-              {isDeleting ? 'Suppression en cours...' : 'Supprimer cette étape'}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.dangerZone}>
+            <Button
+              title="Supprimer cette étape"
+              variant="outline"
+              size="sm"
+              onPress={handleDelete}
+              style={styles.deleteButton}
+              testID={deleteTestID || 'btn-delete-planned'}
+            />
+          </View>
         )}
       </Card>
     </ScrollView>
@@ -421,27 +426,20 @@ const styles = StyleSheet.create({
   actionButtons: {
     flexDirection: 'row',
     gap: spacing.sm,
-    justifyContent: 'flex-end',
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
   },
   backButton: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: spacing.xs / 2,
-    paddingVertical: spacing.xs,
+    gap: 4,
   },
   backButtonText: {
     color: colors.primary,
     fontSize: typography.fontSizes.sm,
-    fontWeight: typography.fontWeights.semibold,
+    fontWeight: typography.fontWeights.medium,
   },
-  card: {
-    padding: spacing.lg,
-    width: '100%',
-  },
-  container: {
-    backgroundColor: colors.background,
-    flex: 1,
+  cardHeader: {
+    marginBottom: spacing.md,
   },
   contentContainer: {
     padding: spacing.md,
@@ -450,27 +448,30 @@ const styles = StyleSheet.create({
   customDurationContainer: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.xs,
+    gap: spacing.xs,
+  },
+  dangerZone: {
+    borderTopColor: colors.border,
+    borderTopWidth: 1,
+    marginTop: spacing.lg,
+    paddingTop: spacing.md,
   },
   dateTimeButton: {
     backgroundColor: colors.surfaceLight,
     borderColor: colors.border,
-    borderRadius: 10,
-    borderWidth: 1.5,
+    borderRadius: 8,
+    borderWidth: 1,
     flex: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    padding: spacing.sm,
   },
   dateTimeButtonActive: {
-    backgroundColor: colors.surface,
     borderColor: colors.primary,
   },
   dateTimeButtonHeader: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: spacing.xs,
-    marginBottom: spacing.xs / 2,
+    gap: 4,
+    marginBottom: 4,
   },
   dateTimeButtonLabel: {
     color: colors.textSecondary,
@@ -479,7 +480,6 @@ const styles = StyleSheet.create({
   },
   dateTimeButtonLabelActive: {
     color: colors.primary,
-    fontWeight: typography.fontWeights.semibold,
   },
   dateTimeButtonValue: {
     color: colors.textPrimary,
@@ -491,21 +491,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   deleteButton: {
-    alignItems: 'center',
     borderColor: colors.error,
-    borderRadius: 10,
-    borderStyle: 'dashed',
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: spacing.xs,
-    justifyContent: 'center',
-    marginTop: spacing.xl,
-    paddingVertical: spacing.sm,
-  },
-  deleteButtonText: {
-    color: colors.error,
-    fontSize: typography.fontSizes.sm,
-    fontWeight: typography.fontWeights.semibold,
   },
   durationChip: {
     backgroundColor: colors.surfaceLight,
@@ -513,10 +499,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    paddingVertical: 6,
   },
   durationChipActive: {
-    backgroundColor: colors.primaryDark,
+    backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
   durationChipText: {
@@ -525,7 +511,7 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeights.medium,
   },
   durationChipTextActive: {
-    color: colors.white,
+    color: colors.surface,
     fontWeight: typography.fontWeights.bold,
   },
   durationInput: {
@@ -535,11 +521,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     color: colors.textPrimary,
     fontSize: typography.fontSizes.sm,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
-    width: 160,
+    width: 130,
   },
-  durationPresetsRow: {
+  durationPresetsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.xs,
@@ -547,25 +533,42 @@ const styles = StyleSheet.create({
   },
   durationSuffix: {
     color: colors.textMuted,
-    fontSize: typography.fontSizes.sm,
+    fontSize: typography.fontSizes.xs,
   },
-  errorContainer: {
+  errorBanner: {
+    alignItems: 'center',
     backgroundColor: colors.errorBackground,
     borderColor: colors.error,
     borderRadius: 8,
     borderWidth: 1,
+    flexDirection: 'row',
+    gap: spacing.xs,
     marginBottom: spacing.md,
     padding: spacing.sm,
   },
-  errorText: {
+  errorBannerText: {
     color: colors.error,
-    fontSize: typography.fontSizes.xs,
-    textAlign: 'center',
+    flex: 1,
+    fontSize: typography.fontSizes.sm,
+  },
+  formCard: {
+    padding: spacing.lg,
+  },
+  formTitle: {
+    color: colors.textPrimary,
+    fontSize: typography.fontSizes.lg,
+    fontWeight: typography.fontWeights.bold,
+  },
+  headerNav: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
   },
   input: {
     backgroundColor: colors.surfaceLight,
     borderColor: colors.border,
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
     color: colors.textPrimary,
     fontSize: typography.fontSizes.md,
@@ -576,38 +579,39 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   label: {
+    color: colors.textPrimary,
+    fontSize: typography.fontSizes.sm,
+    fontWeight: typography.fontWeights.semibold,
+    marginBottom: spacing.xs,
+  },
+  parentOutingSubtitle: {
     color: colors.textSecondary,
     fontSize: typography.fontSizes.xs,
     fontWeight: typography.fontWeights.medium,
-    marginBottom: spacing.xs,
+    maxWidth: '70%',
   },
-  parentContext: {
-    color: colors.textMuted,
+  requiredAsterisk: {
+    color: colors.error,
+  },
+  scrollContainer: {
+    backgroundColor: colors.background,
     flex: 1,
-    fontSize: typography.fontSizes.xs,
-    fontStyle: 'italic',
-    textAlign: 'right',
-  },
-  sectionHeaderLabel: {
-    color: colors.primary,
-    fontSize: typography.fontSizes.xs,
-    fontWeight: typography.fontWeights.bold,
-    marginBottom: spacing.xs / 2,
-    textTransform: 'uppercase',
   },
   statusBadge: {
+    alignItems: 'center',
     backgroundColor: colors.surfaceLight,
     borderColor: colors.border,
     borderRadius: 8,
     borderWidth: 1,
-    marginBottom: spacing.xs,
-    marginRight: spacing.xs,
+    flex: 1,
+    minWidth: '45%',
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs + 2,
+    paddingVertical: 8,
   },
   statusBadgeActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primaryDark,
+    backgroundColor: colors.surface,
+    borderColor: colors.primary,
+    borderWidth: 2,
   },
   statusBadgeText: {
     color: colors.textSecondary,
@@ -615,33 +619,15 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeights.medium,
   },
   statusBadgeTextActive: {
-    color: colors.white,
+    color: colors.primary,
     fontWeight: typography.fontWeights.bold,
   },
   statusGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    gap: spacing.xs,
   },
   textArea: {
-    minHeight: 80,
-  },
-  titleContainer: {
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
-    marginBottom: spacing.lg,
-    paddingBottom: spacing.xs,
-  },
-  titleInput: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.xl,
-    fontWeight: typography.fontWeights.bold,
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xs,
-  },
-  topBar: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
+    minHeight: 70,
   },
 });

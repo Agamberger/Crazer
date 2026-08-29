@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/shared/components/Button';
 import { Card } from '@/shared/components/Card';
 import { colors, spacing, typography } from '@/shared/constants/theme';
@@ -24,6 +25,10 @@ export const UserProfileDetailModal: React.FC<UserProfileDetailModalProps> = ({
   onRemoveFriend,
   onCancelRequest,
 }) => {
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, 24);
+  const bottomPadding = Math.max(insets.bottom, 16);
+
   if (!user) return null;
 
   const getInitials = (name: string | null, email: string) => {
@@ -93,8 +98,23 @@ export const UserProfileDetailModal: React.FC<UserProfileDetailModalProps> = ({
   const friendshipIdForAccept = () => user.friendshipId || '';
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
-      <View style={styles.container} testID="modal-user-profile-detail">
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent={false}
+      onRequestClose={onClose}
+      statusBarTranslucent={true}
+    >
+      <View
+        style={[
+          styles.container,
+          {
+            paddingTop: topPadding + spacing.sm,
+            paddingBottom: bottomPadding,
+          },
+        ]}
+        testID="modal-user-profile-detail"
+      >
         <View style={styles.header}>
           <TouchableOpacity
             onPress={onClose}
@@ -117,26 +137,24 @@ export const UserProfileDetailModal: React.FC<UserProfileDetailModalProps> = ({
             <Text style={styles.name}>{displayName}</Text>
             <Text style={styles.email}>{user.email}</Text>
 
-            <View style={styles.badgeContainer}>
-              <Text style={styles.statusBadge}>
-                {user.friendshipStatus === 'accepted'
-                  ? '👥 Ami'
-                  : user.friendshipStatus === 'pending_sent'
-                  ? '⏳ Demande envoyée'
-                  : user.friendshipStatus === 'pending_received'
-                  ? '📩 Demande reçue'
-                  : '👤 Membre Crazer'}
-              </Text>
+            <View style={styles.divider} />
+
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Statut</Text>
+              <View style={styles.statusBadge}>
+                <Text style={styles.statusBadgeText}>
+                  {user.friendshipStatus === 'accepted'
+                    ? 'Ami'
+                    : user.friendshipStatus === 'pending_sent'
+                    ? 'Demande envoyée'
+                    : user.friendshipStatus === 'pending_received'
+                    ? 'Demande reçue'
+                    : 'Non connecté'}
+                </Text>
+              </View>
             </View>
 
-            {renderFriendshipAction()}
-          </Card>
-
-          <Text style={styles.sectionTitle}>À propos</Text>
-          <Card style={styles.infoCard}>
-            <Text style={styles.infoText}>
-              Membre actif sur la plateforme Crazer. Participez à des sorties ensemble et planifiez vos activités !
-            </Text>
+            <View style={styles.actionContainer}>{renderFriendshipAction()}</View>
           </Card>
         </ScrollView>
       </View>
@@ -146,42 +164,44 @@ export const UserProfileDetailModal: React.FC<UserProfileDetailModalProps> = ({
 
 const styles = StyleSheet.create({
   actionButton: {
-    marginTop: spacing.sm,
+    width: '100%',
+  },
+  actionContainer: {
+    marginTop: spacing.md,
     width: '100%',
   },
   avatarLarge: {
     alignItems: 'center',
-    backgroundColor: colors.primaryDark,
+    backgroundColor: colors.primary,
     borderRadius: 40,
     height: 80,
     justifyContent: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
     width: 80,
   },
   avatarLargeText: {
-    color: colors.textPrimary,
+    color: colors.white,
     fontSize: typography.fontSizes.xxl,
     fontWeight: typography.fontWeights.bold,
   },
   backButton: {
-    paddingVertical: spacing.xs,
+    padding: spacing.xs,
   },
   backText: {
     color: colors.primary,
-    fontSize: typography.fontSizes.md,
+    fontSize: typography.fontSizes.sm,
     fontWeight: typography.fontWeights.semibold,
-  },
-  badgeContainer: {
-    backgroundColor: colors.surfaceLight,
-    borderRadius: 16,
-    marginBottom: spacing.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
   },
   container: {
     backgroundColor: colors.background,
     flex: 1,
-    paddingTop: spacing.xl,
+    paddingHorizontal: spacing.md,
+  },
+  divider: {
+    backgroundColor: colors.border,
+    height: 1,
+    marginVertical: spacing.md,
+    width: '100%',
   },
   email: {
     color: colors.textSecondary,
@@ -190,12 +210,10 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    marginBottom: spacing.md,
+    paddingVertical: spacing.xs,
   },
   headerRightPlaceholder: {
     width: 60,
@@ -205,37 +223,41 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSizes.md,
     fontWeight: typography.fontWeights.bold,
   },
-  infoCard: {
-    marginBottom: spacing.md,
-  },
-  infoText: {
-    color: colors.textSecondary,
+  infoLabel: {
+    color: colors.textMuted,
     fontSize: typography.fontSizes.sm,
-    lineHeight: 20,
+  },
+  infoRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+    width: '100%',
   },
   name: {
     color: colors.textPrimary,
-    fontSize: typography.fontSizes.xl,
+    fontSize: typography.fontSizes.lg,
     fontWeight: typography.fontWeights.bold,
-    marginBottom: 2,
+    marginBottom: spacing.xs / 2,
   },
   profileCard: {
     alignItems: 'center',
-    marginBottom: spacing.md,
-    paddingVertical: spacing.lg,
+    borderColor: colors.border,
+    padding: spacing.xl,
   },
   scrollContent: {
-    padding: spacing.md,
-  },
-  sectionTitle: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.md,
-    fontWeight: typography.fontWeights.bold,
-    marginBottom: spacing.xs,
+    flexGrow: 1,
+    paddingVertical: spacing.md,
   },
   statusBadge: {
-    color: colors.accent,
+    backgroundColor: colors.surfaceLight,
+    borderRadius: 6,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs / 2,
+  },
+  statusBadgeText: {
+    color: colors.textSecondary,
     fontSize: typography.fontSizes.xs,
-    fontWeight: typography.fontWeights.semibold,
+    fontWeight: typography.fontWeights.medium,
   },
 });

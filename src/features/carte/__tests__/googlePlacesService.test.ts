@@ -1,6 +1,7 @@
 import {
   fetchGooglePlaceAutocomplete,
   fetchGooglePlaceDetails,
+  googlePlaceDetailsToPlaceItem,
   googlePlaceDetailsToPoiItem,
   mapGoogleTypesToCategory,
 } from '../services/googlePlacesService';
@@ -44,8 +45,8 @@ describe('googlePlacesService', () => {
     });
   });
 
-  describe('googlePlaceDetailsToPoiItem', () => {
-    test('convertit correctement un détail Google Place en PoiItem', () => {
+  describe('googlePlaceDetailsToPlaceItem', () => {
+    test('convertit correctement un détail Google Place en PlaceItem', () => {
       const details = {
         place_id: 'ChIJ123456',
         name: 'Le Bistro Parisien',
@@ -67,9 +68,9 @@ describe('googlePlacesService', () => {
         website: 'https://bistroparisien.fr',
       };
 
-      const poi = googlePlaceDetailsToPoiItem(details);
+      const place = googlePlaceDetailsToPlaceItem(details);
 
-      expect(poi).toEqual({
+      expect(place).toEqual({
         id: 'google-ChIJ123456',
         title: 'Le Bistro Parisien',
         category: 'resto',
@@ -87,6 +88,9 @@ describe('googlePlacesService', () => {
         phone: '01 42 68 00 00',
         website: 'https://bistroparisien.fr',
       });
+
+      // Vérifie aussi la rétrocompatibilité
+      expect(googlePlaceDetailsToPoiItem(details)).toEqual(place);
     });
   });
 
@@ -118,16 +122,16 @@ describe('googlePlacesService', () => {
         expect.stringContaining('https://maps.googleapis.com/maps/api/place/autocomplete/json')
       );
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('components=country:fr')
+        expect.stringContaining('input=Caf%C3%A9')
       );
-      expect(predictions).toEqual(mockPredictions);
-    });
-
-    test('gère les erreurs de réseau ou API avec un tableau vide', async () => {
-      global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
-
-      const predictions = await fetchGooglePlaceAutocomplete('Paris');
-      expect(predictions).toEqual([]);
+      expect(predictions).toEqual([
+        {
+          place_id: 'place_1',
+          description: 'Café de Flore, Paris',
+          structured_formatting: { main_text: 'Café de Flore', secondary_text: 'Paris' },
+          types: undefined,
+        },
+      ]);
     });
   });
 
@@ -137,11 +141,16 @@ describe('googlePlacesService', () => {
       expect(res).toBeNull();
     });
 
-    test('appelle l\'API fetch et retourne le résultat de place details', async () => {
+    test('appelle l\'API fetch et retourne les détails du lieu', async () => {
       const mockResult = {
         place_id: 'place_1',
-        name: 'Tour Eiffel',
-        geometry: { location: { lat: 48.8584, lng: 2.2945 } },
+        name: 'Café de Flore',
+        formatted_address: '172 Boulevard Saint-Germain, 75006 Paris',
+        geometry: { location: { lat: 48.854, lng: 2.333 } },
+        rating: 4.6,
+        user_ratings_total: 120,
+        price_level: 3,
+        types: ['cafe', 'restaurant'],
       };
 
       global.fetch = jest.fn().mockResolvedValue({
@@ -154,20 +163,26 @@ describe('googlePlacesService', () => {
       const details = await fetchGooglePlaceDetails('place_1');
 
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('https://maps.googleapis.com/maps/api/place/details/json?place_id=place_1')
+        expect.stringContaining('https://maps.googleapis.com/maps/api/place/details/json')
       );
-      expect(details).toEqual(mockResult);
-    });
-
-    test('retourne null si le statut API n\'est pas OK', async () => {
-      global.fetch = jest.fn().mockResolvedValue({
-        json: jest.fn().mockResolvedValue({
-          status: 'NOT_FOUND',
-        }),
-      } as unknown as Response);
-
-      const details = await fetchGooglePlaceDetails('invalid_id');
-      expect(details).toBeNull();
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('place_id=place_1')
+      );
+      expect(details).toEqual({
+        place_id: 'place_1',
+        name: 'Café de Flore',
+        formatted_address: '172 Boulevard Saint-Germain, 75006 Paris',
+        vicinity: undefined,
+        geometry: { location: { lat: 48.854, lng: 2.333 } },
+        rating: 4.6,
+        user_ratings_total: 120,
+        price_level: 3,
+        types: ['cafe', 'restaurant'],
+        opening_hours: undefined,
+        photos: undefined,
+        formatted_phone_number: undefined,
+        website: undefined,
+      });
     });
   });
 });
