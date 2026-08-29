@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@/features/auth';
 import { Button } from '@/shared/components/Button';
 import { Card } from '@/shared/components/Card';
 import { ThemedDateTimePicker } from '@/shared/components/ThemedDateTimePicker';
@@ -18,7 +19,10 @@ import {
   OutingRow,
   OutingStatus,
   OutingUpdate,
+  PlannedOutingRow,
 } from '@/shared/types';
+import { useOutingsStore } from '../store/useOutingsStore';
+import { PlannedOutingsTimeline } from './PlannedOutingsTimeline';
 
 export interface OutingEditFormProps {
   outing: OutingRow;
@@ -26,6 +30,9 @@ export interface OutingEditFormProps {
   isLoading?: boolean;
   error?: string | null;
   onCancel?: () => void;
+  plannedOutings?: PlannedOutingRow[];
+  onAddPlannedOuting?: () => Promise<void> | void;
+  isAddingPlannedOuting?: boolean;
 }
 
 const STATUS_OPTIONS: { value: OutingStatus; label: string; emoji: string }[] =
@@ -41,7 +48,16 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
   isLoading = false,
   error = null,
   onCancel,
+  plannedOutings: propPlannedOutings,
+  onAddPlannedOuting: propOnAddPlannedOuting,
+  isAddingPlannedOuting = false,
 }) => {
+  const { user } = useAuth();
+  const storePlannedOutings = useOutingsStore((state) => state.plannedOutings);
+  const fetchPlannedOutings = useOutingsStore((state) => state.fetchPlannedOutings);
+  const createPlannedOuting = useOutingsStore((state) => state.createPlannedOuting);
+  const isLoadingPlannedOutings = useOutingsStore((state) => state.isLoadingPlannedOutings);
+
   const [title, setTitle] = useState(outing.title || '');
   const [description, setDescription] = useState(outing.description || '');
   const [startDate, setStartDate] = useState<Date>(() => {
@@ -57,6 +73,24 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
   const [showPicker, setShowPicker] = useState(false);
   const [status, setStatus] = useState<OutingStatus>(outing.status || 'draft');
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!propPlannedOutings && outing?.id) {
+      fetchPlannedOutings(outing.id);
+    }
+  }, [outing?.id, propPlannedOutings, fetchPlannedOutings]);
+
+  const activePlannedOutings =
+    propPlannedOutings ??
+    storePlannedOutings.filter((p) => p.outing_id === outing.id);
+
+  const handleAddPlannedOuting = async () => {
+    if (propOnAddPlannedOuting) {
+      await propOnAddPlannedOuting();
+    } else {
+      await createPlannedOuting(outing.id, user?.id);
+    }
+  };
 
   const handleSubmit = async () => {
     setValidationError(null);
@@ -267,6 +301,14 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
           />
         </View>
       </Card>
+
+      {/* Section des Planned Outings / Timeline */}
+      <PlannedOutingsTimeline
+        plannedOutings={activePlannedOutings}
+        onAddPlannedOuting={handleAddPlannedOuting}
+        isLoading={!propPlannedOutings && isLoadingPlannedOutings}
+        isAdding={isAddingPlannedOuting}
+      />
     </ScrollView>
   );
 };

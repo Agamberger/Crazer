@@ -36,6 +36,25 @@ export const OUTING_STATUS_CONFIG: Record<
   cancelled: { label: 'Annulée', emoji: '❌' },
 };
 
+/** Types Supabase pour Planned Outings dérivés directement du schéma PostgreSQL / Supabase */
+export type PlannedOutingRow = Database['public']['Tables']['planned_outings']['Row'];
+export type PlannedOutingInsert = Database['public']['Tables']['planned_outings']['Insert'];
+export type PlannedOutingUpdate = Database['public']['Tables']['planned_outings']['Update'];
+
+/** Type de statut de planned_outing extrait directement des Enums de la base de données */
+export type PlannedOutingStatus = Enums<'planned_outing_status'>;
+
+/** Configuration UI (libellés & émojis) pour Planned Outings */
+export const PLANNED_OUTING_STATUS_CONFIG: Record<
+  PlannedOutingStatus,
+  { label: string; emoji: string }
+> = {
+  pending: { label: 'En attente', emoji: '⏳' },
+  confirmed: { label: 'Confirmée', emoji: '✅' },
+  skipped: { label: 'Passée', emoji: '⏭️' },
+  cancelled: { label: 'Annulée', emoji: '❌' },
+};
+
 /** Alias rétro-compatible */
 export type SortieRow = OutingRow;
 export type Sortie = OutingRow;

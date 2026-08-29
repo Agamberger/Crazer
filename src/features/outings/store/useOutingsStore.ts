@@ -1,12 +1,20 @@
 import { create } from 'zustand';
 import { supabase } from '@/shared/lib/supabase';
-import { OutingRow, OutingUpdate } from '@/shared/types';
+import {
+  OutingRow,
+  OutingUpdate,
+  PlannedOutingInsert,
+  PlannedOutingRow,
+  PlannedOutingUpdate,
+} from '@/shared/types';
 import { outingService } from '../services/outingService';
 
 interface OutingsState {
   outings: OutingRow[];
   selectedOutingId: string | null;
+  plannedOutings: PlannedOutingRow[];
   isLoading: boolean;
+  isLoadingPlannedOutings: boolean;
   error: string | null;
 
   fetchOutings: () => Promise<void>;
@@ -14,12 +22,19 @@ interface OutingsState {
   createOuting: (userId?: string) => Promise<OutingRow | null>;
   updateOuting: (id: string, updates: OutingUpdate) => Promise<OutingRow | null>;
   selectOuting: (id: string | null) => void;
+
+  fetchPlannedOutings: (outingId: string) => Promise<PlannedOutingRow[]>;
+  createPlannedOuting: (outingId: string, userId?: string) => Promise<PlannedOutingRow | null>;
+  updatePlannedOuting: (id: string, updates: PlannedOutingUpdate) => Promise<PlannedOutingRow | null>;
+  deletePlannedOuting: (id: string) => Promise<boolean>;
 }
 
 export const useOutingsStore = create<OutingsState>((set, get) => ({
   outings: [],
   selectedOutingId: null,
+  plannedOutings: [],
   isLoading: false,
+  isLoadingPlannedOutings: false,
   error: null,
 
   fetchOutings: async () => {
@@ -80,6 +95,7 @@ export const useOutingsStore = create<OutingsState>((set, get) => ({
       set({
         outings: [newOuting, ...get().outings],
         selectedOutingId: newOuting.id,
+        plannedOutings: [],
         isLoading: false,
       });
 
@@ -107,5 +123,122 @@ export const useOutingsStore = create<OutingsState>((set, get) => ({
     }
   },
 
-  selectOuting: (id) => set({ selectedOutingId: id }),
+  selectOuting: (id) => set({ selectedOutingId: id, plannedOutings: id ? get().plannedOutings : [] }),
+
+  fetchPlannedOutings: async (outingId: string) => {
+    set({ isLoadingPlannedOutings: true, error: null });
+    try {
+      const data = await outingService.fetchPlannedOutings(outingId);
+      set({ plannedOutings: data, isLoadingPlannedOutings: false });
+      return data;
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Erreur lors du chargement des étapes planifiées';
+      set({ error: message, isLoadingPlannedOutings: false });
+      return [];
+    }
+  },
+
+  createPlannedOuting: async (outingId: string, userId?: string) => {
+    set({ isLoadingPlannedOutings: true, error: null });
+    try {
+      let targetUserId = userId;
+      if (!targetUserId) {
+        const { data } = await supabase.auth.getUser();
+        targetUserId = data.user?.id;
+      }
+
+      if (!targetUserId) {
+        throw new Error('Utilisateur non connecté');
+      }
+
+      const parentOuting = get().outings.find((o) => o.id === outingId);
+      const currentPlanned = get().plannedOutings.filter((p) => p.outing_id === outingId);
+
+      let nextScheduledDate: Date;
+      const stepNumber = currentPlanned.length + 1;
+
+      if (currentPlanned.length > 0) {
+        const sorted = [...currentPlanned].sort(
+          (a, b) => new Date(a.scheduled_for).getTime() - new Date(b.scheduled_for).getTime()
+        );
+        const lastPlanned = sorted[sorted.length - 1];
+        const lastDate = new Date(lastPlanned.scheduled_for);
+        const durationMinutes = lastPlanned.duration_min && lastPlanned.duration_min > 0 ? lastPlanned.duration_min : 60;
+        nextScheduledDate = new Date(lastDate.getTime() + durationMinutes * 60 * 1000);
+      } else if (parentOuting?.start_date) {
+        nextScheduledDate = new Date(parentOuting.start_date);
+      } else {
+        nextScheduledDate = new Date();
+      }
+
+      const payload: PlannedOutingInsert = {
+        outing_id: outingId,
+        created_by: targetUserId,
+        title: `Étape ${stepNumber}`,
+        description: null,
+        scheduled_for: nextScheduledDate.toISOString(),
+        duration_min: 60,
+        status: 'pending',
+      };
+
+      const newPlanned = await outingService.createPlannedOuting(payload);
+      const updatedList = [...get().plannedOutings, newPlanned].sort(
+        (a, b) => new Date(a.scheduled_for).getTime() - new Date(b.scheduled_for).getTime()
+      );
+
+      set({
+        plannedOutings: updatedList,
+        isLoadingPlannedOutings: false,
+      });
+
+      return newPlanned;
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Erreur lors de la création de l’étape planifiée';
+      set({ error: message, isLoadingPlannedOutings: false });
+      return null;
+    }
+  },
+
+  updatePlannedOuting: async (id: string, updates: PlannedOutingUpdate) => {
+    set({ isLoadingPlannedOutings: true, error: null });
+    try {
+      const updated = await outingService.updatePlannedOuting(id, updates);
+      const updatedList = get()
+        .plannedOutings.map((p) => (p.id === id ? updated : p))
+        .sort(
+          (a, b) => new Date(a.scheduled_for).getTime() - new Date(b.scheduled_for).getTime()
+        );
+
+      set({
+        plannedOutings: updatedList,
+        isLoadingPlannedOutings: false,
+      });
+
+      return updated;
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Erreur lors de la mise à jour de l’étape planifiée';
+      set({ error: message, isLoadingPlannedOutings: false });
+      return null;
+    }
+  },
+
+  deletePlannedOuting: async (id: string) => {
+    set({ isLoadingPlannedOutings: true, error: null });
+    try {
+      await outingService.deletePlannedOuting(id);
+      set({
+        plannedOutings: get().plannedOutings.filter((p) => p.id !== id),
+        isLoadingPlannedOutings: false,
+      });
+      return true;
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Erreur lors de la suppression de l’étape planifiée';
+      set({ error: message, isLoadingPlannedOutings: false });
+      return false;
+    }
+  },
 }));
