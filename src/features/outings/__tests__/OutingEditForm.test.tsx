@@ -1,7 +1,22 @@
 import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { OutingEditForm } from '../components/OutingEditForm';
-import { OutingRow } from '@/shared/types';
+import { OutingRow, PlannedOutingRow } from '@/shared/types';
+
+jest.mock('@/features/auth', () => ({
+  useAuth: () => ({ user: { id: 'user-123', email: 'test@example.com' } }),
+}));
+
+jest.mock('../store/useOutingsStore', () => ({
+  useOutingsStore: jest.fn((selector) =>
+    selector({
+      plannedOutings: [],
+      isLoadingPlannedOutings: false,
+      fetchPlannedOutings: jest.fn(),
+      createPlannedOuting: jest.fn(),
+    })
+  ),
+}));
 
 describe('OutingEditForm Component', () => {
   const mockOuting: OutingRow = {
@@ -15,6 +30,23 @@ describe('OutingEditForm Component', () => {
     created_at: '2026-08-24T20:00:00Z',
     updated_at: '2026-08-24T20:00:00Z',
   };
+
+  const mockPlannedOutings: PlannedOutingRow[] = [
+    {
+      id: 'po-1',
+      outing_id: 'out-123',
+      title: 'Arrivée & Briefing',
+      description: 'Accueil des participants',
+      notes: null,
+      scheduled_for: '2026-08-30T18:00:00.000Z',
+      duration_min: 30,
+      status: 'confirmed',
+      place_id: null,
+      created_by: 'user-123',
+      created_at: '2026-08-24T20:00:00Z',
+      updated_at: '2026-08-24T20:00:00Z',
+    },
+  ];
 
   it('renders form fields pre-filled with outing data including editable title and formatted date and time', () => {
     const { getByTestId, getByText } = render(
@@ -104,5 +136,23 @@ describe('OutingEditForm Component', () => {
 
     fireEvent.press(getByTestId('btn-cancel-outing-edit'));
     expect(handleCancel).toHaveBeenCalled();
+  });
+
+  it('renders planned outings timeline with items and handles add button click', async () => {
+    const handleAdd = jest.fn();
+    const { getByText, getByTestId } = render(
+      <OutingEditForm
+        outing={mockOuting}
+        onSubmit={jest.fn()}
+        plannedOutings={mockPlannedOutings}
+        onAddPlannedOuting={handleAdd}
+      />
+    );
+
+    expect(getByText('Arrivée & Briefing')).toBeTruthy();
+    expect(getByTestId('btn-add-planned-outing')).toBeTruthy();
+
+    fireEvent.press(getByTestId('btn-add-planned-outing'));
+    expect(handleAdd).toHaveBeenCalledTimes(1);
   });
 });
