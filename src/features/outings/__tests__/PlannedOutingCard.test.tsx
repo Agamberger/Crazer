@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import { PlannedOutingCard } from '../components/PlannedOutingCard';
 import { PlannedOutingRow } from '@/shared/types';
 
@@ -54,5 +54,15 @@ describe('PlannedOutingCard Component', () => {
 
     expect(getByText('Apéro au Rooftop')).toBeTruthy();
     expect(queryByText('💬')).toBeNull();
+  });
+
+  it('triggers onPress callback when card is pressed', () => {
+    const handlePress = jest.fn();
+    const { getByTestId } = render(
+      <PlannedOutingCard plannedOuting={mockPlannedOuting} onPress={handlePress} />
+    );
+
+    fireEvent.press(getByTestId('planned-outing-card-po-1'));
+    expect(handlePress).toHaveBeenCalledTimes(1);
   });
 });

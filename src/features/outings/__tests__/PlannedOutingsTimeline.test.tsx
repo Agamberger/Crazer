@@ -106,4 +106,23 @@ describe('PlannedOutingsTimeline Component', () => {
 
     expect(handleAdd).toHaveBeenCalledTimes(1);
   });
+
+  it('calls onSelectPlannedOuting when a planned outing card is clicked', () => {
+    const handleSelect = jest.fn();
+    const { getByTestId } = render(
+      <PlannedOutingsTimeline
+        plannedOutings={mockPlannedOutings}
+        onAddPlannedOuting={jest.fn()}
+        onSelectPlannedOuting={handleSelect}
+      />
+    );
+
+    fireEvent.press(getByTestId('planned-outing-card-po-1'));
+    expect(handleSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'po-1',
+        title: 'Apéro Bar',
+      })
+    );
+  });
 });
