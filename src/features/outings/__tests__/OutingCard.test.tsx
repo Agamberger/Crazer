@@ -18,8 +18,22 @@ describe('OutingCard Component', () => {
 
   it('renders outing title, description, and French status correctly', () => {
     const { getByText } = render(<OutingCard outing={mockOuting} />);
-    expect(getByText('Bowling du vendredi')).toBeTruthy();
+    const titleElement = getByText('Bowling du vendredi');
+    expect(titleElement).toBeTruthy();
+    expect(titleElement.props.numberOfLines).toBe(1);
+    expect(titleElement.props.ellipsizeMode).toBe('tail');
     expect(getByText('📅 Planifiée')).toBeTruthy();
     expect(getByText('Petite partie de bowling entre amis')).toBeTruthy();
+  });
+
+  it('truncates very long titles with ellipsis', () => {
+    const longOuting: OutingRow = {
+      ...mockOuting,
+      title: 'Titre extrêmement long pour tester le comportement du composant OutingCard et éviter le décalage du badge',
+    };
+    const { getByText } = render(<OutingCard outing={longOuting} />);
+    const titleElement = getByText(longOuting.title);
+    expect(titleElement.props.numberOfLines).toBe(1);
+    expect(titleElement.props.ellipsizeMode).toBe('tail');
   });
 });

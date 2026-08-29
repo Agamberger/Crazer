@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Location from 'expo-location';
 import { fetchNearbyPlaces, searchPlaces } from '../services/placeService';
-import { placeToPoiItem } from '../types/carte';
+import { placeToPlaceItem } from '../types/carte';
 import { useMapStore } from '../store/useMapStore';
 import { PlaceCategory, SearchPlacesParams } from '@/shared/types/place';
 
@@ -24,7 +24,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 const FALLBACK_LOCATION = { latitude: 46.603354, longitude: 1.888334 };
 
 export interface UsePlacesReturn {
-  /** Places chargées (format PoiItem pour les composants UI) */
+  /** Places chargées (format PlaceItem pour les composants UI) */
   isLoading: boolean;
   /** Indique que la géolocalisation est en cours */
   isLocating: boolean;
@@ -53,7 +53,7 @@ export function usePlaces(): UsePlacesReturn {
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const setPois = useMapStore((state) => state.setPois);
+  const setPlaces = useMapStore((state) => state.setPlaces);
   const setCenterRegion = useMapStore((state) => state.setCenterRegion);
   const setUserLocation = useMapStore((state) => state.setUserLocation);
 
@@ -116,7 +116,7 @@ export function usePlaces(): UsePlacesReturn {
     }
   }, [setCenterRegion, setUserLocation]);
 
-  // ─── Chargement des places à proximité ─────────────────────────────────────
+  // ─── Chargement des places à proximité ──────────────────────────────────────
 
   /**
    * Charge les places Supabase dans un rayon autour d'une position.
@@ -138,8 +138,8 @@ export function usePlaces(): UsePlacesReturn {
           category,
         );
 
-        const pois = results.map(placeToPoiItem);
-        setPois(pois);
+        const places = results.map(placeToPlaceItem);
+        setPlaces(places);
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Erreur de chargement des lieux';
         setError(msg);
@@ -147,10 +147,10 @@ export function usePlaces(): UsePlacesReturn {
         setIsLoading(false);
       }
     },
-    [userCoords, setPois],
+    [userCoords, setPlaces],
   );
 
-  // ─── Recherche full-text avec debounce ─────────────────────────────────────
+  // ─── Recherche full-text avec debounce ──────────────────────────────────────
 
   /**
    * Lance une recherche full-text dans Supabase après un délai de 300ms.
@@ -180,8 +180,8 @@ export function usePlaces(): UsePlacesReturn {
             max_results: 30,
           };
           const results = await searchPlaces(params);
-          const pois = results.map(placeToPoiItem);
-          setPois(pois);
+          const places = results.map(placeToPlaceItem);
+          setPlaces(places);
         } catch (err) {
           const msg = err instanceof Error ? err.message : 'Erreur de recherche';
           setError(msg);
@@ -190,10 +190,10 @@ export function usePlaces(): UsePlacesReturn {
         }
       }, SEARCH_DEBOUNCE_MS);
     },
-    [userCoords, loadNearby, setPois],
+    [userCoords, loadNearby, setPlaces],
   );
 
-  // ─── Nettoyage du debounce au démontage ────────────────────────────────────
+  // ─── Nettoyage du debounce au démontage ──────────────────────────────────────
 
   useEffect(() => {
     return () => {

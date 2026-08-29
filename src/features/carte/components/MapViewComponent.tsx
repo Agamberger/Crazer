@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { colors, typography } from '@/shared/constants/theme';
-import { PoiItem } from '../types/carte';
+import { PlaceItem } from '../types/carte';
 import { useMapStore, MAP_STYLE_URLS } from '../store/useMapStore';
 
 // Safe dynamic resolution of MapLibre React Native for native & Expo Go compatibility
@@ -49,8 +49,10 @@ const MarkerComponent: React.ElementType =
   View;
 
 export interface MapViewComponentProps {
-  pois: PoiItem[];
-  onSelectPoi: (poi: PoiItem) => void;
+  places?: PlaceItem[];
+  pois?: PlaceItem[];
+  onSelectPlace?: (place: PlaceItem) => void;
+  onSelectPoi?: (poi: PlaceItem) => void;
 }
 
 const USER_MARKER_CONTAINER_BG = 'rgba(59, 130, 246, 0.3)';
@@ -66,11 +68,16 @@ const CATEGORY_EMOJIS: Record<string, string> = {
 };
 
 export const MapViewComponent: React.FC<MapViewComponentProps> = ({
+  places,
   pois,
+  onSelectPlace,
   onSelectPoi,
 }) => {
+  const activePlaces = React.useMemo(() => places || pois || [], [places, pois]);
+  const handleSelect = onSelectPlace || onSelectPoi || (() => {});
+
   const mapStyleMode = useMapStore((state) => state.mapStyleMode);
-  const selectedPoiId = useMapStore((state) => state.selectedPoiId);
+  const selectedPlaceId = useMapStore((state) => state.selectedPlaceId);
   const centerRegion = useMapStore((state) => state.centerRegion);
   const userLocation = useMapStore((state) => state.userLocation);
 
@@ -142,7 +149,7 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
             attribution: '© OpenStreetMap © CARTO'
           }).addTo(map);
 
-          function updateMapState(poisData, selectedId, emojis, center, userLoc) {
+          function updateMapState(placesData, selectedId, emojis, center, userLoc) {
             if (center && center.latitude && center.longitude) {
               map.flyTo([center.latitude, center.longitude], center.zoomLevel || map.getZoom());
             }
@@ -157,9 +164,9 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
               L.marker([userLoc.latitude, userLoc.longitude], { icon: userIcon, zIndexOffset: 1000 }).addTo(userLayer);
             }
             markersLayer.clearLayers();
-            (poisData || []).forEach(function(poi) {
-              var isSelected = poi.id === selectedId;
-              var emoji = emojis[poi.category] || '📍';
+            (placesData || []).forEach(function(place) {
+              var isSelected = place.id === selectedId;
+              var emoji = emojis[place.category] || '📍';
               
               var icon = L.divIcon({
                 className: '',
@@ -168,45 +175,45 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
                 iconAnchor: [19, 19]
               });
 
-              var marker = L.marker([poi.latitude, poi.longitude], { icon: icon }).addTo(markersLayer);
+              var marker = L.marker([place.latitude, place.longitude], { icon: icon }).addTo(markersLayer);
               marker.on('click', function() {
                 if (window.ReactNativeWebView) {
-                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'SELECT_POI', id: poi.id }));
+                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'SELECT_PLACE', id: place.id }));
                 }
               });
             });
           }
 
-          updateMapState(${JSON.stringify(pois)}, ${JSON.stringify(selectedPoiId)}, ${JSON.stringify(CATEGORY_EMOJIS)}, ${JSON.stringify(centerRegion)}, ${JSON.stringify(userLocation)});
+          updateMapState(${JSON.stringify(activePlaces)}, ${JSON.stringify(selectedPlaceId)}, ${JSON.stringify(CATEGORY_EMOJIS)}, ${JSON.stringify(centerRegion)}, ${JSON.stringify(userLocation)});
         </script>
       </body>
       </html>
     `;
 
     return { html };
-  }, [centerRegion, mapStyleMode, pois, selectedPoiId, userLocation]);
+  }, [activePlaces, centerRegion, mapStyleMode, selectedPlaceId, userLocation]);
 
   // Update WebView map markers & center position dynamically without reloading HTML
   React.useEffect(() => {
     if (!isMapLibreAvailable && webViewRef.current) {
       const js = `
         if (typeof updateMapState === 'function') {
-          updateMapState(${JSON.stringify(pois)}, ${JSON.stringify(selectedPoiId)}, ${JSON.stringify(CATEGORY_EMOJIS)}, ${JSON.stringify(centerRegion)}, ${JSON.stringify(userLocation)});
+          updateMapState(${JSON.stringify(activePlaces)}, ${JSON.stringify(selectedPlaceId)}, ${JSON.stringify(CATEGORY_EMOJIS)}, ${JSON.stringify(centerRegion)}, ${JSON.stringify(userLocation)});
         }
         true;
       `;
       webViewRef.current.injectJavaScript(js);
     }
-  }, [centerRegion, pois, selectedPoiId, userLocation]);
+  }, [activePlaces, centerRegion, selectedPlaceId, userLocation]);
 
   // Handle messages sent from WebView Leaflet map
   const handleWebViewMessage = (event: { nativeEvent: { data: string } }) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
-      if (data.type === 'SELECT_POI') {
-        const poi = pois.find((p) => p.id === data.id);
-        if (poi) {
-          onSelectPoi(poi);
+      if (data.type === 'SELECT_PLACE' || data.type === 'SELECT_POI') {
+        const place = activePlaces.find((p) => p.id === data.id);
+        if (place) {
+          handleSelect(place);
         }
       }
     } catch {
@@ -256,24 +263,24 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
             </MarkerComponent>
           )}
 
-          {pois.map((poi) => {
-            const isSelected = selectedPoiId === poi.id;
-            const emoji = CATEGORY_EMOJIS[poi.category] || CATEGORY_EMOJIS.all;
+          {activePlaces.map((place) => {
+            const isSelected = selectedPlaceId === place.id;
+            const emoji = CATEGORY_EMOJIS[place.category] || CATEGORY_EMOJIS.all;
 
             return (
               <MarkerComponent
-                key={poi.id}
-                id={poi.id}
-                lngLat={[poi.longitude, poi.latitude]}
-                coordinate={[poi.longitude, poi.latitude]}
+                key={place.id}
+                id={place.id}
+                lngLat={[place.longitude, place.latitude]}
+                coordinate={[place.longitude, place.latitude]}
               >
                 <TouchableOpacity
                   style={[
                     styles.markerContainer,
                     isSelected && styles.markerSelected,
                   ]}
-                  onPress={() => onSelectPoi(poi)}
-                  accessibilityLabel={`Sélectionner ${poi.title}`}
+                  onPress={() => handleSelect(place)}
+                  accessibilityLabel={`Sélectionner ${place.title}`}
                   accessibilityRole="button"
                   activeOpacity={0.8}
                 >
@@ -281,7 +288,7 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
                   {isSelected && (
                     <View style={styles.selectedBadge}>
                       <Text style={styles.selectedBadgeText} numberOfLines={1}>
-                        {poi.title}
+                        {place.title}
                       </Text>
                     </View>
                   )}
@@ -306,131 +313,91 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
           if (webViewRef.current) {
             const js = `
               if (typeof updateMapState === 'function') {
-                updateMapState(${JSON.stringify(pois)}, ${JSON.stringify(selectedPoiId)}, ${JSON.stringify(CATEGORY_EMOJIS)}, ${JSON.stringify(centerRegion)}, ${JSON.stringify(userLocation)});
+                updateMapState(${JSON.stringify(activePlaces)}, ${JSON.stringify(selectedPlaceId)}, ${JSON.stringify(CATEGORY_EMOJIS)}, ${JSON.stringify(centerRegion)}, ${JSON.stringify(userLocation)});
               }
               true;
             `;
             webViewRef.current.injectJavaScript(js);
           }
         }}
-        scrollEnabled={false}
-        testID="leaflet-webview"
+        testID="leaflet-webview-map"
       />
-      {/* Badge OpenStreetMap Expo Go */}
-      <View style={styles.osmBadge}>
-        <Text style={styles.osmBadgeText}>🌐 OpenStreetMap (Expo Go)</Text>
-      </View>
-
-      {/* Hidden fallback elements for test accessibility */}
-      <View style={styles.hiddenTestControls}>
-        {userLocation && (
-          <View accessibilityLabel="Votre position" accessibilityRole="image" />
-        )}
-        {pois.map((poi) => (
-          <TouchableOpacity
-            key={poi.id}
-            accessibilityLabel={`Sélectionner ${poi.title}`}
-            accessibilityRole="button"
-            onPress={() => onSelectPoi(poi)}
-          />
-        ))}
-      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    overflow: 'hidden',
     backgroundColor: colors.background,
+    flex: 1,
   },
   map: {
     flex: 1,
   },
-  webView: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  osmBadge: {
-    position: 'absolute',
-    top: 90,
-    right: 16,
-    
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    zIndex: 20,
-  },
-  osmBadgeText: {
-    color: colors.textMuted,
-    fontSize: 10,
-    fontWeight: typography.fontWeights.medium,
-  },
-  hiddenTestControls: {
-    position: 'absolute',
-    width: 0,
-    height: 0,
-    opacity: 0,
-  },
   markerContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderColor: colors.primary,
+    borderRadius: 20,
+    borderWidth: 2,
+    elevation: 5,
+    height: 40,
+    justifyContent: 'center',
     shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
-    elevation: 6,
+    width: 40,
+  },
+  markerEmoji: {
+    fontSize: 20,
   },
   markerSelected: {
     backgroundColor: colors.primary,
     borderColor: colors.white,
+    borderWidth: 2.5,
     transform: [{ scale: 1.25 }],
-    zIndex: 10,
-  },
-  markerEmoji: {
-    fontSize: typography.fontSizes.md,
+    zIndex: 999,
   },
   selectedBadge: {
-    position: 'absolute',
-    bottom: -22,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    backgroundColor: colors.surfaceDark,
+    borderColor: colors.border,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.primary,
+    bottom: -22,
     maxWidth: 120,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    position: 'absolute',
   },
   selectedBadgeText: {
-    color: colors.textPrimary,
-    fontSize: 10,
-    fontWeight: typography.fontWeights.bold,
+    color: colors.white,
+    fontSize: typography.fontSizes.xs,
+    fontWeight: typography.fontWeights.semibold,
   },
   userMarkerContainer: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: USER_MARKER_CONTAINER_BG,
-    justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: USER_MARKER_CONTAINER_BG,
+    borderRadius: 14,
+    height: 28,
+    justifyContent: 'center',
+    width: 28,
   },
   userMarkerDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
     backgroundColor: USER_MARKER_DOT_BG,
-    borderWidth: 2,
     borderColor: colors.white,
+    borderRadius: 6,
+    borderWidth: 2,
+    elevation: 3,
+    height: 12,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    width: 12,
+  },
+  webView: {
+    backgroundColor: colors.background,
+    flex: 1,
   },
 });
-
-

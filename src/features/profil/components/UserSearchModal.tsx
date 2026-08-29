@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FlatList, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, typography } from '@/shared/constants/theme';
 import { useFriends } from '../hooks/useFriends';
 import { UserSearchResult } from '../types';
@@ -13,6 +14,10 @@ export interface UserSearchModalProps {
 }
 
 export const UserSearchModal: React.FC<UserSearchModalProps> = ({ visible, onClose }) => {
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, 24);
+  const bottomPadding = Math.max(insets.bottom, 16);
+
   const {
     searchResults,
     friends,
@@ -48,8 +53,23 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({ visible, onClo
     : null;
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={handleClose}>
-      <View style={styles.container} testID="modal-user-search">
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent={false}
+      onRequestClose={handleClose}
+      statusBarTranslucent={true}
+    >
+      <View
+        style={[
+          styles.container,
+          {
+            paddingTop: topPadding + spacing.sm,
+            paddingBottom: bottomPadding,
+          },
+        ]}
+        testID="modal-user-search"
+      >
         <View style={styles.header}>
           <Text style={styles.title}>Mes Amis & Recherche</Text>
           <TouchableOpacity
@@ -71,94 +91,102 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({ visible, onClo
               searchUsers(text);
             }}
             onClear={handleClear}
-            isSearching={isSearching}
+            placeholder="Rechercher par nom ou email..."
           />
         </View>
 
-        {error && (
-          <View style={styles.errorBanner} testID="search-error-banner">
+        {error ? (
+          <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>
           </View>
-        )}
+        ) : null}
 
-        {searchQuery.trim().length === 0 ? (
-          <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
-            {pendingRequests.length > 0 && (
-              <View style={styles.section} testID="pending-requests-section">
-                <Text style={styles.sectionTitle}>📩 Demandes reçues ({pendingRequests.length})</Text>
-                {pendingRequests.map((item) => (
-                  <UserListItem
-                    key={item.id}
-                    user={item}
-                    onPressSelect={(u) => setSelectedUser(u)}
-                    onAcceptRequest={acceptFriendRequest}
-                    onRemoveFriend={removeFriendship}
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {searchQuery.trim().length > 0 ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>
+                Résultats ({searchResults.length})
+              </Text>
+              {isSearching ? (
+                <Text style={styles.emptyText}>Recherche en cours...</Text>
+              ) : searchResults.length === 0 ? (
+                <Text style={styles.emptyText}>Aucun utilisateur trouvé</Text>
+              ) : (
+                <FlatList
+                  data={searchResults}
+                  keyExtractor={(item) => item.id}
+                  scrollEnabled={false}
+                  renderItem={({ item }) => (
+                    <UserListItem
+                      user={item}
+                      onPressSelect={() => setSelectedUser(item)}
+                      onAddFriend={() => sendFriendRequest(item.id)}
+                      onAcceptRequest={() => acceptFriendRequest(item.friendshipId || '')}
+                      onRemoveFriend={() => removeFriendship(item.friendshipId || '')}
+                    />
+                  )}
+                />
+              )}
+            </View>
+          ) : (
+            <>
+              {pendingRequests.length > 0 && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>
+                    Demandes en attente ({pendingRequests.length})
+                  </Text>
+                  <FlatList
+                    data={pendingRequests}
+                    keyExtractor={(item) => item.id}
+                    scrollEnabled={false}
+                    renderItem={({ item }) => (
+                      <UserListItem
+                        user={item}
+                        onPressSelect={() => setSelectedUser(item)}
+                        onAcceptRequest={() => acceptFriendRequest(item.friendshipId || '')}
+                        onRemoveFriend={() => removeFriendship(item.friendshipId || '')}
+                      />
+                    )}
                   />
-                ))}
-              </View>
-            )}
+                </View>
+              )}
 
-            {friends.length > 0 && (
               <View style={styles.section} testID="friends-list-section">
-                <Text style={styles.sectionTitle}>👥 Mes Amis ({friends.length})</Text>
-                {friends.map((item) => (
-                  <UserListItem
-                    key={item.id}
-                    user={item}
-                    onPressSelect={(u) => setSelectedUser(u)}
-                    onRemoveFriend={removeFriendship}
+                <Text style={styles.sectionTitle}>Mes Amis ({friends.length})</Text>
+                {friends.length === 0 ? (
+                  <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyIcon}>👥</Text>
+                    <Text style={styles.emptyTitle}>Vous n&apos;avez pas encore d&apos;amis</Text>
+                    <Text style={styles.emptySubtitle}>
+                      Utilisez la barre de recherche ci-dessus pour trouver des amis par nom ou email.
+                    </Text>
+                  </View>
+                ) : (
+                  <FlatList
+                    data={friends}
+                    keyExtractor={(item) => item.id}
+                    scrollEnabled={false}
+                    renderItem={({ item }) => (
+                      <UserListItem
+                        user={item}
+                        onPressSelect={() => setSelectedUser(item)}
+                        onRemoveFriend={() => removeFriendship(item.friendshipId || '')}
+                      />
+                    )}
                   />
-                ))}
+                )}
               </View>
-            )}
-
-            {pendingRequests.length === 0 && friends.length === 0 && (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyIcon}>🔍</Text>
-                <Text style={styles.emptyTitle}>Trouvez vos amis sur Crazer</Text>
-                <Text style={styles.emptySubtitle}>
-                  Saisissez un prénom, un nom ou une adresse email pour rechercher des utilisateurs, consulter leur profil et les ajouter à vos amis.
-                </Text>
-              </View>
-            )}
-          </ScrollView>
-        ) : searchResults.length === 0 && !isSearching ? (
-          <View style={styles.emptyState} testID="no-results-state">
-            <Text style={styles.emptyIcon}>🙁</Text>
-            <Text style={styles.emptyTitle}>Aucun utilisateur trouvé</Text>
-            <Text style={styles.emptySubtitle}>
-              Aucun profil ne correspond à {'"'}
-              {searchQuery}
-              {'"'}. Vérifiez l orthographe ou essayez un autre terme.
-            </Text>
-          </View>
-        ) : (
-          <FlatList
-            data={searchResults}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContainer}
-            testID="search-results-list"
-            renderItem={({ item }) => (
-              <UserListItem
-                user={item}
-                onPressSelect={(u) => setSelectedUser(u)}
-                onAddFriend={sendFriendRequest}
-                onAcceptRequest={acceptFriendRequest}
-                onRemoveFriend={removeFriendship}
-                onCancelRequest={removeFriendship}
-              />
-            )}
-          />
-        )}
+            </>
+          )}
+        </ScrollView>
 
         <UserProfileDetailModal
+          visible={!!selectedUser}
           user={currentSelectedUserInResults}
-          visible={selectedUser !== null}
           onClose={() => setSelectedUser(null)}
-          onAddFriend={sendFriendRequest}
-          onAcceptRequest={acceptFriendRequest}
-          onRemoveFriend={removeFriendship}
-          onCancelRequest={removeFriendship}
+          onAddFriend={(userId) => sendFriendRequest(userId)}
+          onAcceptRequest={(friendshipId) => acceptFriendRequest(friendshipId)}
+          onRemoveFriend={(friendshipId) => removeFriendship(friendshipId)}
         />
       </View>
     </Modal>
@@ -178,21 +206,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     flex: 1,
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.xl,
   },
   content: {
     flex: 1,
   },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+  },
   emptyIcon: {
     fontSize: 40,
     marginBottom: spacing.sm,
-  },
-  emptyState: {
-    alignItems: 'center',
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xl,
   },
   emptySubtitle: {
     color: colors.textMuted,
@@ -202,13 +227,21 @@ const styles = StyleSheet.create({
   emptyTitle: {
     color: colors.textPrimary,
     fontSize: typography.fontSizes.md,
-    fontWeight: typography.fontWeights.semibold,
+    fontWeight: typography.fontWeights.bold,
     marginBottom: spacing.xs,
   },
-  errorBanner: {
+  emptyText: {
+    color: colors.textMuted,
+    fontSize: typography.fontSizes.sm,
+    textAlign: 'center',
+    paddingVertical: spacing.md,
+  },
+  errorContainer: {
     backgroundColor: colors.errorBackground,
+    borderColor: colors.error,
     borderRadius: 8,
-    marginBottom: spacing.sm,
+    borderWidth: 1,
+    marginBottom: spacing.md,
     padding: spacing.sm,
   },
   errorText: {
@@ -221,28 +254,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: spacing.md,
-  },
-  listContainer: {
-    paddingBottom: spacing.lg,
-  },
-  scrollContent: {
-    paddingBottom: spacing.lg,
+    paddingVertical: spacing.xs,
   },
   searchContainer: {
     marginBottom: spacing.md,
   },
   section: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   sectionTitle: {
     color: colors.textPrimary,
-    fontSize: typography.fontSizes.sm,
+    fontSize: typography.fontSizes.md,
     fontWeight: typography.fontWeights.bold,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   title: {
     color: colors.textPrimary,
-    fontSize: typography.fontSizes.xl,
+    fontSize: typography.fontSizes.lg,
     fontWeight: typography.fontWeights.bold,
   },
 });
