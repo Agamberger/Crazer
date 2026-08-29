@@ -64,7 +64,7 @@ export function placeToPoiItem(place: PlaceSearchResult): PoiItem {
     images: place.images ?? [],
     openingHours: Array.isArray(place.opening_hours)
       ? place.opening_hours
-      : (place.opening_hours as any)?.weekday_text || undefined,
+      : (place.opening_hours as { weekday_text?: string[] } | null)?.weekday_text || undefined,
     phone: place.phone || undefined,
     website: place.website || undefined,
   };

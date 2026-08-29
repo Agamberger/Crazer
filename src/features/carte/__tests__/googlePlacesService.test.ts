@@ -110,7 +110,7 @@ describe('googlePlacesService', () => {
           status: 'OK',
           predictions: mockPredictions,
         }),
-      } as any);
+      } as unknown as Response);
 
       const predictions = await fetchGooglePlaceAutocomplete('Café');
 
@@ -149,7 +149,7 @@ describe('googlePlacesService', () => {
           status: 'OK',
           result: mockResult,
         }),
-      } as any);
+      } as unknown as Response);
 
       const details = await fetchGooglePlaceDetails('place_1');
 
@@ -164,7 +164,7 @@ describe('googlePlacesService', () => {
         json: jest.fn().mockResolvedValue({
           status: 'NOT_FOUND',
         }),
-      } as any);
+      } as unknown as Response);
 
       const details = await fetchGooglePlaceDetails('invalid_id');
       expect(details).toBeNull();

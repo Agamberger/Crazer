@@ -49,7 +49,7 @@ export const friendsService = {
         const otherUserId = f.user_id === currentUserId ? f.friend_id : f.user_id;
         friendshipMap.set(otherUserId, {
           id: f.id,
-          status: f.status,
+          status: f.status as 'pending' | 'accepted' | 'rejected',
           isSender: f.user_id === currentUserId,
         });
       });

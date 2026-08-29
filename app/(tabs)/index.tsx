@@ -1,17 +1,29 @@
 import React, { useEffect } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { useAuth } from '@/features/auth';
+import { OutingCard, useOutingsStore } from '@/features/outings';
 import { useFriends, PendingFriendRequestsBanner } from '@/features/profil';
-import { SortieCard, useSortiesStore } from '@/features/sorties';
 import { Button } from '@/shared/components/Button';
 import { colors, spacing, typography } from '@/shared/constants/theme';
 
-export default function SortiesScreen() {
-  const sorties = useSortiesStore((state) => state.sorties);
+export default function OutingsScreen() {
+  const outings = useOutingsStore((state) => state.outings);
+  const fetchOutings = useOutingsStore((state) => state.fetchOutings);
+  const createOuting = useOutingsStore((state) => state.createOuting);
+  const isLoading = useOutingsStore((state) => state.isLoading);
+  const error = useOutingsStore((state) => state.error);
+
+  const { user } = useAuth();
   const { pendingRequests, fetchFriendsList, acceptFriendRequest, removeFriendship } = useFriends();
 
   useEffect(() => {
     fetchFriendsList();
-  }, [fetchFriendsList]);
+    fetchOutings();
+  }, [fetchFriendsList, fetchOutings]);
+
+  const handleCreateOuting = async () => {
+    await createOuting(user?.id);
+  };
 
   return (
     <View style={styles.container}>
@@ -23,19 +35,33 @@ export default function SortiesScreen() {
 
       <View style={styles.headerArea}>
         <Text style={styles.subtitle}>Organise et rejoins des sorties entre amis !</Text>
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
       </View>
 
       <FlatList
-        data={sorties}
+        data={outings}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <SortieCard sortie={item} />}
+        renderItem={({ item }) => <OutingCard outing={item} />}
         contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={isLoading && outings.length > 0}
+            onRefresh={fetchOutings}
+            tintColor={colors.primary}
+          />
+        }
         ListEmptyComponent={
-          <Text style={styles.emptyText}>Aucune sortie prévue pour le moment.</Text>
+          <Text style={styles.emptyText}>
+            {isLoading ? 'Chargement des sorties...' : 'Aucune sortie prévue pour le moment.'}
+          </Text>
         }
       />
       <View style={styles.actionArea}>
-        <Button title="+ Organiser une sortie" onPress={() => {}} />
+        <Button
+          title="+ Organiser une sortie"
+          onPress={handleCreateOuting}
+          loading={isLoading}
+        />
       </View>
     </View>
   );
@@ -54,6 +80,11 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSizes.md,
     marginTop: spacing.xl,
     textAlign: 'center',
+  },
+  errorText: {
+    color: colors.error,
+    fontSize: typography.fontSizes.sm,
+    marginTop: spacing.xs,
   },
   headerArea: {
     paddingHorizontal: spacing.md,

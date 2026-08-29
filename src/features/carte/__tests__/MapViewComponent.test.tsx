@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 import { MapViewComponent } from '../components/MapViewComponent';
+import { useMapStore } from '../store/useMapStore';
 import { PoiItem } from '../types/carte';
 
 const mockPois: PoiItem[] = [
@@ -62,7 +63,6 @@ describe('MapViewComponent', () => {
   });
 
   test('doit afficher le marqueur de la position utilisateur si définie', () => {
-    const { useMapStore } = require('../store/useMapStore');
     useMapStore.getState().setUserLocation({ latitude: 48.86, longitude: 2.35 });
 
     const handleSelect = jest.fn();
