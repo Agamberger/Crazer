@@ -26,6 +26,7 @@ interface MapState {
   savedWaypoints: PlaceItem[];
   selectedPlaceId: string | null;
   selectedPoiId: string | null;
+  targetOutingId: string | null;
   centerRegion: MapRegion;
   userLocation: { latitude: number; longitude: number } | null;
   isLoading: boolean;
@@ -38,6 +39,7 @@ interface MapState {
   toggleSavedWaypoint: (place: PlaceItem) => void;
   setSelectedPlaceId: (id: string | null) => void;
   setSelectedPoiId: (id: string | null) => void;
+  setTargetOutingId: (id: string | null) => void;
   setCenterRegion: (region: Partial<MapRegion>) => void;
   setUserLocation: (location: { latitude: number; longitude: number } | null) => void;
   setIsLoading: (isLoading: boolean) => void;
@@ -56,6 +58,7 @@ export const useMapStore = create<MapState>((set, get) => ({
   savedWaypoints: [],
   selectedPlaceId: null,
   selectedPoiId: null,
+  targetOutingId: null,
   centerRegion: INITIAL_REGION,
   userLocation: null,
   isLoading: false,
@@ -85,6 +88,8 @@ export const useMapStore = create<MapState>((set, get) => ({
     set({ selectedPlaceId: id, selectedPoiId: id }),
   setSelectedPoiId: (id: string | null) =>
     set({ selectedPlaceId: id, selectedPoiId: id }),
+
+  setTargetOutingId: (id: string | null) => set({ targetOutingId: id }),
 
   setCenterRegion: (region: Partial<MapRegion>) =>
     set((state) => ({

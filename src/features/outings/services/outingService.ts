@@ -60,7 +60,7 @@ export const outingService = {
   },
 
   /**
-   * Updates an existing outing record in Supabase.
+   * Updates an existing outing in Supabase.
    */
   updateOuting: async (id: string, updates: OutingUpdate): Promise<OutingRow> => {
     const { data, error } = await supabase
@@ -78,8 +78,20 @@ export const outingService = {
   },
 
   /**
-   * Fetches all planned outings (steps) for a given outing,
-   * sorted chronologically (scheduled_for ASC).
+   * Deletes an outing by ID.
+   */
+  deleteOuting: async (id: string): Promise<void> => {
+    const { error } = await supabase.from('outings').delete().eq('id', id);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+  },
+
+  // ── Planned Outings (steps) ──────────────────────────────────────────────────
+
+  /**
+   * Fetches all planned outings for a given outing, ordered by scheduled_for ASC.
    */
   fetchPlannedOutings: async (outingId: string): Promise<PlannedOutingRow[]> => {
     const { data, error } = await supabase
@@ -99,9 +111,20 @@ export const outingService = {
    * Creates a new planned outing (step) for an outing.
    */
   createPlannedOuting: async (payload: PlannedOutingInsert): Promise<PlannedOutingRow> => {
+    let createdBy = payload.created_by;
+    if (!createdBy) {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user?.id) {
+        createdBy = data.user.id;
+      }
+    }
+
     const { data, error } = await supabase
       .from('planned_outings')
-      .insert(payload)
+      .insert({
+        ...payload,
+        ...(createdBy ? { created_by: createdBy } : {}),
+      })
       .select()
       .single();
 
@@ -134,7 +157,7 @@ export const outingService = {
   },
 
   /**
-   * Deletes a planned outing (step) by its ID.
+   * Deletes a planned outing by ID.
    */
   deletePlannedOuting: async (id: string): Promise<void> => {
     const { error } = await supabase

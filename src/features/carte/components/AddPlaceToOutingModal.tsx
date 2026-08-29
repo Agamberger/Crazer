@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Alert,
   FlatList,
@@ -13,7 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/features/auth';
-import { useOutingsStore } from '@/features/outings';
+import { useOutingsStore } from '@/features/outings/store/useOutingsStore';
 import { Button } from '@/shared/components/Button';
 import { Card } from '@/shared/components/Card';
 import { ThemedDateTimePicker } from '@/shared/components/ThemedDateTimePicker';
@@ -28,12 +28,15 @@ import {
 } from '@/shared/types';
 import { PlaceItem } from '../types/carte';
 import { ensurePlaceExists } from '../services/placeService';
+import { useMapStore } from '../store/useMapStore';
 
 export interface AddPlaceToOutingModalProps {
   visible: boolean;
   place: PlaceItem | null;
   onClose: () => void;
   onSuccess?: (outing: OutingRow, plannedOuting: PlannedOutingRow) => void;
+  initialOuting?: OutingRow | null;
+  targetOutingId?: string | null;
 }
 
 const DURATION_PRESETS = [
@@ -73,6 +76,8 @@ export const AddPlaceToOutingModal: React.FC<AddPlaceToOutingModalProps> = ({
   place,
   onClose,
   onSuccess,
+  initialOuting,
+  targetOutingId: propTargetOutingId,
 }) => {
   const insets = useSafeAreaInsets();
   const topPadding = Math.max(insets.top, 24);
@@ -83,6 +88,9 @@ export const AddPlaceToOutingModal: React.FC<AddPlaceToOutingModalProps> = ({
   const fetchOutings = useOutingsStore((state) => state.fetchOutings);
   const createOuting = useOutingsStore((state) => state.createOuting);
   const addPlannedOuting = useOutingsStore((state) => state.addPlannedOuting);
+  const storeTargetOutingId = useMapStore((state) => state.targetOutingId);
+
+  const effectiveTargetId = propTargetOutingId ?? storeTargetOutingId;
 
   const [step, setStep] = useState<'select-outing' | 'edit-planned'>('select-outing');
   const [selectedOuting, setSelectedOuting] = useState<OutingRow | null>(null);
@@ -102,37 +110,58 @@ export const AddPlaceToOutingModal: React.FC<AddPlaceToOutingModalProps> = ({
   const [showPicker, setShowPicker] = useState(false);
   const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
 
-  useEffect(() => {
-    if (visible) {
-      fetchOutings();
-    }
-  }, [visible, fetchOutings]);
+  const prevVisibleRef = useRef(false);
 
   // Initialise les champs du formulaire avec les infos du lieu lors de la sélection d'une sortie
-  const handleSelectOuting = (outing: OutingRow) => {
+  const applyOutingAndPlace = React.useCallback((outing: OutingRow, targetPlace: PlaceItem) => {
     setSelectedOuting(outing);
+    setTitle(targetPlace.title);
+    setDescription(targetPlace.description || '');
 
-    if (place) {
-      setTitle(place.title);
-      setDescription(place.description || '');
-
-      const practicalNotes: string[] = [];
-      if (place.address) practicalNotes.push(`Adresse : ${place.address}`);
-      if (place.phone) practicalNotes.push(`Tél : ${place.phone}`);
-      if (place.website) practicalNotes.push(`Site : ${place.website}`);
-      if (place.priceRange) practicalNotes.push(`Prix : ${place.priceRange}`);
-      if (place.openingHours && place.openingHours.length > 0) {
-        practicalNotes.push(`Horaires :\n${place.openingHours.join('\n')}`);
-      }
-
-      setNotes(practicalNotes.join('\n\n'));
-      setScheduledDate(new Date(outing.start_date || Date.now()));
-      setDurationMin(60);
-      setStatus('pending');
-      setValidationError(null);
+    const practicalNotes: string[] = [];
+    if (targetPlace.address) practicalNotes.push(`Adresse : ${targetPlace.address}`);
+    if (targetPlace.phone) practicalNotes.push(`Tél : ${targetPlace.phone}`);
+    if (targetPlace.website) practicalNotes.push(`Site : ${targetPlace.website}`);
+    if (targetPlace.priceRange) practicalNotes.push(`Prix : ${targetPlace.priceRange}`);
+    if (targetPlace.openingHours && targetPlace.openingHours.length > 0) {
+      practicalNotes.push(`Horaires :\n${targetPlace.openingHours.join('\n')}`);
     }
 
+    setNotes(practicalNotes.join('\n\n'));
+    setScheduledDate(new Date(outing.start_date || Date.now()));
+    setDurationMin(60);
+    setStatus('pending');
+    setValidationError(null);
     setStep('edit-planned');
+  }, []);
+
+  useEffect(() => {
+    const wasJustOpened = visible && !prevVisibleRef.current;
+    prevVisibleRef.current = visible;
+
+    if (wasJustOpened && place) {
+      fetchOutings();
+      if (initialOuting) {
+        applyOutingAndPlace(initialOuting, place);
+      } else if (effectiveTargetId) {
+        const targeted = useOutingsStore.getState().outings.find((o) => o.id === effectiveTargetId);
+        if (targeted) {
+          applyOutingAndPlace(targeted, place);
+        } else {
+          setStep('select-outing');
+          setSelectedOuting(null);
+        }
+      } else {
+        setStep('select-outing');
+        setSelectedOuting(null);
+      }
+    }
+  }, [visible, place, initialOuting, effectiveTargetId, fetchOutings, applyOutingAndPlace]);
+
+  const handleSelectOuting = (outing: OutingRow) => {
+    if (place) {
+      applyOutingAndPlace(outing, place);
+    }
   };
 
   const handleCreateNewOuting = async () => {
@@ -943,9 +972,9 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   sectionHeaderRow: {
+    alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: spacing.sm,
   },
   sectionSubtitle: {

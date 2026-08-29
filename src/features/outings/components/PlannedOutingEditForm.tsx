@@ -11,7 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/shared/components/Button';
 import { Card } from '@/shared/components/Card';
-import { DateTimePickerModal } from '@/shared/components/DateTimePicker';
+import { ThemedDateTimePicker } from '@/shared/components/ThemedDateTimePicker';
 import { colors, spacing, typography } from '@/shared/constants/theme';
 import {
   PLANNED_OUTING_STATUS_CONFIG,
@@ -27,6 +27,7 @@ export interface PlannedOutingEditFormProps {
   onDelete?: (id: string) => Promise<void> | void;
   onCancel: () => void;
   isLoading?: boolean;
+  isDeleting?: boolean;
   error?: string | null;
   submitTestID?: string;
   cancelTestID?: string;
@@ -73,6 +74,7 @@ export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
   onDelete,
   onCancel,
   isLoading = false,
+  isDeleting: propIsDeleting = false,
   error = null,
   submitTestID,
   cancelTestID,
@@ -88,6 +90,8 @@ export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
   const [formError, setFormError] = useState<string | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
+  const [isSubmittingInternal, setIsSubmittingInternal] = useState(false);
+  const [isDeletingInternal, setIsDeletingInternal] = useState(false);
 
   const handleOpenPicker = (mode: 'date' | 'time') => {
     setPickerMode(mode);
@@ -105,15 +109,20 @@ export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
       return;
     }
     setFormError(null);
+    setIsSubmittingInternal(true);
 
-    await onSubmit({
-      title: title.trim(),
-      description: description.trim() || null,
-      notes: notes.trim() || null,
-      scheduled_for: scheduledFor.toISOString(),
-      duration_min: durationMin,
-      status,
-    });
+    try {
+      await onSubmit({
+        title: title.trim(),
+        description: description.trim() || null,
+        notes: notes.trim() || null,
+        scheduled_for: scheduledFor.toISOString(),
+        duration_min: durationMin,
+        status,
+      });
+    } finally {
+      setIsSubmittingInternal(false);
+    }
   };
 
   const handleDelete = () => {
@@ -127,7 +136,14 @@ export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
         {
           text: 'Supprimer',
           style: 'destructive',
-          onPress: () => onDelete(plannedOuting.id),
+          onPress: async () => {
+            setIsDeletingInternal(true);
+            try {
+              await onDelete(plannedOuting.id);
+            } finally {
+              setIsDeletingInternal(false);
+            }
+          },
         },
       ]
     );
@@ -144,6 +160,10 @@ export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
     hour: '2-digit',
     minute: '2-digit',
   });
+
+  const isDeletingActive = propIsDeleting || isDeletingInternal;
+  const isSavingActive = isSubmittingInternal || (isLoading && !isDeletingActive);
+  const isAnyLoading = isLoading || isSavingActive || isDeletingActive;
 
   return (
     <ScrollView
@@ -293,7 +313,7 @@ export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
             </TouchableOpacity>
           </View>
 
-          <DateTimePickerModal
+          <ThemedDateTimePicker
             visible={showPicker}
             mode={pickerMode}
             value={scheduledFor}
@@ -328,9 +348,11 @@ export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
               );
             })}
           </View>
+
+          {/* Custom duration input */}
           <View style={styles.customDurationContainer}>
             <TextInput
-              style={styles.durationInput}
+              style={styles.customDurationInput}
               placeholder="Personnalisé (min)"
               placeholderTextColor={colors.textMuted}
               keyboardType="numeric"
@@ -339,10 +361,10 @@ export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
                 const numeric = parseInt(text.replace(/[^0-9]/g, ''), 10);
                 setDurationMin(isNaN(numeric) ? null : numeric);
               }}
-              accessibilityLabel="Durée en minutes"
+              accessibilityLabel="Durée personnalisée en minutes"
               testID="input-planned-duration"
             />
-            <Text style={styles.durationSuffix}>minutes</Text>
+            <Text style={styles.customDurationSuffix}>minutes</Text>
           </View>
         </View>
 
@@ -351,7 +373,7 @@ export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
           <Text style={styles.label}>Description</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder="Détails de l'étape ou activités prévues..."
+            placeholder="Détails du programme, consignes, réservations..."
             placeholderTextColor={colors.textMuted}
             value={description}
             onChangeText={setDescription}
@@ -363,57 +385,61 @@ export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
           />
         </View>
 
-        {/* Practical notes */}
+        {/* Notes et infos pratiques */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Notes & infos pratiques</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder="Code de porte, numéro de réservation, consigne particulière..."
+            placeholder="Code porte, contact, numéro de table, itinéraire..."
             placeholderTextColor={colors.textMuted}
             value={notes}
             onChangeText={setNotes}
             multiline
-            numberOfLines={3}
+            numberOfLines={2}
             textAlignVertical="top"
             accessibilityLabel="Notes et informations pratiques"
             testID="input-planned-notes"
           />
         </View>
 
-        {/* Actions */}
-        <View style={styles.actionButtons}>
-          <Button
-            title="Annuler"
-            variant="outline"
-            size="sm"
-            onPress={onCancel}
-            style={styles.actionButton}
-            testID={cancelTestID || 'btn-cancel-planned'}
-          />
-          <Button
-            title="Enregistrer"
-            variant="primary"
-            size="sm"
-            loading={isLoading}
-            onPress={handleSubmit}
-            style={styles.actionButton}
-            testID={submitTestID || 'btn-submit-planned'}
-          />
-        </View>
-
-        {/* Danger zone : Delete */}
-        {onDelete && (
-          <View style={styles.dangerZone}>
+        {/* Form Action Buttons */}
+        <View style={styles.formActions}>
+          <View style={styles.primaryActionsRow}>
             <Button
-              title="Supprimer cette étape"
+              title="Annuler"
               variant="outline"
               size="sm"
-              onPress={handleDelete}
-              style={styles.deleteButton}
-              testID={deleteTestID || 'btn-delete-planned'}
+              onPress={onCancel}
+              disabled={isAnyLoading}
+              style={styles.actionButton}
+              testID={cancelTestID || 'btn-cancel-planned'}
+            />
+            <Button
+              title="Enregistrer"
+              variant="primary"
+              size="sm"
+              loading={isSavingActive}
+              disabled={isAnyLoading}
+              onPress={handleSubmit}
+              style={styles.actionButton}
+              testID={submitTestID || 'btn-submit-planned'}
             />
           </View>
-        )}
+
+          {onDelete && (
+            <Button
+              title="Supprimer"
+              variant="outline"
+              size="sm"
+              loading={isDeletingActive}
+              disabled={isAnyLoading}
+              onPress={handleDelete}
+              style={styles.deleteButton}
+              textStyle={styles.deleteButtonText}
+              testID={deleteTestID || 'btn-delete-planned'}
+            />
+          )}
+        </View>
       </Card>
     </ScrollView>
   );
@@ -423,15 +449,11 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
   },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
   backButton: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 4,
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
   },
   backButtonText: {
     color: colors.primary,
@@ -439,39 +461,52 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeights.medium,
   },
   cardHeader: {
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
     marginBottom: spacing.md,
+    paddingBottom: spacing.sm,
   },
   contentContainer: {
-    padding: spacing.md,
     paddingBottom: spacing.xxl,
   },
   customDurationContainer: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
-  dangerZone: {
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
-    marginTop: spacing.lg,
-    paddingTop: spacing.md,
-  },
-  dateTimeButton: {
+  customDurationInput: {
     backgroundColor: colors.surfaceLight,
     borderColor: colors.border,
     borderRadius: 8,
     borderWidth: 1,
+    color: colors.textPrimary,
+    fontSize: typography.fontSizes.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    width: 140,
+  },
+  customDurationSuffix: {
+    color: colors.textMuted,
+    fontSize: typography.fontSizes.sm,
+  },
+  dateTimeButton: {
+    backgroundColor: colors.surfaceLight,
+    borderColor: colors.border,
+    borderRadius: 10,
+    borderWidth: 1.5,
     flex: 1,
-    padding: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   dateTimeButtonActive: {
+    backgroundColor: colors.surface,
     borderColor: colors.primary,
   },
   dateTimeButtonHeader: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 4,
-    marginBottom: 4,
+    gap: spacing.xs,
+    marginBottom: spacing.xs / 2,
   },
   dateTimeButtonLabel: {
     color: colors.textSecondary,
@@ -480,6 +515,7 @@ const styles = StyleSheet.create({
   },
   dateTimeButtonLabelActive: {
     color: colors.primary,
+    fontWeight: typography.fontWeights.semibold,
   },
   dateTimeButtonValue: {
     color: colors.textPrimary,
@@ -489,9 +525,15 @@ const styles = StyleSheet.create({
   dateTimeContainer: {
     flexDirection: 'row',
     gap: spacing.sm,
+    marginBottom: spacing.xs,
   },
   deleteButton: {
     borderColor: colors.error,
+    marginTop: spacing.sm,
+    width: '100%',
+  },
+  deleteButtonText: {
+    color: colors.error,
   },
   durationChip: {
     backgroundColor: colors.surfaceLight,
@@ -499,10 +541,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
+    paddingVertical: spacing.xs,
   },
   durationChipActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primaryDark,
     borderColor: colors.primary,
   },
   durationChipText: {
@@ -511,29 +553,14 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeights.medium,
   },
   durationChipTextActive: {
-    color: colors.surface,
+    color: colors.white,
     fontWeight: typography.fontWeights.bold,
-  },
-  durationInput: {
-    backgroundColor: colors.surfaceLight,
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    width: 130,
   },
   durationPresetsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.xs,
     marginBottom: spacing.xs,
-  },
-  durationSuffix: {
-    color: colors.textMuted,
-    fontSize: typography.fontSizes.xs,
   },
   errorBanner: {
     alignItems: 'center',
@@ -549,10 +576,14 @@ const styles = StyleSheet.create({
   errorBannerText: {
     color: colors.error,
     flex: 1,
-    fontSize: typography.fontSizes.sm,
+    fontSize: typography.fontSizes.xs,
+  },
+  formActions: {
+    marginTop: spacing.md,
   },
   formCard: {
-    padding: spacing.lg,
+    marginHorizontal: spacing.md,
+    padding: spacing.md,
   },
   formTitle: {
     color: colors.textPrimary,
@@ -563,15 +594,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: spacing.md,
+    marginHorizontal: spacing.md,
+    marginVertical: spacing.xs,
   },
   input: {
     backgroundColor: colors.surfaceLight,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
     color: colors.textPrimary,
-    fontSize: typography.fontSizes.md,
+    fontSize: typography.fontSizes.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
@@ -579,16 +611,21 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   label: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.sm,
-    fontWeight: typography.fontWeights.semibold,
-    marginBottom: spacing.xs,
-  },
-  parentOutingSubtitle: {
     color: colors.textSecondary,
     fontSize: typography.fontSizes.xs,
     fontWeight: typography.fontWeights.medium,
-    maxWidth: '70%',
+    marginBottom: spacing.xs,
+  },
+  parentOutingSubtitle: {
+    color: colors.textMuted,
+    fontSize: typography.fontSizes.xs,
+    fontStyle: 'italic',
+    maxWidth: 200,
+  },
+  primaryActionsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    width: '100%',
   },
   requiredAsterisk: {
     color: colors.error,
@@ -598,20 +635,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statusBadge: {
-    alignItems: 'center',
     backgroundColor: colors.surfaceLight,
     borderColor: colors.border,
     borderRadius: 8,
     borderWidth: 1,
-    flex: 1,
-    minWidth: '45%',
+    marginBottom: spacing.xs,
+    marginRight: spacing.xs,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 8,
+    paddingVertical: spacing.xs + 2,
   },
   statusBadgeActive: {
-    backgroundColor: colors.surface,
-    borderColor: colors.primary,
-    borderWidth: 2,
+    backgroundColor: colors.primary,
+    borderColor: colors.primaryDark,
   },
   statusBadgeText: {
     color: colors.textSecondary,
@@ -619,15 +654,14 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeights.medium,
   },
   statusBadgeTextActive: {
-    color: colors.primary,
+    color: colors.white,
     fontWeight: typography.fontWeights.bold,
   },
   statusGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.xs,
   },
   textArea: {
-    minHeight: 70,
+    minHeight: 60,
   },
 });

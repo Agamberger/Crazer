@@ -92,9 +92,9 @@ describe('PlannedOutingsTimeline Component', () => {
     expect(getByText('Aucune étape planifiée')).toBeTruthy();
   });
 
-  it('calls onAddPlannedOuting when add button at the bottom is pressed', () => {
+  it('opens choice modal and calls onAddPlannedOuting when custom step is chosen', () => {
     const handleAdd = jest.fn();
-    const { getByTestId } = render(
+    const { getByTestId, getByText } = render(
       <PlannedOutingsTimeline
         plannedOutings={mockPlannedOutings}
         onAddPlannedOuting={handleAdd}
@@ -104,7 +104,30 @@ describe('PlannedOutingsTimeline Component', () => {
     const addBtn = getByTestId('btn-add-planned-outing');
     fireEvent.press(addBtn);
 
+    expect(getByTestId('modal-add-step-choice')).toBeTruthy();
+    expect(getByText('Étape personnalisée')).toBeTruthy();
+
+    fireEvent.press(getByTestId('btn-add-custom-step'));
     expect(handleAdd).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens choice modal and calls onAddFromMap when choose from map is selected', () => {
+    const handleAddMap = jest.fn();
+    const { getByTestId, getByText } = render(
+      <PlannedOutingsTimeline
+        plannedOutings={mockPlannedOutings}
+        onAddFromMap={handleAddMap}
+      />
+    );
+
+    const addBtn = getByTestId('btn-add-planned-outing');
+    fireEvent.press(addBtn);
+
+    expect(getByTestId('modal-add-step-choice')).toBeTruthy();
+    expect(getByText('Choisir un lieu sur la carte')).toBeTruthy();
+
+    fireEvent.press(getByTestId('btn-add-from-map'));
+    expect(handleAddMap).toHaveBeenCalledTimes(1);
   });
 
   it('calls onSelectPlannedOuting when a planned outing card is clicked', () => {

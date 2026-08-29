@@ -2,6 +2,7 @@ import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 import { PlaceDetailCard } from '../components/PlaceDetailCard';
 import { PlaceItem } from '../types/carte';
+import { useMapStore } from '../store/useMapStore';
 
 const mockPlace: PlaceItem = {
   id: 'test-place-1',
@@ -19,6 +20,13 @@ const mockPlace: PlaceItem = {
 };
 
 describe('PlaceDetailCard', () => {
+  beforeEach(() => {
+    useMapStore.setState({
+      targetOutingId: null,
+      savedWaypoints: [],
+    });
+  });
+
   test('doit afficher les informations du lieu correctement', () => {
     const { getByText } = render(
       <PlaceDetailCard place={mockPlace} onClose={jest.fn()} />
@@ -41,7 +49,7 @@ describe('PlaceDetailCard', () => {
     expect(handleClose).toHaveBeenCalledTimes(1);
   });
 
-  test('doit déclencher onAddToOuting lors du clic sur Ajouter à une sortie', () => {
+  test('doit déclencher onAddToOuting lors du clic sur Ajouter à une sortie en mode normal', () => {
     const handleAdd = jest.fn();
     const { getByText, getByTestId } = render(
       <PlaceDetailCard
@@ -52,8 +60,43 @@ describe('PlaceDetailCard', () => {
     );
 
     expect(getByTestId('add-to-outing-button')).toBeTruthy();
+    expect(getByText('+ Ajouter à une sortie')).toBeTruthy();
     fireEvent.press(getByText('+ Ajouter à une sortie'));
     expect(handleAdd).toHaveBeenCalledWith(mockPlace);
+  });
+
+  test('affiche "+ Ajouter à la sortie" lorsque targetOutingId est défini dans le store', () => {
+    useMapStore.setState({ targetOutingId: 'out-123' });
+    const handleAdd = jest.fn();
+    const { getByText, getByTestId, queryByText } = render(
+      <PlaceDetailCard
+        place={mockPlace}
+        onClose={jest.fn()}
+        onAddToOuting={handleAdd}
+      />
+    );
+
+    expect(getByTestId('add-to-outing-button')).toBeTruthy();
+    expect(getByText('+ Ajouter à la sortie')).toBeTruthy();
+    expect(queryByText('+ Ajouter à une sortie')).toBeNull();
+
+    fireEvent.press(getByText('+ Ajouter à la sortie'));
+    expect(handleAdd).toHaveBeenCalledWith(mockPlace);
+  });
+
+  test('affiche "+ Ajouter à la sortie" lorsque hasTargetOuting est true en prop', () => {
+    const handleAdd = jest.fn();
+    const { getByText, queryByText } = render(
+      <PlaceDetailCard
+        place={mockPlace}
+        onClose={jest.fn()}
+        onAddToOuting={handleAdd}
+        hasTargetOuting={true}
+      />
+    );
+
+    expect(getByText('+ Ajouter à la sortie')).toBeTruthy();
+    expect(queryByText('+ Ajouter à une sortie')).toBeNull();
   });
 
   test('doit déclencher onGetDirections lors du clic sur Itinéraire', () => {

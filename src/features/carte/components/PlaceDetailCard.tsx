@@ -21,6 +21,8 @@ export interface PlaceDetailCardProps {
   onAddToOuting?: (place: PlaceItem) => void;
   onGetDirections?: (place: PlaceItem) => void;
   expandAnim?: Animated.Value;
+  hasTargetOuting?: boolean;
+  targetOutingTitle?: string;
 }
 
 const OPEN_BADGE_BG = 'rgba(34, 197, 94, 0.15)';
@@ -45,9 +47,14 @@ export const PlaceDetailCard: React.FC<PlaceDetailCardProps> = ({
   onAddToOuting,
   onGetDirections,
   expandAnim,
+  hasTargetOuting: propHasTargetOuting,
 }) => {
   const savedWaypoints = useMapStore((state) => state.savedWaypoints);
   const toggleSavedWaypoint = useMapStore((state) => state.toggleSavedWaypoint);
+  const targetOutingId = useMapStore((state) => state.targetOutingId);
+
+  const isTargetMode = propHasTargetOuting ?? !!targetOutingId;
+
   const [showHours, setShowHours] = useState<boolean>(false);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
@@ -354,11 +361,15 @@ export const PlaceDetailCard: React.FC<PlaceDetailCardProps> = ({
           <TouchableOpacity
             style={[styles.actionButton, styles.primaryButton]}
             onPress={() => onAddToOuting && onAddToOuting(place)}
-            accessibilityLabel="Ajouter ce lieu à une sortie"
+            accessibilityLabel={
+              isTargetMode ? 'Ajouter ce lieu à la sortie' : 'Ajouter ce lieu à une sortie'
+            }
             accessibilityRole="button"
             testID="add-to-outing-button"
           >
-            <Text style={styles.primaryButtonText}>+ Ajouter à une sortie</Text>
+            <Text style={styles.primaryButtonText}>
+              {isTargetMode ? '+ Ajouter à la sortie' : '+ Ajouter à une sortie'}
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
