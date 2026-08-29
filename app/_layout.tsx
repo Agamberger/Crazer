@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/features/auth';
 import { colors } from '@/shared/constants/theme';
 
@@ -30,18 +31,17 @@ export default function RootLayout() {
   }, [isInitialized, session, segments, router]);
 
   return (
-    <>
+    <SafeAreaProvider>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.textPrimary,
+          headerShown: false,
           contentStyle: { backgroundColor: colors.background },
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       </Stack>
-    </>
+    </SafeAreaProvider>
   );
 }

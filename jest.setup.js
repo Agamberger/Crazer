@@ -50,6 +50,25 @@ if (typeof global.WebSocket === 'undefined') {
   };
 }
 
+// Mock SafeAreaContext
+jest.mock('react-native-safe-area-context', () => {
+  const React = require('react');
+  const insets = { top: 0, left: 0, right: 0, bottom: 0 };
+  return {
+    SafeAreaProvider: ({ children }: any) => React.createElement(React.Fragment, null, children),
+    SafeAreaView: ({ children, ...props }: any) => React.createElement('SafeAreaView', props, children),
+    useSafeAreaInsets: () => insets,
+    useSafeAreaFrame: () => ({ x: 0, y: 0, width: 375, height: 812 }),
+    SafeAreaInsetsContext: {
+      Consumer: ({ children }: any) => children(insets),
+    },
+    initialWindowMetrics: {
+      insets,
+      frame: { x: 0, y: 0, width: 375, height: 812 },
+    },
+  };
+});
+
 // Mock MapLibre React Native
 jest.mock('@maplibre/maplibre-react-native', () => ({
   setAccessToken: jest.fn(),

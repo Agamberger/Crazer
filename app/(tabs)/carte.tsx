@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Alert, StatusBar, Animated } from 'react-native';
-import { colors } from '@/shared/constants/theme';
+import { View, StyleSheet, Alert, Animated } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors, spacing } from '@/shared/constants/theme';
 import {
   MapViewComponent,
   MapHeaderSearch,
@@ -11,6 +12,7 @@ import {
 } from '@/features/carte';
 
 export default function CarteScreen() {
+  const insets = useSafeAreaInsets();
   const selectedPoiId = useMapStore((state) => state.selectedPoiId);
   const pois = useMapStore((state) => state.pois);
   const getFilteredPois = useMapStore((state) => state.getFilteredPois);
@@ -76,11 +78,14 @@ export default function CarteScreen() {
         onSelectPoi={handleSelectPoi}
       />
 
-      {/* Header Search & Category Filter Overlay positioned at very top */}
+      {/* Header Search & Category Filter Overlay positioned taking safe area into account */}
       <Animated.View
         style={[
           styles.headerOverlay,
-          { transform: [{ translateY: headerTranslateY }] },
+          {
+            top: insets.top + spacing.xs,
+            transform: [{ translateY: headerTranslateY }],
+          },
         ]}
         pointerEvents="box-none"
       >
@@ -111,7 +116,6 @@ const styles = StyleSheet.create({
   },
   headerOverlay: {
     position: 'absolute',
-    top: (StatusBar.currentHeight || 20) + 4,
     left: 0,
     right: 0,
     zIndex: 50,
