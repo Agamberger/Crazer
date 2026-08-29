@@ -26,6 +26,7 @@ describe('useOutingsStore', () => {
     useOutingsStore.setState({
       outings: [],
       selectedOutingId: null,
+      selectedPlannedOutingId: null,
       plannedOutings: [],
       isLoading: false,
       isLoadingPlannedOutings: false,
@@ -180,9 +181,18 @@ describe('useOutingsStore', () => {
     expect(useOutingsStore.getState().error).toBe('Erreur de mise à jour');
   });
 
-  it('selectOuting updates selectedOutingId', () => {
+  it('selectOuting updates selectedOutingId and resets selectedPlannedOutingId', () => {
+    useOutingsStore.setState({ selectedPlannedOutingId: 'po-123' });
     useOutingsStore.getState().selectOuting('out-123');
     expect(useOutingsStore.getState().selectedOutingId).toBe('out-123');
+    expect(useOutingsStore.getState().selectedPlannedOutingId).toBeNull();
+  });
+
+  it('selectPlannedOuting updates selectedPlannedOutingId', () => {
+    useOutingsStore.getState().selectPlannedOuting('po-456');
+    expect(useOutingsStore.getState().selectedPlannedOutingId).toBe('po-456');
+    useOutingsStore.getState().selectPlannedOuting(null);
+    expect(useOutingsStore.getState().selectedPlannedOutingId).toBeNull();
   });
 
   describe('planned outings store methods', () => {
@@ -351,7 +361,7 @@ describe('useOutingsStore', () => {
       expect(useOutingsStore.getState().plannedOutings[0].title).toBe('Nouveau titre');
     });
 
-    it('deletePlannedOuting removes step from store', async () => {
+    it('deletePlannedOuting removes step from store and clears selectedPlannedOutingId if matching', async () => {
       const existingStep: PlannedOutingRow = {
         id: 'po-1',
         outing_id: 'out-1',
@@ -366,7 +376,10 @@ describe('useOutingsStore', () => {
         created_at: '2026-08-24T20:00:00Z',
         updated_at: '2026-08-24T20:00:00Z',
       };
-      useOutingsStore.setState({ plannedOutings: [existingStep] });
+      useOutingsStore.setState({
+        plannedOutings: [existingStep],
+        selectedPlannedOutingId: 'po-1',
+      });
 
       (outingService.deletePlannedOuting as jest.Mock).mockResolvedValue(undefined);
 
@@ -374,6 +387,7 @@ describe('useOutingsStore', () => {
 
       expect(success).toBe(true);
       expect(useOutingsStore.getState().plannedOutings).toEqual([]);
+      expect(useOutingsStore.getState().selectedPlannedOutingId).toBeNull();
     });
   });
 });

@@ -10,7 +10,7 @@ import {
 
 export const outingService = {
   /**
-   * Récupère la liste des sorties accessibles à l'utilisateur courant.
+   * Fetches outings accessible by current user.
    */
   fetchMyOutings: async (): Promise<OutingRow[]> => {
     const { data, error } = await supabase
@@ -26,7 +26,7 @@ export const outingService = {
   },
 
   /**
-   * Récupère une sortie spécifique par son identifiant.
+   * Fetches a specific outing by its unique ID.
    */
   getOutingById: async (id: string): Promise<OutingRow> => {
     const { data, error } = await supabase
@@ -43,7 +43,7 @@ export const outingService = {
   },
 
   /**
-   * Crée une nouvelle sortie dans Supabase.
+   * Creates a new outing record in Supabase.
    */
   createOuting: async (payload: OutingInsert): Promise<OutingRow> => {
     const { data, error } = await supabase
@@ -60,7 +60,7 @@ export const outingService = {
   },
 
   /**
-   * Met à jour une sortie existante dans Supabase.
+   * Updates an existing outing record in Supabase.
    */
   updateOuting: async (id: string, updates: OutingUpdate): Promise<OutingRow> => {
     const { data, error } = await supabase
@@ -78,8 +78,8 @@ export const outingService = {
   },
 
   /**
-   * Récupère toutes les étapes planifiées (planned_outings) pour une sortie,
-   * triées par ordre chronologique (scheduled_for ASC).
+   * Fetches all planned outings (steps) for a given outing,
+   * sorted chronologically (scheduled_for ASC).
    */
   fetchPlannedOutings: async (outingId: string): Promise<PlannedOutingRow[]> => {
     const { data, error } = await supabase
@@ -96,7 +96,7 @@ export const outingService = {
   },
 
   /**
-   * Crée une nouvelle étape planifiée (planned_outing) pour une sortie.
+   * Creates a new planned outing (step) for an outing.
    */
   createPlannedOuting: async (payload: PlannedOutingInsert): Promise<PlannedOutingRow> => {
     const { data, error } = await supabase
@@ -113,7 +113,7 @@ export const outingService = {
   },
 
   /**
-   * Met à jour une étape planifiée existante.
+   * Updates an existing planned outing (step).
    */
   updatePlannedOuting: async (
     id: string,
@@ -134,7 +134,7 @@ export const outingService = {
   },
 
   /**
-   * Supprime une étape planifiée.
+   * Deletes a planned outing (step) by its ID.
    */
   deletePlannedOuting: async (id: string): Promise<void> => {
     const { error } = await supabase

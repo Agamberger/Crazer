@@ -14,6 +14,7 @@ jest.mock('../store/useOutingsStore', () => ({
       isLoadingPlannedOutings: false,
       fetchPlannedOutings: jest.fn(),
       createPlannedOuting: jest.fn(),
+      selectPlannedOuting: jest.fn(),
     })
   ),
 }));
@@ -107,14 +108,14 @@ describe('OutingEditForm Component', () => {
       <OutingEditForm outing={mockOuting} onSubmit={handleSubmit} />
     );
 
-    // Modifier le titre
+    // Update title
     fireEvent.changeText(getByTestId('input-title'), 'Nouveau Titre');
-    // Modifier la description
+    // Update description
     fireEvent.changeText(getByTestId('input-description'), 'Nouvelle description');
-    // Changer le statut en 'planned'
+    // Change status to 'planned'
     fireEvent.press(getByTestId('btn-status-planned'));
 
-    // Soumettre
+    // Submit form
     fireEvent.press(getByTestId('btn-submit-outing-edit'));
 
     await waitFor(() => {
@@ -154,5 +155,22 @@ describe('OutingEditForm Component', () => {
 
     fireEvent.press(getByTestId('btn-add-planned-outing'));
     expect(handleAdd).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onSelectPlannedOuting when a planned outing in the timeline is pressed', () => {
+    const handleSelectPlannedOuting = jest.fn();
+    const { getByTestId } = render(
+      <OutingEditForm
+        outing={mockOuting}
+        onSubmit={jest.fn()}
+        plannedOutings={mockPlannedOutings}
+        onSelectPlannedOuting={handleSelectPlannedOuting}
+      />
+    );
+
+    fireEvent.press(getByTestId('planned-outing-card-po-1'));
+    expect(handleSelectPlannedOuting).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'po-1', title: 'Arrivée & Briefing' })
+    );
   });
 });

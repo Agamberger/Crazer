@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Card } from '@/shared/components/Card';
 import { colors, spacing, typography } from '@/shared/constants/theme';
 import {
@@ -10,11 +11,13 @@ import {
 export interface PlannedOutingCardProps {
   plannedOuting: PlannedOutingRow;
   stepIndex?: number;
+  onPress?: () => void;
 }
 
 export const PlannedOutingCard: React.FC<PlannedOutingCardProps> = ({
   plannedOuting,
   stepIndex,
+  onPress,
 }) => {
   const scheduledDate = new Date(plannedOuting.scheduled_for);
   const isValidDate = !isNaN(scheduledDate.getTime());
@@ -54,7 +57,7 @@ export const PlannedOutingCard: React.FC<PlannedOutingCardProps> = ({
 
   const durationStr = formatDuration(plannedOuting.duration_min);
 
-  return (
+  const cardContent = (
     <Card style={styles.card} testID={`planned-outing-card-${plannedOuting.id}`}>
       <View style={styles.header}>
         <View style={styles.titleWrapper}>
@@ -67,10 +70,20 @@ export const PlannedOutingCard: React.FC<PlannedOutingCardProps> = ({
             {plannedOuting.title}
           </Text>
         </View>
-        <View style={styles.statusBadge} testID="planned-outing-status-badge">
-          <Text style={styles.statusBadgeText}>
-            {statusConfig.emoji} {statusConfig.label}
-          </Text>
+        <View style={styles.headerRight}>
+          <View style={styles.statusBadge} testID="planned-outing-status-badge">
+            <Text style={styles.statusBadgeText}>
+              {statusConfig.emoji} {statusConfig.label}
+            </Text>
+          </View>
+          {onPress && (
+            <Ionicons
+              name="chevron-forward"
+              size={16}
+              color={colors.textMuted}
+              style={styles.chevron}
+            />
+          )}
         </View>
       </View>
 
@@ -104,6 +117,22 @@ export const PlannedOutingCard: React.FC<PlannedOutingCardProps> = ({
       ) : null}
     </Card>
   );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={`Modifier l'étape ${plannedOuting.title}`}
+        style={styles.touchable}
+      >
+        {cardContent}
+      </TouchableOpacity>
+    );
+  }
+
+  return cardContent;
 };
 
 const styles = StyleSheet.create({
@@ -114,6 +143,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flex: 1,
     padding: spacing.md,
+  },
+  chevron: {
+    marginLeft: spacing.xs / 2,
   },
   description: {
     color: colors.textSecondary,
@@ -126,6 +158,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.xs,
     justifyContent: 'space-between',
+  },
+  headerRight: {
+    alignItems: 'center',
+    flexDirection: 'row',
   },
   metaItem: {
     alignItems: 'center',
@@ -193,5 +229,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     flexDirection: 'row',
+  },
+  touchable: {
+    flex: 1,
   },
 });

@@ -8,6 +8,7 @@ import { PlannedOutingCard } from './PlannedOutingCard';
 export interface PlannedOutingsTimelineProps {
   plannedOutings: PlannedOutingRow[];
   onAddPlannedOuting: () => void | Promise<void>;
+  onSelectPlannedOuting?: (plannedOuting: PlannedOutingRow) => void;
   isLoading?: boolean;
   isAdding?: boolean;
 }
@@ -15,10 +16,11 @@ export interface PlannedOutingsTimelineProps {
 export const PlannedOutingsTimeline: React.FC<PlannedOutingsTimelineProps> = ({
   plannedOutings,
   onAddPlannedOuting,
+  onSelectPlannedOuting,
   isLoading = false,
   isAdding = false,
 }) => {
-  // Tri par scheduled_for chronologique ascendant
+  // Sort chronologically ascending by scheduled_for
   const sortedOutings = [...plannedOutings].sort(
     (a, b) => new Date(a.scheduled_for).getTime() - new Date(b.scheduled_for).getTime()
   );
@@ -51,23 +53,27 @@ export const PlannedOutingsTimeline: React.FC<PlannedOutingsTimelineProps> = ({
 
             return (
               <View key={item.id} style={styles.timelineItem} testID={`timeline-item-${item.id}`}>
-                {/* Barre verticale de continuité avec connecteur et point */}
+                {/* Vertical continuity timeline line with node indicator */}
                 <View style={styles.timelineColumn}>
-                  {/* Segment supérieur du fil conducteur */}
+                  {/* Top connector line segment */}
                   {!isFirst && <View style={styles.lineTop} testID={`timeline-line-top-${item.id}`} />}
 
-                  {/* Nœud / point chronologique */}
+                  {/* Chronological timeline node */}
                   <View style={styles.node} testID={`timeline-node-${item.id}`}>
                     <View style={styles.nodeInner} />
                   </View>
 
-                  {/* Segment inférieur du fil conducteur */}
+                  {/* Bottom connector line segment */}
                   {!isLast && <View style={styles.lineBottom} testID={`timeline-line-bottom-${item.id}`} />}
                 </View>
 
-                {/* Carte de l'étape */}
+                {/* Planned outing card */}
                 <View style={styles.cardWrapper}>
-                  <PlannedOutingCard plannedOuting={item} stepIndex={index} />
+                  <PlannedOutingCard
+                    plannedOuting={item}
+                    stepIndex={index}
+                    onPress={onSelectPlannedOuting ? () => onSelectPlannedOuting(item) : undefined}
+                  />
                 </View>
               </View>
             );
@@ -75,7 +81,7 @@ export const PlannedOutingsTimeline: React.FC<PlannedOutingsTimelineProps> = ({
         </View>
       )}
 
-      {/* Bouton d'ajout d'étape en bas */}
+      {/* Add step action button at the bottom */}
       <View style={styles.actionContainer}>
         <Button
           title="+ Ajouter une étape"

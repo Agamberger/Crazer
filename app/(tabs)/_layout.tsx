@@ -21,6 +21,7 @@ export default function TabLayout() {
         name="index"
         listeners={{
           tabPress: () => {
+            useOutingsStore.getState().selectPlannedOuting(null);
             useOutingsStore.getState().selectOuting(null);
           },
         }}

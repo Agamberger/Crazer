@@ -33,6 +33,7 @@ export interface OutingEditFormProps {
   plannedOutings?: PlannedOutingRow[];
   onAddPlannedOuting?: () => Promise<void> | void;
   isAddingPlannedOuting?: boolean;
+  onSelectPlannedOuting?: (plannedOuting: PlannedOutingRow) => void;
 }
 
 const STATUS_OPTIONS: { value: OutingStatus; label: string; emoji: string }[] =
@@ -51,11 +52,13 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
   plannedOutings: propPlannedOutings,
   onAddPlannedOuting: propOnAddPlannedOuting,
   isAddingPlannedOuting = false,
+  onSelectPlannedOuting: propOnSelectPlannedOuting,
 }) => {
   const { user } = useAuth();
   const storePlannedOutings = useOutingsStore((state) => state.plannedOutings);
   const fetchPlannedOutings = useOutingsStore((state) => state.fetchPlannedOutings);
   const createPlannedOuting = useOutingsStore((state) => state.createPlannedOuting);
+  const selectPlannedOuting = useOutingsStore((state) => state.selectPlannedOuting);
   const isLoadingPlannedOutings = useOutingsStore((state) => state.isLoadingPlannedOutings);
 
   const [title, setTitle] = useState(outing.title || '');
@@ -89,6 +92,14 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
       await propOnAddPlannedOuting();
     } else {
       await createPlannedOuting(outing.id, user?.id);
+    }
+  };
+
+  const handleSelectPlannedOuting = (plannedOuting: PlannedOutingRow) => {
+    if (propOnSelectPlannedOuting) {
+      propOnSelectPlannedOuting(plannedOuting);
+    } else {
+      selectPlannedOuting(plannedOuting.id);
     }
   };
 
@@ -137,7 +148,7 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <Card style={styles.card}>
-        {/* Titre éditable directement en tête de formulaire */}
+        {/* Outing title editable directly at the top */}
         <View style={styles.titleContainer}>
           <TextInput
             style={styles.titleInput}
@@ -159,7 +170,7 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
           </View>
         ) : null}
 
-        {/* Description */}
+        {/* Outing description */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Description</Text>
           <TextInput
@@ -176,7 +187,7 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
           />
         </View>
 
-        {/* Date et heure de début avec boutons d'ouverture du sélecteur */}
+        {/* Start date & time with picker triggers */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Date et heure de début</Text>
           <View style={styles.dateTimeContainer}>
@@ -240,7 +251,7 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
           </View>
         </View>
 
-        {/* Sélecteur de date & heure entièrement thématisé aux couleurs de Crazer */}
+        {/* Crazer themed date & time picker modal */}
         <ThemedDateTimePicker
           visible={showPicker}
           value={startDate}
@@ -249,7 +260,7 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
           onCancel={() => setShowPicker(false)}
         />
 
-        {/* Statut dérivé de l'Enum Supabase */}
+        {/* Outing status derived from Supabase enum */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Statut de la sortie</Text>
           <View style={styles.statusGrid}>
@@ -277,7 +288,7 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
           </View>
         </View>
 
-        {/* Actions compactes */}
+        {/* Action buttons */}
         <View style={styles.actionButtons}>
           {onCancel ? (
             <Button
@@ -302,10 +313,11 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
         </View>
       </Card>
 
-      {/* Section des Planned Outings / Timeline */}
+      {/* Planned Outings timeline section */}
       <PlannedOutingsTimeline
         plannedOutings={activePlannedOutings}
         onAddPlannedOuting={handleAddPlannedOuting}
+        onSelectPlannedOuting={handleSelectPlannedOuting}
         isLoading={!propPlannedOutings && isLoadingPlannedOutings}
         isAdding={isAddingPlannedOuting}
       />

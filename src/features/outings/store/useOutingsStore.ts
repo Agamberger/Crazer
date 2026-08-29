@@ -12,6 +12,7 @@ import { outingService } from '../services/outingService';
 interface OutingsState {
   outings: OutingRow[];
   selectedOutingId: string | null;
+  selectedPlannedOutingId: string | null;
   plannedOutings: PlannedOutingRow[];
   isLoading: boolean;
   isLoadingPlannedOutings: boolean;
@@ -22,6 +23,7 @@ interface OutingsState {
   createOuting: (userId?: string) => Promise<OutingRow | null>;
   updateOuting: (id: string, updates: OutingUpdate) => Promise<OutingRow | null>;
   selectOuting: (id: string | null) => void;
+  selectPlannedOuting: (id: string | null) => void;
 
   fetchPlannedOutings: (outingId: string) => Promise<PlannedOutingRow[]>;
   createPlannedOuting: (outingId: string, userId?: string) => Promise<PlannedOutingRow | null>;
@@ -32,6 +34,7 @@ interface OutingsState {
 export const useOutingsStore = create<OutingsState>((set, get) => ({
   outings: [],
   selectedOutingId: null,
+  selectedPlannedOutingId: null,
   plannedOutings: [],
   isLoading: false,
   isLoadingPlannedOutings: false,
@@ -82,7 +85,7 @@ export const useOutingsStore = create<OutingsState>((set, get) => ({
         throw new Error('Utilisateur non connecté');
       }
 
-      // Date par défaut : demain à la même heure
+      // Default start date: tomorrow at the same time
       const defaultStartDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       const newOuting = await outingService.createOuting({
         title: 'Nouvelle sortie',
@@ -95,6 +98,7 @@ export const useOutingsStore = create<OutingsState>((set, get) => ({
       set({
         outings: [newOuting, ...get().outings],
         selectedOutingId: newOuting.id,
+        selectedPlannedOutingId: null,
         plannedOutings: [],
         isLoading: false,
       });
@@ -123,7 +127,14 @@ export const useOutingsStore = create<OutingsState>((set, get) => ({
     }
   },
 
-  selectOuting: (id) => set({ selectedOutingId: id, plannedOutings: id ? get().plannedOutings : [] }),
+  selectOuting: (id) =>
+    set({
+      selectedOutingId: id,
+      selectedPlannedOutingId: null,
+      plannedOutings: id ? get().plannedOutings : [],
+    }),
+
+  selectPlannedOuting: (id) => set({ selectedPlannedOutingId: id }),
 
   fetchPlannedOutings: async (outingId: string) => {
     set({ isLoadingPlannedOutings: true, error: null });
@@ -231,6 +242,8 @@ export const useOutingsStore = create<OutingsState>((set, get) => ({
       await outingService.deletePlannedOuting(id);
       set({
         plannedOutings: get().plannedOutings.filter((p) => p.id !== id),
+        selectedPlannedOutingId:
+          get().selectedPlannedOutingId === id ? null : get().selectedPlannedOutingId,
         isLoadingPlannedOutings: false,
       });
       return true;
