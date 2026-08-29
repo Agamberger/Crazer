@@ -38,7 +38,7 @@ CREATE TABLE public.outings (
   -- ── Auteur ───────────────────────────────────────────────
   created_by    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
 
-  -- ── Informations générales ────────────────────────────────
+  -- ── Informations générales ───────────────────────────────
   title         TEXT NOT NULL,
   description   TEXT,
 
@@ -127,21 +127,35 @@ CREATE TABLE public.outing_participants (
 CREATE INDEX outing_participants_outing_idx ON public.outing_participants (outing_id);
 CREATE INDEX outing_participants_user_idx   ON public.outing_participants (user_id);
 
--- Helper SECURITY DEFINER pour éviter les récursions RLS
+-- Helper PL/pgSQL SECURITY DEFINER pour éviter les récursions RLS (anti-inlining)
 CREATE OR REPLACE FUNCTION public.is_outing_organizer(p_outing_id UUID, p_user_id UUID)
-RETURNS BOOLEAN LANGUAGE sql SECURITY DEFINER STABLE AS $$
-  SELECT EXISTS (
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+BEGIN
+  RETURN EXISTS (
     SELECT 1 FROM public.outings
     WHERE id = p_outing_id AND created_by = p_user_id
   );
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.is_outing_participant(p_outing_id UUID, p_user_id UUID)
-RETURNS BOOLEAN LANGUAGE sql SECURITY DEFINER STABLE AS $$
-  SELECT EXISTS (
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+BEGIN
+  RETURN EXISTS (
     SELECT 1 FROM public.outing_participants
     WHERE outing_id = p_outing_id AND user_id = p_user_id
   );
+END;
 $$;
 
 -- ============================================================
@@ -155,7 +169,10 @@ CREATE POLICY "Participants peuvent voir les membres d'une sortie"
   TO authenticated
   USING (
     auth.uid() = user_id
-    OR public.is_outing_organizer(outing_id, auth.uid())
+    OR EXISTS (
+      SELECT 1 FROM public.outings o
+      WHERE o.id = outing_id AND o.created_by = auth.uid()
+    )
   );
 
 -- L'organisateur peut inviter des participants
@@ -163,7 +180,10 @@ CREATE POLICY "Organisateur peut inviter des participants"
   ON public.outing_participants FOR INSERT
   TO authenticated
   WITH CHECK (
-    public.is_outing_organizer(outing_id, auth.uid())
+    EXISTS (
+      SELECT 1 FROM public.outings o
+      WHERE o.id = outing_id AND o.created_by = auth.uid()
+    )
   );
 
 -- Un participant peut mettre à jour son propre statut ; l'organisateur peut tout modifier
@@ -172,7 +192,10 @@ CREATE POLICY "Mise à jour statut participant"
   TO authenticated
   USING (
     auth.uid() = user_id
-    OR public.is_outing_organizer(outing_id, auth.uid())
+    OR EXISTS (
+      SELECT 1 FROM public.outings o
+      WHERE o.id = outing_id AND o.created_by = auth.uid()
+    )
   );
 
 -- L'organisateur peut retirer un participant
@@ -180,7 +203,10 @@ CREATE POLICY "Organisateur peut retirer un participant"
   ON public.outing_participants FOR DELETE
   TO authenticated
   USING (
-    public.is_outing_organizer(outing_id, auth.uid())
+    EXISTS (
+      SELECT 1 FROM public.outings o
+      WHERE o.id = outing_id AND o.created_by = auth.uid()
+    )
   );
 
 -- ============================================================
@@ -190,7 +216,10 @@ CREATE POLICY "Participants peuvent lire la sortie"
   ON public.outings FOR SELECT
   TO authenticated
   USING (
-    public.is_outing_participant(id, auth.uid())
+    EXISTS (
+      SELECT 1 FROM public.outing_participants op
+      WHERE op.outing_id = id AND op.user_id = auth.uid()
+    )
   );
 
 -- ============================================================
@@ -236,7 +265,7 @@ CREATE TABLE public.planned_outings (
   CONSTRAINT planned_outings_duration_positive CHECK (duration_min IS NULL OR duration_min > 0)
 );
 
--- ── Index principaux ──────────────────────────────────────────
+-- ── Index principaux ───────────────────────────────────────
 -- Index sur outing_id + scheduled_for : la requête canonique est
 -- "toutes les étapes d'une sortie, triées par date/heure"
 CREATE INDEX planned_outings_outing_scheduled_idx
@@ -294,18 +323,27 @@ CREATE TRIGGER planned_outings_updated_at
 -- ============================================================
 ALTER TABLE public.planned_outings ENABLE ROW LEVEL SECURITY;
 
--- Helper: est-ce que l'utilisateur courant participe à ce outing ?
+-- Helper PL/pgSQL: est-ce que l'utilisateur courant participe à ce outing ?
 -- (organisateur OU participant accepté/invité)
 CREATE OR REPLACE FUNCTION public.is_outing_member(p_outing_id UUID)
-RETURNS BOOLEAN LANGUAGE sql SECURITY DEFINER STABLE AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.outings o
-    WHERE o.id = p_outing_id AND o.created_by = auth.uid()
-  )
-  OR EXISTS (
-    SELECT 1 FROM public.outing_participants op
-    WHERE op.outing_id = p_outing_id AND op.user_id = auth.uid()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+BEGIN
+  RETURN (
+    EXISTS (
+      SELECT 1 FROM public.outings o
+      WHERE o.id = p_outing_id AND o.created_by = auth.uid()
+    )
+    OR EXISTS (
+      SELECT 1 FROM public.outing_participants op
+      WHERE op.outing_id = p_outing_id AND op.user_id = auth.uid()
+    )
   );
+END;
 $$;
 
 -- Les membres de la sortie peuvent lire les étapes
@@ -329,10 +367,7 @@ CREATE POLICY "Créateur ou organisateur peut modifier un planned_outing"
   TO authenticated
   USING (
     auth.uid() = created_by
-    OR EXISTS (
-      SELECT 1 FROM public.outings o
-      WHERE o.id = outing_id AND o.created_by = auth.uid()
-    )
+    OR public.is_outing_organizer(outing_id, auth.uid())
   );
 
 -- Le créateur de l'étape OU l'organisateur peut supprimer
@@ -341,10 +376,7 @@ CREATE POLICY "Créateur ou organisateur peut supprimer un planned_outing"
   TO authenticated
   USING (
     auth.uid() = created_by
-    OR EXISTS (
-      SELECT 1 FROM public.outings o
-      WHERE o.id = outing_id AND o.created_by = auth.uid()
-    )
+    OR public.is_outing_organizer(outing_id, auth.uid())
   );
 
 -- ============================================================
