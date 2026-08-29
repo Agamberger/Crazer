@@ -1,11 +1,13 @@
 import { useOutingsStore } from '../store/useOutingsStore';
 import { outingService } from '../services/outingService';
-import { OutingRow } from '@/shared/types';
+import { OutingRow, OutingUpdate } from '@/shared/types';
 
 jest.mock('../services/outingService', () => ({
   outingService: {
     fetchMyOutings: jest.fn(),
     createOuting: jest.fn(),
+    getOutingById: jest.fn(),
+    updateOuting: jest.fn(),
   },
 }));
 
@@ -82,6 +84,89 @@ describe('useOutingsStore', () => {
     );
     expect(useOutingsStore.getState().outings[0]).toEqual(newOutingRow);
     expect(useOutingsStore.getState().isLoading).toBe(false);
+  });
+
+  it('fetchOutingById fetches and returns outing', async () => {
+    const mockOuting: OutingRow = {
+      id: 'out-456',
+      title: 'Soirée Jeux',
+      description: 'Jeux de société',
+      start_date: '2026-08-29T19:00:00Z',
+      created_by: 'user-1',
+      status: 'planned',
+      cover_image: null,
+      created_at: '2026-08-24T20:00:00Z',
+      updated_at: '2026-08-24T20:00:00Z',
+    };
+
+    (outingService.getOutingById as jest.Mock).mockResolvedValue(mockOuting);
+
+    const result = await useOutingsStore.getState().fetchOutingById('out-456');
+
+    expect(outingService.getOutingById).toHaveBeenCalledWith('out-456');
+    expect(result).toEqual(mockOuting);
+    expect(useOutingsStore.getState().outings).toContainEqual(mockOuting);
+    expect(useOutingsStore.getState().isLoading).toBe(false);
+  });
+
+  it('fetchOutingById handles error gracefully', async () => {
+    (outingService.getOutingById as jest.Mock).mockRejectedValue(
+      new Error('Sortie introuvable')
+    );
+
+    const result = await useOutingsStore.getState().fetchOutingById('out-inexistant');
+
+    expect(result).toBeNull();
+    expect(useOutingsStore.getState().error).toBe('Sortie introuvable');
+  });
+
+  it('updateOuting updates outing in state and returns updated outing', async () => {
+    const existingOuting: OutingRow = {
+      id: 'out-789',
+      title: 'Ancien Titre',
+      description: 'Ancienne description',
+      start_date: '2026-08-29T19:00:00Z',
+      created_by: 'user-1',
+      status: 'draft',
+      cover_image: null,
+      created_at: '2026-08-24T20:00:00Z',
+      updated_at: '2026-08-24T20:00:00Z',
+    };
+
+    useOutingsStore.setState({ outings: [existingOuting] });
+
+    const updates: OutingUpdate = {
+      title: 'Titre Mis à Jour',
+      status: 'planned',
+    };
+
+    const updatedOuting: OutingRow = {
+      ...existingOuting,
+      title: 'Titre Mis à Jour',
+      status: 'planned',
+      updated_at: '2026-08-24T21:00:00Z',
+    };
+
+    (outingService.updateOuting as jest.Mock).mockResolvedValue(updatedOuting);
+
+    const result = await useOutingsStore.getState().updateOuting('out-789', updates);
+
+    expect(outingService.updateOuting).toHaveBeenCalledWith('out-789', updates);
+    expect(result).toEqual(updatedOuting);
+    expect(useOutingsStore.getState().outings[0].title).toBe('Titre Mis à Jour');
+    expect(useOutingsStore.getState().outings[0].status).toBe('planned');
+    expect(useOutingsStore.getState().isLoading).toBe(false);
+  });
+
+  it('updateOuting handles error gracefully', async () => {
+    (outingService.updateOuting as jest.Mock).mockRejectedValue(
+      new Error('Erreur de mise à jour')
+    );
+
+    const result = await useOutingsStore.getState().updateOuting('out-789', { title: 'X' });
+
+    expect(result).toBeNull();
+    expect(useOutingsStore.getState().error).toBe('Erreur de mise à jour');
   });
 
   it('selectOuting updates selectedOutingId', () => {
