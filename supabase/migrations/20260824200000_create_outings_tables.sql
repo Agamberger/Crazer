@@ -32,7 +32,7 @@ CREATE TYPE public.planned_outing_status AS ENUM (
 --              Elle a une date de début (start_date) et regroupe
 --              plusieurs étapes planifiées (planned_outings).
 -- ============================================================
-CREATE TABLE public.outings (\
+CREATE TABLE public.outings (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- ── Auteur ───────────────────────────────────────────────
@@ -127,8 +127,6 @@ CREATE TABLE public.outing_participants (
 CREATE INDEX outing_participants_outing_idx ON public.outing_participants (outing_id);
 CREATE INDEX outing_participants_user_idx   ON public.outing_participants (user_id);
 
-<<<<<<< Updated upstream
-=======
 -- Helper PL/pgSQL SECURITY DEFINER pour éviter les récursions RLS (anti-inlining)
 CREATE OR REPLACE FUNCTION public.is_outing_organizer(p_outing_id UUID, p_user_id UUID)
 RETURNS BOOLEAN
@@ -160,7 +158,6 @@ BEGIN
 END;
 $$;
 
->>>>>>> Stashed changes
 -- ============================================================
 -- ROW LEVEL SECURITY — outing_participants
 -- ============================================================
