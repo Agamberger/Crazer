@@ -1,6 +1,7 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
 import TabLayout from '../_layout';
+import { useOutingsStore } from '@/features/outings';
 
 describe('TabLayout Navbar Icons', () => {
   const tabs = ['index', 'activites', 'carte', 'profil'];
@@ -14,5 +15,19 @@ describe('TabLayout Navbar Icons', () => {
       expect(options).toBeDefined();
       expect(typeof options.tabBarIcon).toBe('function');
     });
+  });
+
+  test('doit réinitialiser la sélection de sortie au clic sur la tab index', () => {
+    useOutingsStore.setState({ selectedOutingId: 'out-123' });
+
+    const { getByTestId } = render(<TabLayout />);
+    const indexScreen = getByTestId('tab-screen-index');
+    const listeners = indexScreen.props.listeners;
+
+    expect(listeners).toBeDefined();
+    expect(typeof listeners.tabPress).toBe('function');
+
+    listeners.tabPress();
+    expect(useOutingsStore.getState().selectedOutingId).toBeNull();
   });
 });

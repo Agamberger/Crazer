@@ -1,46 +1,43 @@
 {
   "expo": {
-    "name": "Crazer",
+    "name": "crazer",
     "slug": "crazer",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "automatic",
+    "icon": "./assets/images/icon.png",
     "scheme": "crazer",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#121214"
     },
     "ios": {
-      "supportsTablet": false,
-      "bundleIdentifier": "com.crazer.app"
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Crazer a besoin de votre position pour vous proposer des sorties et activités adaptées autour de vous.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Crazer a besoin de votre position pour vous proposer des sorties et activités adaptées autour de vous."
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#121214"
       },
-      "package": "com.crazer.app"
+      "package": "com.crazer.app",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
-      "favicon": "./assets/favicon.png",
-      "bundler": "metro"
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
       "expo-router",
-      "@maplibre/maplibre-react-native",
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "minSdkVersion": 24
-          },
-          "ios": {
-            "useFrameworks": "dynamic"
-          }
-        }
-      ],
       [
         "expo-location",
         {

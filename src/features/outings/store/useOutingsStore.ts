@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/shared/lib/supabase';
-import { OutingRow } from '@/shared/types';
+import { OutingRow, OutingUpdate } from '@/shared/types';
 import { outingService } from '../services/outingService';
 
 interface OutingsState {
@@ -10,7 +10,9 @@ interface OutingsState {
   error: string | null;
 
   fetchOutings: () => Promise<void>;
+  fetchOutingById: (id: string) => Promise<OutingRow | null>;
   createOuting: (userId?: string) => Promise<OutingRow | null>;
+  updateOuting: (id: string, updates: OutingUpdate) => Promise<OutingRow | null>;
   selectOuting: (id: string | null) => void;
 }
 
@@ -28,6 +30,27 @@ export const useOutingsStore = create<OutingsState>((set, get) => ({
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors du chargement des sorties';
       set({ error: message, isLoading: false });
+    }
+  },
+
+  fetchOutingById: async (id: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const outing = await outingService.getOutingById(id);
+      const existing = get().outings;
+      const index = existing.findIndex((o) => o.id === id);
+      if (index >= 0) {
+        const updatedList = [...existing];
+        updatedList[index] = outing;
+        set({ outings: updatedList, isLoading: false });
+      } else {
+        set({ outings: [outing, ...existing], isLoading: false });
+      }
+      return outing;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erreur lors de la récupération de la sortie';
+      set({ error: message, isLoading: false });
+      return null;
     }
   },
 
@@ -63,6 +86,22 @@ export const useOutingsStore = create<OutingsState>((set, get) => ({
       return newOuting;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors de la création de la sortie';
+      set({ error: message, isLoading: false });
+      return null;
+    }
+  },
+
+  updateOuting: async (id: string, updates: OutingUpdate) => {
+    set({ isLoading: true, error: null });
+    try {
+      const updated = await outingService.updateOuting(id, updates);
+      set({
+        outings: get().outings.map((o) => (o.id === id ? updated : o)),
+        isLoading: false,
+      });
+      return updated;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erreur lors de la mise à jour de la sortie';
       set({ error: message, isLoading: false });
       return null;
     }

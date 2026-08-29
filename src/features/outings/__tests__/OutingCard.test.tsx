@@ -16,10 +16,10 @@ describe('OutingCard Component', () => {
     updated_at: '2026-08-24T18:00:00Z',
   };
 
-  it('renders outing title, description, and status correctly', () => {
+  it('renders outing title, description, and French status correctly', () => {
     const { getByText } = render(<OutingCard outing={mockOuting} />);
     expect(getByText('Bowling du vendredi')).toBeTruthy();
-    expect(getByText('PLANNED')).toBeTruthy();
+    expect(getByText('📅 Planifiée')).toBeTruthy();
     expect(getByText('Petite partie de bowling entre amis')).toBeTruthy();
   });
 });

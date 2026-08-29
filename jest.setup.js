@@ -1,36 +1,52 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 // Mock Expo Router
-const React = require('react');
-const MockTabs = ({ children }: any) => React.createElement('Tabs', null, children);
-MockTabs.Screen = ({ name, options }: any) =>
-  React.createElement('Tabs.Screen', { testID: `tab-screen-${name}`, name, options });
+jest.mock('expo-router', () => {
+  const React = require('react');
+  const MockTabs = ({ children }: any) => React.createElement('Tabs', null, children);
+  MockTabs.Screen = ({ name, options, listeners }: any) =>
+    React.createElement('Tabs.Screen', { testID: `tab-screen-${name}`, name, options, listeners });
 
-jest.mock('expo-router', () => ({
-  useRouter: () => ({
-    push: jest.fn(),
-    replace: jest.fn(),
-    back: jest.fn(),
-  }),
-  useSearchParams: () => ({}),
-  usePathname: () => '/',
-  Link: 'Link',
-  Tabs: MockTabs,
-  Stack: 'Stack',
-}));
+  return {
+    useRouter: () => ({
+      push: jest.fn(),
+      replace: jest.fn(),
+      back: jest.fn(),
+    }),
+    useNavigation: jest.fn(() => ({
+      setOptions: jest.fn(),
+      addListener: jest.fn(),
+    })),
+    useSearchParams: () => ({}),
+    usePathname: () => '/',
+    Link: 'Link',
+    Tabs: MockTabs,
+    Stack: 'Stack',
+  };
+});
 
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest')
 );
 
+// Mock Expo vector icons
+jest.mock('@expo/vector-icons', () => {
+  const React = require('react');
+  const { Text } = require('react-native');
+  return {
+    Ionicons: (props: any) => React.createElement(Text, props, props.name),
+  };
+});
+
 // Polyfill WebSocket pour l'environnement de test Jest (Node < 22)
 if (typeof global.WebSocket === 'undefined') {
   // @ts-ignore
   global.WebSocket = class WebSocket {
-    constructor() { }
-    close() { }
-    send() { }
-    addEventListener() { }
-    removeEventListener() { }
+    constructor() {}
+    close() {}
+    send() {}
+    addEventListener() {}
+    removeEventListener() {}
   };
 }
 
@@ -54,4 +70,3 @@ jest.mock('react-native-webview', () => {
     WebView: (props: any) => React.createElement(View, { testID: 'leaflet-webview', ...props }),
   };
 });
-
