@@ -1,5 +1,11 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 // Mock Expo Router
+const mockRouter = {
+  push: jest.fn(),
+  replace: jest.fn(),
+  back: jest.fn(),
+};
+
 jest.mock('expo-router', () => {
   const React = require('react');
   const MockTabs = ({ children }: any) => React.createElement('Tabs', null, children);
@@ -7,11 +13,7 @@ jest.mock('expo-router', () => {
     React.createElement('Tabs.Screen', { testID: `tab-screen-${name}`, name, options, listeners });
 
   return {
-    useRouter: () => ({
-      push: jest.fn(),
-      replace: jest.fn(),
-      back: jest.fn(),
-    }),
+    useRouter: () => mockRouter,
     useNavigation: jest.fn(() => ({
       setOptions: jest.fn(),
       addListener: jest.fn(),

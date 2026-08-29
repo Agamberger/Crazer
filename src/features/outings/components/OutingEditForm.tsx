@@ -8,10 +8,11 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '@/features/auth';
+import { useRouter } from 'expo-router';
+import { useMapStore } from '@/features/carte/store/useMapStore';
 import { Button } from '@/shared/components/Button';
 import { Card } from '@/shared/components/Card';
-import { ThemedDateTimePicker } from '@/shared/components/ThemedDateTimePicker';
+import { ThemedDateTimePicker } from '@/shared/components/DateTimePicker';
 import { colors, spacing, typography } from '@/shared/constants/theme';
 import {
   Constants,
@@ -32,6 +33,7 @@ export interface OutingEditFormProps {
   onCancel?: () => void;
   plannedOutings?: PlannedOutingRow[];
   onAddPlannedOuting?: () => Promise<void> | void;
+  onAddFromMap?: () => void;
   isAddingPlannedOuting?: boolean;
   onSelectPlannedOuting?: (plannedOuting: PlannedOutingRow) => void;
 }
@@ -51,15 +53,20 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
   onCancel,
   plannedOutings: propPlannedOutings,
   onAddPlannedOuting: propOnAddPlannedOuting,
+  onAddFromMap: propOnAddFromMap,
   isAddingPlannedOuting = false,
   onSelectPlannedOuting: propOnSelectPlannedOuting,
 }) => {
-  const { user } = useAuth();
+  const router = useRouter();
   const storePlannedOutings = useOutingsStore((state) => state.plannedOutings);
   const fetchPlannedOutings = useOutingsStore((state) => state.fetchPlannedOutings);
   const createPlannedOuting = useOutingsStore((state) => state.createPlannedOuting);
-  const selectPlannedOuting = useOutingsStore((state) => state.selectPlannedOuting);
-  const isLoadingPlannedOutings = useOutingsStore((state) => state.isLoadingPlannedOutings);
+  const setSelectedPlannedOutingId = useOutingsStore(
+    (state) => state.setSelectedPlannedOutingId
+  );
+  const isLoadingPlannedOutings = useOutingsStore(
+    (state) => state.isLoadingPlannedOutings
+  );
 
   const [title, setTitle] = useState(outing.title || '');
   const [description, setDescription] = useState(outing.description || '');
@@ -91,7 +98,21 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
     if (propOnAddPlannedOuting) {
       await propOnAddPlannedOuting();
     } else {
-      await createPlannedOuting(outing.id, user?.id);
+      const newPlanned = await createPlannedOuting(outing.id, {
+        title: `Étape ${activePlannedOutings.length + 1}`,
+      });
+      if (propOnSelectPlannedOuting && newPlanned) {
+        propOnSelectPlannedOuting(newPlanned);
+      }
+    }
+  };
+
+  const handleAddFromMap = () => {
+    if (propOnAddFromMap) {
+      propOnAddFromMap();
+    } else {
+      useMapStore.getState().setTargetOutingId(outing.id);
+      router.push('/(tabs)/carte');
     }
   };
 
@@ -99,7 +120,7 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
     if (propOnSelectPlannedOuting) {
       propOnSelectPlannedOuting(plannedOuting);
     } else {
-      selectPlannedOuting(plannedOuting.id);
+      setSelectedPlannedOutingId(plannedOuting.id);
     }
   };
 
@@ -317,6 +338,7 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
       <PlannedOutingsTimeline
         plannedOutings={activePlannedOutings}
         onAddPlannedOuting={handleAddPlannedOuting}
+        onAddFromMap={handleAddFromMap}
         onSelectPlannedOuting={handleSelectPlannedOuting}
         isLoading={!propPlannedOutings && isLoadingPlannedOutings}
         isAdding={isAddingPlannedOuting}

@@ -3,6 +3,7 @@
  */
 
 export * from './database.types';
+export * from './place';
 
 import { Database, Enums } from './database.types';
 

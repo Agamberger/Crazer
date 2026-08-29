@@ -26,6 +26,7 @@ describe('OutingsScreen (Outings Tab)', () => {
   const mockCreateOuting = jest.fn();
   const mockUpdateOuting = jest.fn();
   const mockFetchOutingById = jest.fn();
+  const mockCreatePlannedOuting = jest.fn();
   const mockUpdatePlannedOuting = jest.fn();
   const mockDeletePlannedOuting = jest.fn();
 
@@ -70,6 +71,7 @@ describe('OutingsScreen (Outings Tab)', () => {
       createOuting: mockCreateOuting,
       updateOuting: mockUpdateOuting,
       fetchOutingById: mockFetchOutingById,
+      createPlannedOuting: mockCreatePlannedOuting,
       updatePlannedOuting: mockUpdatePlannedOuting,
       deletePlannedOuting: mockDeletePlannedOuting,
     });
@@ -244,6 +246,52 @@ describe('OutingsScreen (Outings Tab)', () => {
 
       // selectedPlannedOutingId is set to 'po-1'
       expect(useOutingsStore.getState().selectedPlannedOutingId).toBe('po-1');
+    });
+
+    it('opens planned outing creation/edit page when custom step is chosen from timeline', async () => {
+      const mockCreatedStep: PlannedOutingRow = {
+        id: 'po-new-custom',
+        outing_id: 'out-1',
+        title: 'Étape 2',
+        description: null,
+        notes: null,
+        scheduled_for: '2026-08-30T19:00:00.000Z',
+        duration_min: 60,
+        status: 'pending',
+        place_id: null,
+        created_by: 'test-user-id',
+        created_at: '2026-08-24T20:00:00Z',
+        updated_at: '2026-08-24T20:00:00Z',
+      };
+
+      mockCreatePlannedOuting.mockImplementation(async () => {
+        useOutingsStore.setState({
+          plannedOutings: [mockPlannedOuting, mockCreatedStep],
+          selectedPlannedOutingId: mockCreatedStep.id,
+        });
+        return mockCreatedStep;
+      });
+
+      useOutingsStore.setState({
+        outings: [mockOuting],
+        selectedOutingId: 'out-1',
+        plannedOutings: [mockPlannedOuting],
+        selectedPlannedOutingId: null,
+      });
+
+      const { getByTestId } = render(<OutingsScreen />);
+
+      // Open choice modal
+      fireEvent.press(getByTestId('btn-add-planned-outing'));
+      expect(getByTestId('modal-add-step-choice')).toBeTruthy();
+
+      // Choose custom step
+      fireEvent.press(getByTestId('btn-add-custom-step'));
+
+      await waitFor(() => {
+        expect(mockCreatePlannedOuting).toHaveBeenCalled();
+        expect(useOutingsStore.getState().selectedPlannedOutingId).toBe('po-new-custom');
+      });
     });
 
     it('renders planned outing edit form when selectedPlannedOutingId is set and allows editing & submitting', async () => {

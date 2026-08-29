@@ -1,7 +1,9 @@
 import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { useRouter } from 'expo-router';
 import { OutingEditForm } from '../components/OutingEditForm';
 import { OutingRow, PlannedOutingRow } from '@/shared/types';
+import { useMapStore } from '@/features/carte/store/useMapStore';
 
 jest.mock('@/features/auth', () => ({
   useAuth: () => ({ user: { id: 'user-123', email: 'test@example.com' } }),
@@ -48,6 +50,10 @@ describe('OutingEditForm Component', () => {
       updated_at: '2026-08-24T20:00:00Z',
     },
   ];
+
+  beforeEach(() => {
+    useMapStore.setState({ targetOutingId: null });
+  });
 
   it('renders form fields pre-filled with outing data including editable title and formatted date and time', () => {
     const { getByTestId, getByText } = render(
@@ -139,7 +145,7 @@ describe('OutingEditForm Component', () => {
     expect(handleCancel).toHaveBeenCalled();
   });
 
-  it('renders planned outings timeline with items and handles add button click', async () => {
+  it('renders planned outings timeline with items and handles custom step addition', async () => {
     const handleAdd = jest.fn();
     const { getByText, getByTestId } = render(
       <OutingEditForm
@@ -154,7 +160,27 @@ describe('OutingEditForm Component', () => {
     expect(getByTestId('btn-add-planned-outing')).toBeTruthy();
 
     fireEvent.press(getByTestId('btn-add-planned-outing'));
+    expect(getByTestId('modal-add-step-choice')).toBeTruthy();
+
+    fireEvent.press(getByTestId('btn-add-custom-step'));
     expect(handleAdd).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles choosing place from map by setting targetOutingId and routing to carte', () => {
+    const router = useRouter();
+    const { getByTestId } = render(
+      <OutingEditForm
+        outing={mockOuting}
+        onSubmit={jest.fn()}
+        plannedOutings={mockPlannedOutings}
+      />
+    );
+
+    fireEvent.press(getByTestId('btn-add-planned-outing'));
+    fireEvent.press(getByTestId('btn-add-from-map'));
+
+    expect(useMapStore.getState().targetOutingId).toBe(mockOuting.id);
+    expect(router.push).toHaveBeenCalledWith('/(tabs)/carte');
   });
 
   it('calls onSelectPlannedOuting when a planned outing in the timeline is pressed', () => {

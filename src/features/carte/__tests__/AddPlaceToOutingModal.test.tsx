@@ -6,6 +6,7 @@ import { PlaceItem } from '../types/carte';
 import { useOutingsStore } from '@/features/outings';
 import { ensurePlaceExists } from '../services/placeService';
 import { OutingRow, PlannedOutingRow } from '@/shared/types';
+import { useMapStore } from '../store/useMapStore';
 
 jest.mock('../services/placeService', () => ({
   ensurePlaceExists: jest.fn(),
@@ -89,6 +90,7 @@ describe('AddPlaceToOutingModal', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    useMapStore.setState({ targetOutingId: null });
     useOutingsStore.setState({
       outings: [mockActiveOuting, mockDoneOuting, mockCancelledOuting],
       plannedOutings: [],
@@ -161,6 +163,38 @@ describe('AddPlaceToOutingModal', () => {
     expect(getByTestId('input-planned-title').props.value).toBe('Café de Flore');
     expect(getByTestId('input-planned-description').props.value).toBe('Un célèbre café parisien.');
     expect(getByTestId('input-planned-notes').props.value).toContain('0145485526');
+  });
+
+  test('ouvre directement en étape 2 edit-planned si initialOuting est fourni', () => {
+    const { getByTestId, getByText, queryByTestId } = render(
+      <AddPlaceToOutingModal
+        visible={true}
+        place={mockPlace}
+        initialOuting={mockActiveOuting}
+        onClose={mockOnClose}
+      />
+    );
+
+    expect(queryByTestId('step-select-outing')).toBeNull();
+    expect(getByTestId('step-edit-planned')).toBeTruthy();
+    expect(getByText('Soirée entre amis')).toBeTruthy();
+    expect(getByTestId('input-planned-title').props.value).toBe('Café de Flore');
+  });
+
+  test('ouvre directement en étape 2 edit-planned si targetOutingId est défini dans useMapStore', () => {
+    useMapStore.setState({ targetOutingId: mockActiveOuting.id });
+
+    const { getByTestId, getByText, queryByTestId } = render(
+      <AddPlaceToOutingModal
+        visible={true}
+        place={mockPlace}
+        onClose={mockOnClose}
+      />
+    );
+
+    expect(queryByTestId('step-select-outing')).toBeNull();
+    expect(getByTestId('step-edit-planned')).toBeTruthy();
+    expect(getByText('Soirée entre amis')).toBeTruthy();
   });
 
   test('permet de revenir à la sélection de sortie via le bouton retour', async () => {

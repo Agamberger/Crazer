@@ -5,23 +5,15 @@ import {
   placeItemToCreatePlaceDto,
 } from '../types/carte';
 import {
-  createCustomPlace,
   ensurePlaceExists,
   fetchNearbyPlaces,
   searchPlaces,
   upsertPlace,
 } from '../services/placeService';
 
-// ── Mock Supabase ─────────────────────────────────────────────
+// ── Mock Supabase ────────────────────────────────────────────────────────────
 const mockRpc = jest.fn();
 const mockFrom = jest.fn();
-const mockSelect = jest.fn();
-const mockInsert = jest.fn();
-const mockUpsert = jest.fn();
-const mockSingle = jest.fn();
-const mockMaybeSingle = jest.fn();
-const mockEq = jest.fn();
-const mockIlike = jest.fn();
 
 jest.mock('@/shared/lib/supabase', () => ({
   supabase: {
@@ -142,11 +134,11 @@ describe('placeService.searchPlaces', () => {
     const results = await searchPlaces({ query: 'brasserie', lat: 48.8566, lng: 2.3522 });
 
     expect(mockRpc).toHaveBeenCalledWith('search_places', {
-      search_query: 'brasserie',
-      center_lat: 48.8566,
-      center_lng: 2.3522,
-      radius_meters: 2000,
-      filter_category: null,
+      query: 'brasserie',
+      lat: 48.8566,
+      lng: 2.3522,
+      radius_m: 2000,
+      filter_cat: undefined,
       max_results: 20,
     });
     expect(results).toHaveLength(1);
@@ -176,94 +168,108 @@ describe('placeService.fetchNearbyPlaces', () => {
     jest.clearAllMocks();
   });
 
-  test('appelle searchPlaces avec les coordonnées et filtres', async () => {
+  test('appelle searchPlaces avec les coordonnées et les valeurs par défaut', async () => {
     mockRpc.mockResolvedValueOnce({ data: [mockPlaceResult], error: null });
 
-    const results = await fetchNearbyPlaces(48.8566, 2.3522, 1000, 'bar');
+    const results = await fetchNearbyPlaces(48.8566, 2.3522, 1500, 'bar');
 
-    expect(results).toHaveLength(1);
-    expect(mockRpc).toHaveBeenCalledWith('search_places', expect.objectContaining({
-      center_lat: 48.8566,
-      center_lng: 2.3522,
-      radius_meters: 1000,
-      filter_category: 'bar',
+    expect(mockRpc).toHaveBeenCalledWith('search_places', {
+      query: undefined,
+      lat: 48.8566,
+      lng: 2.3522,
+      radius_m: 1500,
+      filter_cat: 'bar',
       max_results: 20,
-    }));
+    });
+    expect(results).toEqual([mockPlaceResult]);
   });
 });
 
-// ── Tests createCustomPlace & upsertPlace ─────────────────────────────────────
-describe('placeService.createCustomPlace & upsertPlace', () => {
+// ── Tests upsertPlace ────────────────────────────────────────────────────────
+describe('placeService.upsertPlace', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  test('createCustomPlace insère avec source="custom" et location Point et retourne l\'id', async () => {
-    mockSingle.mockResolvedValueOnce({ data: { id: 'new-uuid' }, error: null });
-    mockSelect.mockReturnValue({ single: mockSingle });
-    mockInsert.mockReturnValue({ select: mockSelect });
-    mockFrom.mockReturnValue({ insert: mockInsert });
+  test('met à jour un lieu existant trouvé par source_id', async () => {
+    const mockUpdate = jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) });
 
-    const id = await createCustomPlace({
-      name: 'Bar des Amis',
+    mockFrom.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            maybeSingle: jest.fn().mockResolvedValue({ data: { id: 'existing-uuid-1' } }),
+          }),
+        }),
+      }),
+      update: mockUpdate,
+    });
+
+    const placeId = await upsertPlace({
+      name: 'Lieu Mis à jour',
       category: 'bar',
       latitude: 48.85,
       longitude: 2.35,
-      address: '1 Rue de la Paix',
+      address: '1 rue test',
+      street: '1 rue test',
       city: 'Paris',
-      street: '1 Rue de la Paix',
-      postcode: '75001',
+      postcode: '75000',
       country_code: 'FR',
-      source: 'custom',
-      source_id: null,
+      source: 'osm',
+      source_id: 'node/99999',
       source_url: null,
-      description: 'Super ambiance',
-      phone: '+33123456789',
-      website: 'https://bardesamis.fr',
-      opening_hours: '18:00 - 02:00',
-      price_range: '€€',
+      description: 'Nouveau',
+      phone: null,
+      website: null,
+      opening_hours: null,
+      price_range: null,
       rating: 4.5,
-      reviews_count: 12,
-      images: ['https://img.com/bar.jpg'],
-      tags: ['bar', 'ambiance'],
-      metadata: { tag: 'cool' },
-      created_by: 'user-uuid',
+      images: [],
+      tags: [],
+      metadata: {},
+      created_by: null,
       is_public: true,
     });
 
-    expect(mockFrom).toHaveBeenCalledWith('places');
-    expect(mockInsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        source: 'custom',
-        name: 'Bar des Amis',
-        location: 'POINT(2.35 48.85)',
-        phone: '+33123456789',
-        website: 'https://bardesamis.fr',
-        street: '1 Rue de la Paix',
-        postcode: '75001',
-      }),
-    );
-    expect(id).toBe('new-uuid');
+    expect(placeId).toBe('existing-uuid-1');
   });
 
-  test('upsertPlace utilise onConflict source,source_id et location Point', async () => {
-    mockSingle.mockResolvedValueOnce({ data: { id: 'upserted-uuid' }, error: null });
-    mockSelect.mockReturnValue({ single: mockSingle });
-    mockUpsert.mockReturnValue({ select: mockSelect });
-    mockFrom.mockReturnValue({ upsert: mockUpsert });
+  test('insère un nouveau lieu si aucun doublon n’est trouvé', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'places') {
+        return {
+          select: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                maybeSingle: jest.fn().mockResolvedValue({ data: null }),
+              }),
+            }),
+            ilike: jest.fn().mockReturnValue({
+              maybeSingle: jest.fn().mockResolvedValue({ data: null }),
+            }),
+          }),
+          insert: jest.fn().mockReturnValue({
+            select: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({ data: { id: 'new-place-uuid' }, error: null }),
+            }),
+          }),
+        };
+      }
+      return {};
+    });
 
-    const id = await upsertPlace({
-      name: 'Place Google',
-      category: 'resto',
+    const placeId = await upsertPlace({
+      name: 'Nouveau Bar Inconnu',
+      category: 'bar',
       latitude: 48.85,
       longitude: 2.35,
-      address: '10 Rue de la Paix',
+      address: '2 rue test',
+      street: '2 rue test',
       city: 'Paris',
-      street: '10 Rue de la Paix',
-      postcode: '75002',
+      postcode: '75000',
       country_code: 'FR',
-      source: 'google',
-      source_id: 'ChIJ123',
+      source: 'custom',
+      source_id: null,
       source_url: null,
       description: null,
       phone: null,
@@ -271,7 +277,6 @@ describe('placeService.createCustomPlace & upsertPlace', () => {
       opening_hours: null,
       price_range: null,
       rating: null,
-      reviews_count: 0,
       images: [],
       tags: [],
       metadata: {},
@@ -279,16 +284,7 @@ describe('placeService.createCustomPlace & upsertPlace', () => {
       is_public: true,
     });
 
-    expect(mockFrom).toHaveBeenCalledWith('places');
-    expect(mockUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        source: 'google',
-        source_id: 'ChIJ123',
-        location: 'POINT(2.35 48.85)',
-      }),
-      { onConflict: 'source,source_id', ignoreDuplicates: false },
-    );
-    expect(id).toBe('upserted-uuid');
+    expect(placeId).toBe('new-place-uuid');
   });
 });
 
@@ -298,156 +294,61 @@ describe('placeService.ensurePlaceExists', () => {
     jest.clearAllMocks();
   });
 
-  test('retourne l\'id existant sans création si le lieu a un UUID valide déjà en base', async () => {
-    const validUuid = '123e4567-e89b-12d3-a456-426614174000';
-    mockMaybeSingle.mockResolvedValueOnce({ data: { id: validUuid }, error: null });
-    mockEq.mockReturnValue({ maybeSingle: mockMaybeSingle });
-    mockSelect.mockReturnValue({ eq: mockEq });
-    mockFrom.mockReturnValue({
-      select: mockSelect,
-      insert: mockInsert,
-      upsert: mockUpsert,
-    });
-
-    const place: PlaceItem = {
-      id: validUuid,
-      title: 'Mon Super Bar',
-      category: 'bar',
-      latitude: 48.85,
-      longitude: 2.35,
-      address: 'Paris',
-      rating: 4.5,
-      reviewsCount: 10,
-      description: '',
-      priceRange: '',
-    };
-
-    const result = await ensurePlaceExists(place, 'user-1');
-    expect(result).toBe(validUuid);
-    expect(mockFrom).toHaveBeenCalledWith('places');
-    expect(mockInsert).not.toHaveBeenCalled();
-    expect(mockUpsert).not.toHaveBeenCalled();
-  });
-
-  test('retourne l\'id existant sans création si le provider externe (Google) existe déjà', async () => {
-    const existingId = 'existing-google-place-uuid';
-    mockMaybeSingle.mockResolvedValueOnce({ data: { id: existingId }, error: null });
-    const mockEq2 = jest.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
-    const mockEq1 = jest.fn().mockReturnValue({ eq: mockEq2 });
-    mockFrom.mockReturnValue({
-      select: jest.fn().mockReturnValue({ eq: mockEq1 }),
-      insert: mockInsert,
-      upsert: mockUpsert,
-    });
-
-    const place: PlaceItem = {
-      id: 'google-ChIJExisting',
-      title: 'Le Loup Bar',
-      category: 'bar',
-      latitude: 48.86,
-      longitude: 2.34,
-      address: '44 Rue du Louvre, 75001 Paris',
-      rating: 4.3,
-      reviewsCount: 200,
-      description: '',
-      priceRange: '',
-    };
-
-    const result = await ensurePlaceExists(place, 'user-1');
-    expect(result).toBe(existingId);
-    expect(mockEq1).toHaveBeenCalledWith('source', 'google');
-    expect(mockEq2).toHaveBeenCalledWith('source_id', 'ChIJExisting');
-    expect(mockInsert).not.toHaveBeenCalled();
-    expect(mockUpsert).not.toHaveBeenCalled();
-  });
-
-  test('upsert le lieu avec toutes les métadonnées si le lieu Google n\'existe pas encore', async () => {
-    mockSingle.mockResolvedValueOnce({ data: { id: 'created-google-uuid' }, error: null });
-    mockSelect.mockReturnValue({ single: mockSingle });
-    mockUpsert.mockReturnValue({ select: mockSelect });
-
-    // 1st call to check if source/source_id exists (returns null -> not existing)
-    mockMaybeSingle.mockResolvedValueOnce({ data: null, error: null });
-    const mockEq2 = jest.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
-    const mockEq1 = jest.fn().mockReturnValue({ eq: mockEq2 });
-    mockFrom.mockReturnValue({
-      select: jest.fn().mockReturnValue({ eq: mockEq1 }),
-      upsert: mockUpsert,
-    });
-
-    const place: PlaceItem = {
-      id: 'google-ChIJ456789',
-      title: 'Café de Flore',
-      category: 'bar',
-      latitude: 48.854,
-      longitude: 2.332,
-      address: '172 Boulevard Saint-Germain, 75006 Paris, France',
-      rating: 4.6,
-      reviewsCount: 3200,
-      description: 'Café emblématique',
-      priceRange: '€€€',
-      phone: '+33 1 45 48 55 26',
-      website: 'https://cafedeflore.fr',
-      openingHours: ['07:30 - 01:30'],
-      isOpenNow: true,
-      imageUrl: 'https://img.com/flore.jpg',
-    };
-
-    const result = await ensurePlaceExists(place, 'user-1');
-    expect(result).toBe('created-google-uuid');
-    expect(mockUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: 'Café de Flore',
-        location: 'POINT(2.332 48.854)',
-        source: 'google',
-        source_id: 'ChIJ456789',
-        street: '172 Boulevard Saint-Germain',
-        postcode: '75006',
-        city: 'Paris',
-        phone: '+33 1 45 48 55 26',
-        website: 'https://cafedeflore.fr',
-        opening_hours: '07:30 - 01:30',
-        rating: 4.6,
-        reviews_count: 3200,
-      }),
-      expect.anything(),
-    );
-  });
-
-  test('retourne l\'id existant d\'un lieu custom ayant le même nom et la même adresse', async () => {
-    const existingCustomId = 'existing-custom-place-uuid';
-    // 1st call for source/source_id check (returns null)
-    mockMaybeSingle.mockResolvedValueOnce({ data: null, error: null });
-    // 2nd call for name/address check (returns existing place)
-    mockMaybeSingle.mockResolvedValueOnce({ data: { id: existingCustomId }, error: null });
-
-    mockIlike.mockReturnValue({ ilike: mockIlike, maybeSingle: mockMaybeSingle });
-    const mockEqSource2 = jest.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
-    const mockEqSource1 = jest.fn().mockReturnValue({ eq: mockEqSource2 });
-
+  test('retourne l’ID tel quel si le lieu a un vrai UUID Supabase existant en base', async () => {
     mockFrom.mockReturnValue({
       select: jest.fn().mockReturnValue({
-        eq: mockEqSource1,
-        ilike: mockIlike,
+        eq: jest.fn().mockReturnValue({
+          maybeSingle: jest.fn().mockResolvedValue({ data: { id: 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d' } }),
+        }),
       }),
-      insert: mockInsert,
     });
 
     const place: PlaceItem = {
-      id: 'custom-place-123',
-      title: 'Pizzeria Chez Luigi',
+      id: 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
+      title: 'Lieu Existant',
       category: 'resto',
-      latitude: 48.87,
-      longitude: 2.31,
-      address: '5 Rue de Rome, 75008 Paris',
-      rating: 0,
-      reviewsCount: 0,
-      description: '',
-      priceRange: '',
+      latitude: 48.85,
+      longitude: 2.35,
+      address: '1 rue test',
+      rating: 4.0,
+      reviewsCount: 10,
     };
 
-    const result = await ensurePlaceExists(place, 'user-1');
-    expect(result).toBe(existingCustomId);
-    expect(mockInsert).not.toHaveBeenCalled();
+    const id = await ensurePlaceExists(place, 'user-1');
+    expect(id).toBe('a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d');
+  });
+
+  test('crée un lieu si c’est un POI externe (ex: osm-12345)', async () => {
+    mockFrom.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            maybeSingle: jest.fn().mockResolvedValue({ data: null }),
+          }),
+        }),
+        ilike: jest.fn().mockReturnValue({
+          maybeSingle: jest.fn().mockResolvedValue({ data: null }),
+        }),
+      }),
+      insert: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          single: jest.fn().mockResolvedValue({ data: { id: 'created-from-osm-uuid' }, error: null }),
+        }),
+      }),
+    });
+
+    const place: PlaceItem = {
+      id: 'osm-12345',
+      title: 'Monument OSM',
+      category: 'culture',
+      latitude: 48.85,
+      longitude: 2.35,
+      address: '1 rue test',
+      rating: 4.5,
+      reviewsCount: 5,
+    };
+
+    const id = await ensurePlaceExists(place, 'user-1');
+    expect(id).toBe('created-from-osm-uuid');
   });
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -49,7 +49,11 @@ export const MapHeaderSearch: React.FC<MapHeaderSearchProps> = ({
   const [predictions, setPredictions] = useState<GoogleAutocompletePrediction[]>([]);
   const [isSearchingGoogle, setIsSearchingGoogle] = useState(false);
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+
+  const inputRef = useRef<TextInput>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const justSelectedRef = useRef(false);
 
   // Gérer l'autocomplétion Google Places au fil de la frappe
   useEffect(() => {
@@ -57,20 +61,26 @@ export const MapHeaderSearch: React.FC<MapHeaderSearchProps> = ({
       clearTimeout(debounceTimerRef.current);
     }
 
-    if (searchQuery.trim().length >= 2) {
+    if (justSelectedRef.current) {
+      return;
+    }
+
+    if (searchQuery.trim().length >= 2 && isFocused) {
       debounceTimerRef.current = setTimeout(async () => {
         setIsSearchingGoogle(true);
         try {
           const results = await fetchGooglePlaceAutocomplete(searchQuery);
           setPredictions(results);
-          setIsDropdownVisible(results.length > 0);
+          if (isFocused && !justSelectedRef.current) {
+            setIsDropdownVisible(results.length > 0);
+          }
         } catch {
           setPredictions([]);
         } finally {
           setIsSearchingGoogle(false);
         }
       }, 350);
-    } else {
+    } else if (searchQuery.trim().length < 2) {
       setPredictions([]);
       setIsDropdownVisible(false);
       setIsSearchingGoogle(false);
@@ -81,16 +91,38 @@ export const MapHeaderSearch: React.FC<MapHeaderSearchProps> = ({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [searchQuery]);
+  }, [searchQuery, isFocused]);
 
   const handleSelectCategory = (cat: PlaceCategoryFilter) => {
     setSelectedCategory(cat);
   };
 
+  const handleFocus = useCallback(() => {
+    setIsFocused(true);
+    justSelectedRef.current = false;
+    if (predictions.length > 0 && searchQuery.trim().length >= 2) {
+      setIsDropdownVisible(true);
+    } else if (searchQuery.trim().length >= 2) {
+      fetchGooglePlaceAutocomplete(searchQuery)
+        .then((results) => {
+          setPredictions(results);
+          if (!justSelectedRef.current) {
+            setIsDropdownVisible(results.length > 0);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [predictions.length, searchQuery]);
+
   const handleSelectPrediction = async (prediction: GoogleAutocompletePrediction) => {
-    Keyboard.dismiss();
+    justSelectedRef.current = true;
+    setIsFocused(false);
     setIsDropdownVisible(false);
-    setSearchQuery(prediction.structured_formatting?.main_text || prediction.description);
+    inputRef.current?.blur();
+    Keyboard.dismiss();
+
+    const selectedName = prediction.structured_formatting?.main_text || prediction.description;
+    setSearchQuery(selectedName);
 
     try {
       setIsSearchingGoogle(true);
@@ -131,11 +163,15 @@ export const MapHeaderSearch: React.FC<MapHeaderSearchProps> = ({
       <View style={styles.searchBarContainer}>
         <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
+          ref={inputRef}
           style={styles.input}
           placeholder="Rechercher un lieu, resto, bar..."
           placeholderTextColor={colors.textMuted}
           value={searchQuery}
+          onFocus={handleFocus}
           onChangeText={(text) => {
+            justSelectedRef.current = false;
+            setIsFocused(true);
             setSearchQuery(text);
           }}
           returnKeyType="search"
@@ -147,7 +183,9 @@ export const MapHeaderSearch: React.FC<MapHeaderSearchProps> = ({
         ) : searchQuery.length > 0 ? (
           <TouchableOpacity
             onPress={() => {
+              justSelectedRef.current = false;
               setSearchQuery('');
+              setPredictions([]);
               setIsDropdownVisible(false);
             }}
             accessibilityLabel="Effacer la recherche"
@@ -263,35 +301,37 @@ const styles = StyleSheet.create({
   },
   clearIcon: {
     color: colors.textMuted,
-    fontSize: typography.fontSizes.sm,
-    padding: 4,
+    fontSize: 14,
+    paddingHorizontal: spacing.xs,
   },
   container: {
-    gap: spacing.xs,
     width: '100%',
+    zIndex: 10,
   },
   dropdownContainer: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
-    elevation: 6,
+    elevation: 8,
     marginHorizontal: spacing.md,
+    marginTop: spacing.xs,
     maxHeight: 220,
     overflow: 'hidden',
     shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    zIndex: 20,
   },
   dropdownItem: {
     alignItems: 'center',
     borderBottomColor: colors.border,
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
     flexDirection: 'row',
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm + 2,
   },
   dropdownItemIcon: {
     fontSize: 16,
@@ -305,7 +345,7 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeights.semibold,
   },
   dropdownScroll: {
-    width: '100%',
+    maxHeight: 220,
   },
   dropdownSecondaryText: {
     color: colors.textMuted,
@@ -316,7 +356,8 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     flex: 1,
     fontSize: typography.fontSizes.sm,
-    paddingVertical: spacing.xs,
+    height: '100%',
+    paddingVertical: 0,
   },
   searchBarContainer: {
     alignItems: 'center',
@@ -327,19 +368,18 @@ const styles = StyleSheet.create({
     elevation: 4,
     flexDirection: 'row',
     gap: spacing.xs,
+    height: 46,
     marginHorizontal: spacing.md,
-    paddingHorizontal: spacing.sm + 4,
-    paddingVertical: spacing.xs + 2,
+    paddingHorizontal: spacing.md,
     shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
   },
   searchIcon: {
-    fontSize: 14,
-    marginRight: 2,
+    fontSize: 16,
   },
   spinner: {
-    marginRight: 4,
+    marginRight: spacing.xs,
   },
 });
