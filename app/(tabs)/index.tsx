@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from 'expo-router';
 import { useAuth } from '@/features/auth';
 import { OutingCard, OutingEditForm, useOutingsStore } from '@/features/outings';
@@ -83,16 +84,16 @@ export default function OutingsScreen() {
   if (selectedOutingId) {
     if (isLoading && !selectedOuting) {
       return (
-        <View style={styles.centerContainer} testID="loading-state">
+        <SafeAreaView style={styles.centerContainer} edges={['top', 'left', 'right']} testID="loading-state">
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Chargement de la sortie...</Text>
-        </View>
+        </SafeAreaView>
       );
     }
 
     if (!selectedOuting) {
       return (
-        <View style={styles.centerContainer} testID="not-found-state">
+        <SafeAreaView style={styles.centerContainer} edges={['top', 'left', 'right']} testID="not-found-state">
           <Text style={styles.notFoundTitle}>Sortie introuvable</Text>
           <Text style={styles.notFoundSubtitle}>
             {"La sortie demandée n'existe pas ou vous n'avez pas les autorisations nécessaires."}
@@ -103,12 +104,12 @@ export default function OutingsScreen() {
             onPress={handleCancelEdit}
             style={styles.backButton}
           />
-        </View>
+        </SafeAreaView>
       );
     }
 
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <OutingEditForm
           outing={selectedOuting}
           onSubmit={handleUpdateOuting}
@@ -116,12 +117,12 @@ export default function OutingsScreen() {
           error={error}
           onCancel={handleCancelEdit}
         />
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <PendingFriendRequestsBanner
         pendingRequests={pendingRequests}
         onAccept={acceptFriendRequest}
@@ -160,7 +161,7 @@ export default function OutingsScreen() {
           loading={isLoading}
         />
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
