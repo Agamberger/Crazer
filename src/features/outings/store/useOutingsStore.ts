@@ -27,6 +27,7 @@ interface OutingsState {
 
   fetchPlannedOutings: (outingId: string) => Promise<PlannedOutingRow[]>;
   createPlannedOuting: (outingId: string, userId?: string) => Promise<PlannedOutingRow | null>;
+  addPlannedOuting: (payload: PlannedOutingInsert) => Promise<PlannedOutingRow | null>;
   updatePlannedOuting: (id: string, updates: PlannedOutingUpdate) => Promise<PlannedOutingRow | null>;
   deletePlannedOuting: (id: string) => Promise<boolean>;
 }
@@ -193,6 +194,28 @@ export const useOutingsStore = create<OutingsState>((set, get) => ({
         status: 'pending',
       };
 
+      const newPlanned = await outingService.createPlannedOuting(payload);
+      const updatedList = [...get().plannedOutings, newPlanned].sort(
+        (a, b) => new Date(a.scheduled_for).getTime() - new Date(b.scheduled_for).getTime()
+      );
+
+      set({
+        plannedOutings: updatedList,
+        isLoadingPlannedOutings: false,
+      });
+
+      return newPlanned;
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Erreur lors de la création de l’étape planifiée';
+      set({ error: message, isLoadingPlannedOutings: false });
+      return null;
+    }
+  },
+
+  addPlannedOuting: async (payload: PlannedOutingInsert) => {
+    set({ isLoadingPlannedOutings: true, error: null });
+    try {
       const newPlanned = await outingService.createPlannedOuting(payload);
       const updatedList = [...get().plannedOutings, newPlanned].sort(
         (a, b) => new Date(a.scheduled_for).getTime() - new Date(b.scheduled_for).getTime()

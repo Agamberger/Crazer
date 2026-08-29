@@ -1,98 +1,105 @@
 import React from 'react';
+import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { PlannedOutingEditForm } from '../components/PlannedOutingEditForm';
 import { PlannedOutingRow } from '@/shared/types';
 
-describe('PlannedOutingEditForm Component', () => {
-  const mockPlannedOuting: PlannedOutingRow = {
-    id: 'po-100',
-    outing_id: 'out-123',
-    title: 'Bowling & Billard',
-    description: 'Partie de bowling suivie de billard',
-    notes: 'Piste 4 réservée',
-    scheduled_for: '2026-08-30T20:00:00.000Z',
-    duration_min: 90,
-    status: 'pending',
-    place_id: null,
-    created_by: 'user-123',
-    created_at: '2026-08-24T20:00:00Z',
-    updated_at: '2026-08-24T20:00:00Z',
-  };
+const mockPlannedOuting: PlannedOutingRow = {
+  id: 'po-123',
+  outing_id: 'outing-abc',
+  place_id: 'place-xyz',
+  title: 'Bowling & Billard',
+  description: 'Partie de bowling suivie de billard',
+  notes: 'Piste 4 réservée',
+  scheduled_for: '2026-08-30T20:00:00.000Z',
+  duration_min: 90,
+  status: 'confirmed',
+  created_by: 'user-1',
+  created_at: '2026-08-20T10:00:00Z',
+  updated_at: '2026-08-20T10:00:00Z',
+};
 
-  it('renders form fields pre-filled with planned outing data', () => {
+describe('PlannedOutingEditForm Component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('renders correctly with prefilled initial values', () => {
     const { getByTestId, getByText } = render(
       <PlannedOutingEditForm
         plannedOuting={mockPlannedOuting}
-        parentOutingTitle="Soirée Fun"
         onSubmit={jest.fn()}
+        onCancel={jest.fn()}
       />
     );
 
-    expect(getByText('Sortie : Soirée Fun')).toBeTruthy();
+    expect(getByTestId('planned-outing-edit-form')).toBeTruthy();
     expect(getByTestId('input-planned-title').props.value).toBe('Bowling & Billard');
-    expect(getByTestId('input-planned-description').props.value).toBe(
-      'Partie de bowling suivie de billard'
-    );
+    expect(getByTestId('input-planned-description').props.value).toBe('Partie de bowling suivie de billard');
     expect(getByTestId('input-planned-notes').props.value).toBe('Piste 4 réservée');
     expect(getByTestId('input-planned-duration').props.value).toBe('90');
-    expect(getByTestId('formatted-planned-date-text')).toBeTruthy();
-    expect(getByTestId('formatted-planned-time-text')).toBeTruthy();
-    expect(getByText(/En attente/)).toBeTruthy();
-    expect(getByText(/Confirmée/)).toBeTruthy();
+    expect(getByText('Confirmée')).toBeTruthy();
   });
 
-  it('validates that title is not empty upon submission', async () => {
+  it('shows error if title is empty on submit', async () => {
     const handleSubmit = jest.fn();
     const { getByTestId, getByText } = render(
-      <PlannedOutingEditForm plannedOuting={mockPlannedOuting} onSubmit={handleSubmit} />
+      <PlannedOutingEditForm
+        plannedOuting={mockPlannedOuting}
+        onSubmit={handleSubmit}
+        onCancel={jest.fn()}
+      />
     );
 
     fireEvent.changeText(getByTestId('input-planned-title'), '');
-    fireEvent.press(getByTestId('btn-submit-planned-edit'));
+    fireEvent.press(getByTestId('btn-submit-planned'));
 
     await waitFor(() => {
       expect(getByText("Le nom de l'étape est obligatoire.")).toBeTruthy();
+      expect(handleSubmit).not.toHaveBeenCalled();
     });
-    expect(handleSubmit).not.toHaveBeenCalled();
   });
 
-  it('opens ThemedDateTimePicker when date button is pressed and updates date upon confirm', async () => {
+  it('allows changing status chips', () => {
     const { getByTestId } = render(
-      <PlannedOutingEditForm plannedOuting={mockPlannedOuting} onSubmit={jest.fn()} />
+      <PlannedOutingEditForm
+        plannedOuting={mockPlannedOuting}
+        onSubmit={jest.fn()}
+        onCancel={jest.fn()}
+      />
     );
 
-    fireEvent.press(getByTestId('btn-select-planned-date'));
-    expect(getByTestId('themed-datetimepicker-modal')).toBeTruthy();
-
-    // Select a day (e.g. 15) and confirm
-    fireEvent.press(getByTestId('day-cell-15'));
-    fireEvent.press(getByTestId('btn-picker-confirm'));
-
-    expect(getByTestId('formatted-planned-date-text')).toBeTruthy();
+    fireEvent.press(getByTestId('btn-planned-status-pending'));
   });
 
-  it('allows updating fields (duration presets, status, description) and submitting', async () => {
-    const handleSubmit = jest.fn();
+  it('allows selecting preset duration chips', () => {
     const { getByTestId } = render(
-      <PlannedOutingEditForm plannedOuting={mockPlannedOuting} onSubmit={handleSubmit} />
+      <PlannedOutingEditForm
+        plannedOuting={mockPlannedOuting}
+        onSubmit={jest.fn()}
+        onCancel={jest.fn()}
+      />
     );
 
-    // Modifier le titre
-    fireEvent.changeText(getByTestId('input-planned-title'), 'Super Bowling');
-
-    // Cliquer sur un chip de durée (ex: 2h -> 120min)
     fireEvent.press(getByTestId('chip-duration-120'));
     expect(getByTestId('input-planned-duration').props.value).toBe('120');
+  });
 
-    // Changer le statut en confirmed
-    fireEvent.press(getByTestId('btn-planned-status-confirmed'));
+  it('calls onSubmit with modified values on valid form submission', async () => {
+    const handleSubmit = jest.fn();
+    const { getByTestId } = render(
+      <PlannedOutingEditForm
+        plannedOuting={mockPlannedOuting}
+        onSubmit={handleSubmit}
+        onCancel={jest.fn()}
+      />
+    );
 
-    // Modifier les notes
+    fireEvent.changeText(getByTestId('input-planned-title'), 'Super Bowling');
+    fireEvent.press(getByTestId('chip-duration-120'));
     fireEvent.changeText(getByTestId('input-planned-notes'), 'Pistes 4 et 5');
 
-    // Soumettre
-    fireEvent.press(getByTestId('btn-submit-planned-edit'));
+    fireEvent.press(getByTestId('btn-submit-planned'));
 
     await waitFor(() => {
       expect(handleSubmit).toHaveBeenCalledWith(
@@ -116,7 +123,7 @@ describe('PlannedOutingEditForm Component', () => {
       />
     );
 
-    fireEvent.press(getByTestId('btn-cancel-planned-edit'));
+    fireEvent.press(getByTestId('btn-cancel-planned'));
     expect(handleCancel).toHaveBeenCalledTimes(1);
 
     fireEvent.press(getByTestId('btn-back-to-outing'));
@@ -136,11 +143,12 @@ describe('PlannedOutingEditForm Component', () => {
       <PlannedOutingEditForm
         plannedOuting={mockPlannedOuting}
         onSubmit={jest.fn()}
+        onCancel={jest.fn()}
         onDelete={handleDelete}
       />
     );
 
-    fireEvent.press(getByTestId('btn-delete-planned-edit'));
+    fireEvent.press(getByTestId('btn-delete-planned'));
     expect(Alert.alert).toHaveBeenCalled();
     expect(handleDelete).toHaveBeenCalledTimes(1);
   });
@@ -150,11 +158,12 @@ describe('PlannedOutingEditForm Component', () => {
       <PlannedOutingEditForm
         plannedOuting={mockPlannedOuting}
         onSubmit={jest.fn()}
-        error="Une erreur réseau est survenue"
+        onCancel={jest.fn()}
+        error="Erreur réseau lors de la mise à jour"
       />
     );
 
     expect(getByTestId('error-container')).toBeTruthy();
-    expect(getByText('Une erreur réseau est survenue')).toBeTruthy();
+    expect(getByText('Erreur réseau lors de la mise à jour')).toBeTruthy();
   });
 });

@@ -2,11 +2,11 @@ import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 import { MapViewComponent } from '../components/MapViewComponent';
 import { useMapStore } from '../store/useMapStore';
-import { PoiItem } from '../types/carte';
+import { PlaceItem } from '../types/carte';
 
-const mockPois: PoiItem[] = [
+const mockPlaces: PlaceItem[] = [
   {
-    id: 'poi-1',
+    id: 'place-1',
     title: 'Pizza Mama',
     category: 'resto',
     latitude: 48.8566,
@@ -18,7 +18,7 @@ const mockPois: PoiItem[] = [
     priceRange: '€€',
   },
   {
-    id: 'poi-2',
+    id: 'place-2',
     title: 'Le Bar Fleuri',
     category: 'bar',
     latitude: 48.8606,
@@ -35,7 +35,7 @@ describe('MapViewComponent', () => {
   test('doit afficher le conteneur de la carte et les marqueurs', () => {
     const handleSelect = jest.fn();
     const { getByTestId, getByLabelText } = render(
-      <MapViewComponent pois={mockPois} onSelectPoi={handleSelect} />
+      <MapViewComponent places={mockPlaces} onSelectPlace={handleSelect} />
     );
 
     expect(getByTestId('map-view-container')).toBeTruthy();
@@ -43,20 +43,20 @@ describe('MapViewComponent', () => {
     expect(getByLabelText('Sélectionner Le Bar Fleuri')).toBeTruthy();
   });
 
-  test('doit appeler onSelectPoi lors du clic sur un marqueur', () => {
+  test('doit appeler onSelectPlace lors du clic sur un marqueur', () => {
     const handleSelect = jest.fn();
     const { getByLabelText } = render(
-      <MapViewComponent pois={mockPois} onSelectPoi={handleSelect} />
+      <MapViewComponent places={mockPlaces} onSelectPlace={handleSelect} />
     );
 
     fireEvent.press(getByLabelText('Sélectionner Pizza Mama'));
-    expect(handleSelect).toHaveBeenCalledWith(mockPois[0]);
+    expect(handleSelect).toHaveBeenCalledWith(mockPlaces[0]);
   });
 
-  test('doit gérer le rendu des POIs même si la liste est vide', () => {
+  test('doit gérer le rendu des lieux même si la liste est vide', () => {
     const handleSelect = jest.fn();
     const { getByTestId } = render(
-      <MapViewComponent pois={[]} onSelectPoi={handleSelect} />
+      <MapViewComponent places={[]} onSelectPlace={handleSelect} />
     );
 
     expect(getByTestId('map-view-container')).toBeTruthy();
@@ -67,10 +67,9 @@ describe('MapViewComponent', () => {
 
     const handleSelect = jest.fn();
     const { getByLabelText } = render(
-      <MapViewComponent pois={mockPois} onSelectPoi={handleSelect} />
+      <MapViewComponent places={mockPlaces} onSelectPlace={handleSelect} />
     );
 
     expect(getByLabelText('Votre position')).toBeTruthy();
   });
 });
-

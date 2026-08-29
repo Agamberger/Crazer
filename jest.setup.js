@@ -29,14 +29,79 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest')
 );
 
-// Mock Expo vector icons
-jest.mock('@expo/vector-icons', () => {
+// Mock SafeAreaContext
+jest.mock('react-native-safe-area-context', () => {
   const React = require('react');
-  const { Text } = require('react-native');
+  const { View } = require('react-native');
   return {
-    Ionicons: (props: any) => React.createElement(Text, props, props.name),
+    SafeAreaProvider: ({ children }: any) => React.createElement(View, null, children),
+    SafeAreaView: ({ children, style, testID }: any) =>
+      React.createElement(View, { style, testID }, children),
+    useSafeAreaInsets: () => ({ top: 44, bottom: 34, left: 0, right: 0 }),
+    useSafeAreaFrame: () => ({ x: 0, y: 0, width: 390, height: 844 }),
   };
 });
+
+// Mock react-native-webview
+jest.mock('react-native-webview', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const WebView = React.forwardRef((props: any, ref: any) => {
+    React.useImperativeHandle(ref, () => ({
+      injectJavaScript: jest.fn(),
+      postMessage: jest.fn(),
+      reload: jest.fn(),
+    }));
+    return React.createElement(View, { ...props, testID: props.testID || 'mock-webview' });
+  });
+  return {
+    WebView,
+    default: WebView,
+  };
+});
+
+// Mock @maplibre/maplibre-react-native
+jest.mock(
+  '@maplibre/maplibre-react-native',
+  () => {
+    const React = require('react');
+    const { View } = require('react-native');
+    const MapView = ({ children, testID, ...props }: any) =>
+      React.createElement(View, { ...props, testID: testID || 'maplibre-map-view' }, children);
+    const Camera = (props: any) => React.createElement(View, { ...props, testID: 'maplibre-camera' });
+    const MarkerView = ({ children, ...props }: any) =>
+      React.createElement(View, { ...props, testID: 'maplibre-marker-view' }, children);
+
+    return {
+      __esModule: true,
+      default: {
+        MapView,
+        Camera,
+        MarkerView,
+        setAccessToken: jest.fn(),
+      },
+      MapView,
+      Camera,
+      MarkerView,
+      setAccessToken: jest.fn(),
+    };
+  },
+  { virtual: true }
+);
+
+// Mock Expo vector icons
+jest.mock(
+  '@expo/vector-icons',
+  () => {
+    const React = require('react');
+    const { Text } = require('react-native');
+    return {
+      Ionicons: (props: any) => React.createElement(Text, props, props.name || 'Ionicons'),
+      Octicons: (props: any) => React.createElement(Text, props, props.name || 'Octicons'),
+    };
+  },
+  { virtual: true }
+);
 
 // Polyfill WebSocket pour l'environnement de test Jest (Node < 22)
 if (typeof global.WebSocket === 'undefined') {
@@ -49,43 +114,3 @@ if (typeof global.WebSocket === 'undefined') {
     removeEventListener() {}
   };
 }
-
-// Mock SafeAreaContext
-jest.mock('react-native-safe-area-context', () => {
-  const React = require('react');
-  const insets = { top: 0, left: 0, right: 0, bottom: 0 };
-  return {
-    SafeAreaProvider: ({ children }: any) => React.createElement(React.Fragment, null, children),
-    SafeAreaView: ({ children, ...props }: any) => React.createElement('SafeAreaView', props, children),
-    useSafeAreaInsets: () => insets,
-    useSafeAreaFrame: () => ({ x: 0, y: 0, width: 375, height: 812 }),
-    SafeAreaInsetsContext: {
-      Consumer: ({ children }: any) => children(insets),
-    },
-    initialWindowMetrics: {
-      insets,
-      frame: { x: 0, y: 0, width: 375, height: 812 },
-    },
-  };
-});
-
-// Mock MapLibre React Native
-jest.mock('@maplibre/maplibre-react-native', () => ({
-  setAccessToken: jest.fn(),
-  Map: 'MapView',
-  MapView: 'MapView',
-  Camera: 'Camera',
-  Marker: 'MarkerView',
-  MarkerView: 'MarkerView',
-  PointAnnotation: 'PointAnnotation',
-  ViewAnnotation: 'ViewAnnotation',
-}));
-
-// Mock react-native-webview
-jest.mock('react-native-webview', () => {
-  const React = require('react');
-  const { View } = require('react-native');
-  return {
-    WebView: (props: any) => React.createElement(View, { testID: 'leaflet-webview', ...props }),
-  };
-});

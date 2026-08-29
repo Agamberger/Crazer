@@ -10,12 +10,12 @@ import {
   Keyboard,
 } from 'react-native';
 import { colors, spacing, typography } from '@/shared/constants/theme';
-import { PoiCategory, MapCategoryFilter, PoiItem } from '../types/carte';
+import { PlaceCategoryFilter, MapCategoryFilter, PlaceItem } from '../types/carte';
 import { useMapStore } from '../store/useMapStore';
 import {
   fetchGooglePlaceAutocomplete,
   fetchGooglePlaceDetails,
-  googlePlaceDetailsToPoiItem,
+  googlePlaceDetailsToPlaceItem,
   GoogleAutocompletePrediction,
 } from '../services/googlePlacesService';
 
@@ -29,192 +29,173 @@ const CATEGORIES: MapCategoryFilter[] = [
 ];
 
 export interface MapHeaderSearchProps {
-  onSearchChange?: (text: string) => void;
-  onSelectCategory?: (category: PoiCategory) => void;
-  onSelectGooglePlace?: (poi: PoiItem) => void;
+  onSelectPlace?: (place: PlaceItem) => void;
+  onSelectGooglePlace?: (place: PlaceItem) => void;
 }
 
 export const MapHeaderSearch: React.FC<MapHeaderSearchProps> = ({
-  onSearchChange,
-  onSelectCategory,
+  onSelectPlace,
   onSelectGooglePlace,
 }) => {
   const searchQuery = useMapStore((state) => state.searchQuery);
   const selectedCategory = useMapStore((state) => state.selectedCategory);
   const setSearchQuery = useMapStore((state) => state.setSearchQuery);
   const setSelectedCategory = useMapStore((state) => state.setSelectedCategory);
-  const setPois = useMapStore((state) => state.setPois);
-  const pois = useMapStore((state) => state.pois);
-  const setSelectedPoiId = useMapStore((state) => state.setSelectedPoiId);
+  const setSelectedPlaceId = useMapStore((state) => state.setSelectedPlaceId);
+  const places = useMapStore((state) => state.places);
+  const setPlaces = useMapStore((state) => state.setPlaces);
   const setCenterRegion = useMapStore((state) => state.setCenterRegion);
 
   const [predictions, setPredictions] = useState<GoogleAutocompletePrediction[]>([]);
-  const [isSearching, setIsSearching] = useState<boolean>(false);
-  const [isLoadingDetails, setIsLoadingDetails] = useState<boolean>(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const skipAutocompleteRef = useRef<boolean>(false);
+  const [isSearchingGoogle, setIsSearchingGoogle] = useState(false);
+  const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Gérer l'autocomplétion Google Places au fil de la frappe
   useEffect(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
     }
 
-    if (skipAutocompleteRef.current) {
-      skipAutocompleteRef.current = false;
+    if (searchQuery.trim().length >= 2) {
+      debounceTimerRef.current = setTimeout(async () => {
+        setIsSearchingGoogle(true);
+        try {
+          const results = await fetchGooglePlaceAutocomplete(searchQuery);
+          setPredictions(results);
+          setIsDropdownVisible(results.length > 0);
+        } catch {
+          setPredictions([]);
+        } finally {
+          setIsSearchingGoogle(false);
+        }
+      }, 350);
+    } else {
       setPredictions([]);
-      setIsSearching(false);
-      return;
+      setIsDropdownVisible(false);
+      setIsSearchingGoogle(false);
     }
-
-    if (searchQuery.trim().length < 2) {
-      setPredictions([]);
-      setIsSearching(false);
-      return;
-    }
-
-    setIsSearching(true);
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const results = await fetchGooglePlaceAutocomplete(searchQuery);
-        setPredictions(results);
-      } catch (err) {
-        setPredictions([]);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 300);
 
     return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
       }
     };
   }, [searchQuery]);
 
-  const handleSearchChange = (text: string) => {
-    setSearchQuery(text);
-    if (onSearchChange) onSearchChange(text);
-  };
-
-  const handleCategoryPress = (category: PoiCategory) => {
-    Keyboard.dismiss();
-    setPredictions([]);
-    setSelectedCategory(category);
-    if (onSelectCategory) onSelectCategory(category);
+  const handleSelectCategory = (cat: PlaceCategoryFilter) => {
+    setSelectedCategory(cat);
   };
 
   const handleSelectPrediction = async (prediction: GoogleAutocompletePrediction) => {
     Keyboard.dismiss();
-    skipAutocompleteRef.current = true;
-    setPredictions([]);
-    setIsLoadingDetails(true);
-    setSearchQuery(prediction.structured_formatting.main_text);
+    setIsDropdownVisible(false);
+    setSearchQuery(prediction.structured_formatting?.main_text || prediction.description);
 
     try {
+      setIsSearchingGoogle(true);
       const details = await fetchGooglePlaceDetails(prediction.place_id);
       if (details) {
-        const poi = googlePlaceDetailsToPoiItem(details);
+        const newPlace = googlePlaceDetailsToPlaceItem(details);
 
-        // Ajouter le lieu aux POIs du store s'il n'existe pas déjà
-        const exists = pois.some((p) => p.id === poi.id);
-        if (!exists) {
-          setPois([...pois, poi]);
+        // Si le lieu n'est pas déjà dans le store, on l'ajoute
+        if (!places.some((p) => p.id === newPlace.id)) {
+          setPlaces([newPlace, ...places]);
         }
 
-        // Sélectionner et centrer la carte sur le lieu
-        setSelectedPoiId(poi.id);
+        // Sélectionner et centrer la carte
+        setSelectedPlaceId(newPlace.id);
         setCenterRegion({
-          latitude: poi.latitude,
-          longitude: poi.longitude,
+          latitude: newPlace.latitude,
+          longitude: newPlace.longitude,
           zoomLevel: 15,
         });
 
+        if (onSelectPlace) {
+          onSelectPlace(newPlace);
+        }
         if (onSelectGooglePlace) {
-          onSelectGooglePlace(poi);
+          onSelectGooglePlace(newPlace);
         }
       }
-    } catch (err) {
-      console.error('[MapHeaderSearch] Erreur lors de la sélection du lieu Google:', err);
+    } catch {
+      // Ignorer l'erreur silencieusement ou laisser le store gérer
     } finally {
-      setIsLoadingDetails(false);
+      setIsSearchingGoogle(false);
     }
   };
 
   return (
     <View style={styles.container}>
+      {/* Search Input Bar */}
       <View style={styles.searchBarContainer}>
-        <View style={styles.searchBar}>
-          <Text style={styles.searchIcon}>🔍</Text>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Rechercher un lieu, un bar, une activité..."
-            placeholderTextColor={colors.textMuted}
-            value={searchQuery}
-            onChangeText={handleSearchChange}
-            onSubmitEditing={() => Keyboard.dismiss()}
-            returnKeyType="search"
-            accessibilityLabel="Barre de recherche de lieux"
-          />
-          {isSearching || isLoadingDetails ? (
-            <ActivityIndicator
-              size="small"
-              color={colors.primary}
-              style={styles.loader}
-              testID="autocomplete-loader"
-            />
-          ) : searchQuery.length > 0 ? (
-            <TouchableOpacity
-              onPress={() => {
-                handleSearchChange('');
-                setPredictions([]);
-              }}
-              accessibilityLabel="Effacer la recherche"
-              accessibilityRole="button"
-              style={styles.clearButton}
-            >
-              <Text style={styles.clearButtonText}>✕</Text>
-            </TouchableOpacity>
-          ) : null}
-        </View>
-
-        {/* Liste déroulante des prédictions Autocomplete */}
-        {predictions.length > 0 && (
-          <View style={styles.dropdownContainer} testID="autocomplete-dropdown">
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              nestedScrollEnabled
-              style={styles.dropdownList}
-            >
-              {predictions.map((item) => (
-                <TouchableOpacity
-                  key={item.place_id}
-                  style={styles.dropdownItem}
-                  onPress={() => handleSelectPrediction(item)}
-                  accessibilityLabel={`Sélectionner ${item.structured_formatting.main_text}`}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.itemIcon}>📍</Text>
-                  <View style={styles.itemTextContainer}>
-                    <Text style={styles.itemMainText} numberOfLines={1}>
-                      {item.structured_formatting.main_text}
-                    </Text>
-                    {item.structured_formatting.secondary_text && (
-                      <Text style={styles.itemSecondaryText} numberOfLines={1}>
-                        {item.structured_formatting.secondary_text}
-                      </Text>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
+        <Text style={styles.searchIcon}>🔍</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Rechercher un lieu, resto, bar..."
+          placeholderTextColor={colors.textMuted}
+          value={searchQuery}
+          onChangeText={(text) => {
+            setSearchQuery(text);
+          }}
+          returnKeyType="search"
+          clearButtonMode="while-editing"
+          accessibilityLabel="Barre de recherche de lieux"
+        />
+        {isSearchingGoogle ? (
+          <ActivityIndicator size="small" color={colors.primary} style={styles.spinner} />
+        ) : searchQuery.length > 0 ? (
+          <TouchableOpacity
+            onPress={() => {
+              setSearchQuery('');
+              setIsDropdownVisible(false);
+            }}
+            accessibilityLabel="Effacer la recherche"
+          >
+            <Text style={styles.clearIcon}>✕</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
+      {/* Autocomplete Dropdown List */}
+      {isDropdownVisible && predictions.length > 0 && (
+        <View style={styles.dropdownContainer} testID="autocomplete-dropdown">
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled
+            style={styles.dropdownScroll}
+          >
+            {predictions.map((item) => (
+              <TouchableOpacity
+                key={item.place_id}
+                style={styles.dropdownItem}
+                onPress={() => handleSelectPrediction(item)}
+                accessibilityLabel={`Sélectionner ${item.structured_formatting?.main_text || item.description}`}
+                accessibilityRole="button"
+              >
+                <Text style={styles.dropdownItemIcon}>📍</Text>
+                <View style={styles.dropdownItemTextContainer}>
+                  <Text style={styles.dropdownMainText} numberOfLines={1}>
+                    {item.structured_formatting?.main_text || item.description}
+                  </Text>
+                  {item.structured_formatting?.secondary_text ? (
+                    <Text style={styles.dropdownSecondaryText} numberOfLines={1}>
+                      {item.structured_formatting.secondary_text}
+                    </Text>
+                  ) : null}
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* Category Pills Horizontal Scroll */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.categoriesContainer}
+        keyboardShouldPersistTaps="handled"
       >
         {CATEGORIES.map((cat) => {
           const isSelected = selectedCategory === cat.id;
@@ -225,8 +206,8 @@ export const MapHeaderSearch: React.FC<MapHeaderSearchProps> = ({
                 styles.categoryChip,
                 isSelected && styles.categoryChipSelected,
               ]}
-              onPress={() => handleCategoryPress(cat.id)}
-              accessibilityLabel={`Filtrer par ${cat.label}`}
+              onPress={() => handleSelectCategory(cat.id)}
+              accessibilityLabel={`Filtrer par catégorie ${cat.label}`}
               accessibilityRole="button"
               accessibilityState={{ selected: isSelected }}
             >
@@ -248,118 +229,28 @@ export const MapHeaderSearch: React.FC<MapHeaderSearchProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
+  categoriesContainer: {
+    gap: spacing.xs,
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xs,
-    backgroundColor: colors.transparent,
-  },
-  searchBarContainer: {
-    position: 'relative',
-    zIndex: 100,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  searchIcon: {
-    fontSize: typography.fontSizes.md,
-    marginRight: spacing.sm,
-  },
-  searchInput: {
-    flex: 1,
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.sm,
-    fontWeight: typography.fontWeights.regular,
-  },
-  loader: {
-    marginRight: spacing.xs,
-  },
-  clearButton: {
-    padding: spacing.xs,
-  },
-  clearButtonText: {
-    color: colors.textMuted,
-    fontSize: typography.fontSizes.sm,
-    fontWeight: typography.fontWeights.bold,
-  },
-  dropdownContainer: {
-    position: 'absolute',
-    top: 52,
-    left: 0,
-    right: 0,
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    maxHeight: 240,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 10,
-    overflow: 'hidden',
-  },
-  dropdownList: {
     paddingVertical: spacing.xs,
   },
-  dropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  itemIcon: {
-    fontSize: typography.fontSizes.md,
-    marginRight: spacing.sm,
-  },
-  itemTextContainer: {
-    flex: 1,
-  },
-  itemMainText: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.sm,
-    fontWeight: typography.fontWeights.bold,
-  },
-  itemSecondaryText: {
-    color: colors.textMuted,
-    fontSize: typography.fontSizes.xs,
-    marginTop: 2,
-  },
-  categoriesContainer: {
-    paddingVertical: spacing.sm,
-    gap: spacing.xs + 2,
-  },
   categoryChip: {
-    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
+    backgroundColor: colors.surfaceLight,
+    borderColor: colors.border,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: colors.border,
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs + 2,
   },
   categoryChipSelected: {
     backgroundColor: colors.primary,
-    borderColor: colors.primaryDark,
+    borderColor: colors.primary,
   },
   categoryIcon: {
-    fontSize: typography.fontSizes.sm,
-    marginRight: spacing.xs,
+    fontSize: 14,
   },
   categoryText: {
     color: colors.textSecondary,
@@ -367,7 +258,88 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeights.medium,
   },
   categoryTextSelected: {
-    color: colors.textPrimary,
+    color: colors.white,
     fontWeight: typography.fontWeights.bold,
+  },
+  clearIcon: {
+    color: colors.textMuted,
+    fontSize: typography.fontSizes.sm,
+    padding: 4,
+  },
+  container: {
+    gap: spacing.xs,
+    width: '100%',
+  },
+  dropdownContainer: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 16,
+    borderWidth: 1,
+    elevation: 6,
+    marginHorizontal: spacing.md,
+    maxHeight: 220,
+    overflow: 'hidden',
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+  },
+  dropdownItem: {
+    alignItems: 'center',
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  dropdownItemIcon: {
+    fontSize: 16,
+  },
+  dropdownItemTextContainer: {
+    flex: 1,
+  },
+  dropdownMainText: {
+    color: colors.textPrimary,
+    fontSize: typography.fontSizes.sm,
+    fontWeight: typography.fontWeights.semibold,
+  },
+  dropdownScroll: {
+    width: '100%',
+  },
+  dropdownSecondaryText: {
+    color: colors.textMuted,
+    fontSize: typography.fontSizes.xs,
+    marginTop: 2,
+  },
+  input: {
+    color: colors.textPrimary,
+    flex: 1,
+    fontSize: typography.fontSizes.sm,
+    paddingVertical: spacing.xs,
+  },
+  searchBarContainer: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 24,
+    borderWidth: 1,
+    elevation: 4,
+    flexDirection: 'row',
+    gap: spacing.xs,
+    marginHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm + 4,
+    paddingVertical: spacing.xs + 2,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  searchIcon: {
+    fontSize: 14,
+    marginRight: 2,
+  },
+  spinner: {
+    marginRight: 4,
   },
 });

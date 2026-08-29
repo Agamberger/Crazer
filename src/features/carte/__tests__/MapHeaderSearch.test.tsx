@@ -65,7 +65,7 @@ describe('MapHeaderSearch', () => {
       types: ['tourist_attraction'],
     });
 
-    mockGoogleService.googlePlaceDetailsToPoiItem.mockReturnValueOnce({
+    mockGoogleService.googlePlaceDetailsToPlaceItem.mockReturnValueOnce({
       id: 'google-place_1',
       title: 'Tour Eiffel',
       category: 'culture',

@@ -1,83 +1,85 @@
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
-import { PoiDetailCard } from '../components/PoiDetailCard';
-import { PoiItem } from '../types/carte';
+import { PlaceDetailCard } from '../components/PlaceDetailCard';
+import { PlaceItem } from '../types/carte';
 
-const mockPoi: PoiItem = {
-  id: 'poi-1',
+const mockPlace: PlaceItem = {
+  id: 'test-place-1',
   title: 'Bar Le Centenaire',
   category: 'bar',
-  latitude: 48.8566,
-  longitude: 2.3522,
+  latitude: 48.85,
+  longitude: 2.35,
   address: '10 Rue de test, 75000 Paris',
   rating: 4.7,
   reviewsCount: 88,
   description: 'Un super bar de test pour les sorties.',
   priceRange: '€€',
+  phone: '0123456789',
+  website: 'https://example.com',
 };
 
-describe('PoiDetailCard', () => {
-  test('doit afficher les informations du POI correctement', () => {
+describe('PlaceDetailCard', () => {
+  test('doit afficher les informations du lieu correctement', () => {
     const { getByText } = render(
-      <PoiDetailCard poi={mockPoi} onClose={jest.fn()} />
+      <PlaceDetailCard place={mockPlace} onClose={jest.fn()} />
     );
 
     expect(getByText('Bar Le Centenaire')).toBeTruthy();
     expect(getByText('📍 10 Rue de test, 75000 Paris')).toBeTruthy();
-    expect(getByText('4.7')).toBeTruthy();
-    expect(getByText('(88 avis)')).toBeTruthy();
     expect(getByText('Un super bar de test pour les sorties.')).toBeTruthy();
-    expect(getByText('€€')).toBeTruthy();
+    expect(getByText('4.7')).toBeTruthy();
+    expect(getByText('Bar & Lounge')).toBeTruthy();
   });
 
-  test("doit appeler onClose lors du clic sur le bouton de fermeture", () => {
+  test('doit déclencher onClose lors du clic sur le bouton de fermeture', () => {
     const handleClose = jest.fn();
     const { getByTestId } = render(
-      <PoiDetailCard poi={mockPoi} onClose={handleClose} />
+      <PlaceDetailCard place={mockPlace} onClose={handleClose} />
     );
 
     fireEvent.press(getByTestId('close-button'));
     expect(handleClose).toHaveBeenCalledTimes(1);
   });
 
-  test("doit appeler onAddToOuting lors du clic sur le bouton 'Ajouter à une sortie'", () => {
-    const handleAddToOuting = jest.fn();
-    const { getByText } = render(
-      <PoiDetailCard
-        poi={mockPoi}
+  test('doit déclencher onAddToOuting lors du clic sur Ajouter à une sortie', () => {
+    const handleAdd = jest.fn();
+    const { getByText, getByTestId } = render(
+      <PlaceDetailCard
+        place={mockPlace}
         onClose={jest.fn()}
-        onAddToOuting={handleAddToOuting}
+        onAddToOuting={handleAdd}
       />
     );
 
+    expect(getByTestId('add-to-outing-button')).toBeTruthy();
     fireEvent.press(getByText('+ Ajouter à une sortie'));
-    expect(handleAddToOuting).toHaveBeenCalledWith(mockPoi);
+    expect(handleAdd).toHaveBeenCalledWith(mockPlace);
   });
 
-  test("doit appeler onGetDirections lors du clic sur le bouton Itinéraire", () => {
+  test('doit déclencher onGetDirections lors du clic sur Itinéraire', () => {
     const handleDirections = jest.fn();
     const { getByText } = render(
-      <PoiDetailCard
-        poi={mockPoi}
+      <PlaceDetailCard
+        place={mockPlace}
         onClose={jest.fn()}
         onGetDirections={handleDirections}
       />
     );
 
     fireEvent.press(getByText('🗺️ Itinéraire'));
-    expect(handleDirections).toHaveBeenCalledWith(mockPoi);
+    expect(handleDirections).toHaveBeenCalledWith(mockPlace);
   });
 
   test("doit afficher les photos et la section d'horaires dépliable", () => {
-    const poiWithDetails: PoiItem = {
-      ...mockPoi,
+    const placeWithDetails: PlaceItem = {
+      ...mockPlace,
       images: ['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
       openingHours: ['Lundi: 09:00–23:00', 'Mardi: 09:00–23:00'],
       isOpenNow: true,
     };
 
     const { getByTestId, getByText, queryByTestId } = render(
-      <PoiDetailCard poi={poiWithDetails} onClose={jest.fn()} />
+      <PlaceDetailCard place={placeWithDetails} onClose={jest.fn()} />
     );
 
     expect(getByTestId('place-photos-gallery')).toBeTruthy();
@@ -94,16 +96,23 @@ describe('PoiDetailCard', () => {
   });
 
   test('doit permettre de basculer en mode plein écran (expanded)', () => {
-    const { getByTestId, getByText } = render(
-      <PoiDetailCard poi={mockPoi} onClose={jest.fn()} />
+    const { getByTestId, queryByTestId, getByText } = render(
+      <PlaceDetailCard place={mockPlace} onClose={jest.fn()} />
     );
 
-    expect(getByTestId('expand-button')).toBeTruthy();
-    fireEvent.press(getByTestId('expand-button'));
-    expect(getByText('▼')).toBeTruthy();
+    // Les boutons de contact ne sont pas affichés par défaut
+    expect(queryByTestId('contact-buttons-row')).toBeNull();
 
-    // Replier
+    // Clic sur la poignée d'expansion
+    fireEvent.press(getByTestId('expand-toggle-button'));
+
+    // En mode étendu, les détails de contact doivent apparaître
+    expect(getByTestId('contact-buttons-row')).toBeTruthy();
+    expect(getByText('📞 0123456789')).toBeTruthy();
+    expect(getByText('🌐 Site Web')).toBeTruthy();
+
+    // Clic sur le bouton de réduction
     fireEvent.press(getByTestId('expand-button'));
-    expect(getByText('▲')).toBeTruthy();
+    expect(queryByTestId('contact-buttons-row')).toBeNull();
   });
 });

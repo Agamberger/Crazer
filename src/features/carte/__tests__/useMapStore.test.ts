@@ -1,9 +1,9 @@
-import { useMapStore, INITIAL_POIS } from '../store/useMapStore';
-import { PoiItem } from '../types/carte';
+import { useMapStore, INITIAL_PLACES, INITIAL_POIS } from '../store/useMapStore';
+import { PlaceItem } from '../types/carte';
 
-const samplePois: PoiItem[] = [
+const samplePlaces: PlaceItem[] = [
   {
-    id: 'poi-1',
+    id: 'place-1',
     title: 'Le Perchoir Marais',
     category: 'bar',
     latitude: 48.8566,
@@ -15,7 +15,7 @@ const samplePois: PoiItem[] = [
     priceRange: '€€€',
   },
   {
-    id: 'poi-2',
+    id: 'place-2',
     title: 'BAM Karaoke Box',
     category: 'activite',
     latitude: 48.8689,
@@ -32,45 +32,48 @@ describe('useMapStore', () => {
   beforeEach(() => {
     useMapStore.getState().resetFilters();
     useMapStore.setState({
-      pois: samplePois,
+      places: samplePlaces,
+      pois: samplePlaces,
       mapStyleMode: 'dark',
       savedWaypoints: [],
+      selectedPlaceId: null,
       selectedPoiId: null,
       isLoading: false,
       error: null,
     });
   });
 
-  test('doit initialiser le store avec un tableau vide de POIs', () => {
+  test('doit initialiser le store avec un tableau vide de lieux', () => {
+    expect(INITIAL_PLACES).toEqual([]);
     expect(INITIAL_POIS).toEqual([]);
     expect(useMapStore.getState().selectedCategory).toBe('all');
     expect(useMapStore.getState().mapStyleMode).toBe('dark');
   });
 
-  test('doit filtrer les POIs par catégorie', () => {
+  test('doit filtrer les lieux par catégorie', () => {
     useMapStore.getState().setSelectedCategory('bar');
-    const filtered = useMapStore.getState().getFilteredPois();
+    const filtered = useMapStore.getState().getFilteredPlaces();
 
     expect(filtered.length).toBeGreaterThan(0);
     expect(filtered.every((p) => p.category === 'bar')).toBe(true);
   });
 
-  test('doit filtrer les POIs par mot-clé de recherche', () => {
+  test('doit filtrer les lieux par mot-clé de recherche', () => {
     useMapStore.getState().setSearchQuery('Karaoke');
-    const filtered = useMapStore.getState().getFilteredPois();
+    const filtered = useMapStore.getState().getFilteredPlaces();
 
     expect(filtered).toHaveLength(1);
     expect(filtered[0].title).toContain('Karaoke');
   });
 
   test('doit basculer un waypoint enregistré (bookmark)', () => {
-    const samplePoi: PoiItem = samplePois[0];
+    const samplePlace: PlaceItem = samplePlaces[0];
 
-    useMapStore.getState().toggleSavedWaypoint(samplePoi);
-    expect(useMapStore.getState().savedWaypoints).toContainEqual(samplePoi);
+    useMapStore.getState().toggleSavedWaypoint(samplePlace);
+    expect(useMapStore.getState().savedWaypoints).toContainEqual(samplePlace);
 
-    useMapStore.getState().toggleSavedWaypoint(samplePoi);
-    expect(useMapStore.getState().savedWaypoints).not.toContainEqual(samplePoi);
+    useMapStore.getState().toggleSavedWaypoint(samplePlace);
+    expect(useMapStore.getState().savedWaypoints).not.toContainEqual(samplePlace);
   });
 
   test('doit changer le mode de style de la carte', () => {
@@ -81,20 +84,20 @@ describe('useMapStore', () => {
   test('doit réinitialiser les filtres', () => {
     useMapStore.getState().setSelectedCategory('resto');
     useMapStore.getState().setSearchQuery('Pizza');
-    useMapStore.getState().setSelectedPoiId('poi-3');
+    useMapStore.getState().setSelectedPlaceId('place-3');
 
     useMapStore.getState().resetFilters();
 
     const state = useMapStore.getState();
     expect(state.selectedCategory).toBe('all');
     expect(state.searchQuery).toBe('');
-    expect(state.selectedPoiId).toBeNull();
+    expect(state.selectedPlaceId).toBeNull();
   });
 
-  // ── Nouveaux états asynchrones ──────────────────────────────────────────────
+  // ── Nouveaux états asynchrones ────────────────────────────────────────────
 
-  test('setPois — remplace la liste des POIs', () => {
-    const newPoi: PoiItem = {
+  test('setPlaces — remplace la liste des lieux', () => {
+    const newPlace: PlaceItem = {
       id: 'custom-1',
       title: 'Bar Test Supabase',
       category: 'bar',
@@ -107,12 +110,12 @@ describe('useMapStore', () => {
       priceRange: '€',
     };
 
-    useMapStore.getState().setPois([newPoi]);
+    useMapStore.getState().setPlaces([newPlace]);
 
-    expect(useMapStore.getState().pois).toEqual([newPoi]);
+    expect(useMapStore.getState().places).toEqual([newPlace]);
   });
 
-  test('setIsLoading — met à jour l\'état de chargement', () => {
+  test('setIsLoading — met à jour l’état de chargement', () => {
     expect(useMapStore.getState().isLoading).toBe(false);
 
     useMapStore.getState().setIsLoading(true);
@@ -122,7 +125,7 @@ describe('useMapStore', () => {
     expect(useMapStore.getState().isLoading).toBe(false);
   });
 
-  test('setError — stocke et efface un message d\'erreur', () => {
+  test('setError — stocke et efface un message d’erreur', () => {
     expect(useMapStore.getState().error).toBeNull();
 
     useMapStore.getState().setError('Erreur de connexion Supabase');

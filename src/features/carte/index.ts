@@ -2,9 +2,11 @@ export * from './types/carte';
 export * from './store/useMapStore';
 export * from './components/MapViewComponent';
 export * from './components/MapHeaderSearch';
+export * from './components/PlaceDetailCard';
 export * from './components/PoiDetailCard';
+export * from './components/AddPlaceToOutingModal';
+export * from './components/AddPoiToOutingModal';
 export * from './components/StyleSelector';
 export * from './hooks/usePlaces';
 export * from './services/placeService';
 export * from './services/googlePlacesService';
-

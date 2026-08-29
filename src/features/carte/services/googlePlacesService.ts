@@ -5,14 +5,13 @@
  * et d'en récupérer les détails (coordonnées, adresse, note, catégorie).
  */
 
-import { PoiCategory, PoiItem } from '../types/carte';
+import { PlaceCategoryFilter, PlaceItem } from '../types/carte';
 
 const BASE_URL = 'https://maps.googleapis.com/maps/api/place';
 
 function getApiKey(): string {
   return process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '';
 }
-
 
 export interface GoogleAutocompletePrediction {
   place_id: string;
@@ -52,50 +51,81 @@ export interface GooglePlaceDetailsResult {
   website?: string;
 }
 
+interface RawGooglePrediction {
+  place_id: string;
+  description: string;
+  structured_formatting?: {
+    main_text?: string;
+    secondary_text?: string;
+  };
+  types?: string[];
+}
+
+interface RawGooglePhoto {
+  photo_reference: string;
+  height?: number;
+  width?: number;
+}
+
 /**
- * Mappe les types Google Places vers une catégorie Crazer PoiCategory
+ * Mappe les types Google Places vers nos catégories de base (resto, bar, activite, etc.)
  */
-export function mapGoogleTypesToCategory(types: string[] = []): PoiCategory {
+export function mapGoogleTypesToCategory(types?: string[]): PlaceCategoryFilter {
+  if (!types || types.length === 0) return 'activite';
+
+  const typeSet = new Set(types);
+
   if (
-    types.some((t) =>
-      ['restaurant', 'food', 'cafe', 'bakery', 'meal_takeaway', 'meal_delivery'].includes(t)
-    )
+    typeSet.has('restaurant') ||
+    typeSet.has('cafe') ||
+    typeSet.has('bakery') ||
+    typeSet.has('meal_takeaway') ||
+    typeSet.has('food')
   ) {
     return 'resto';
   }
-  if (types.some((t) => ['bar', 'night_club'].includes(t))) {
+
+  if (typeSet.has('bar') || typeSet.has('night_club')) {
     return 'bar';
   }
+
   if (
-    types.some((t) =>
-      ['amusement_park', 'bowling_alley', 'casino', 'movie_theater', 'stadium', 'gym', 'spa', 'zoo'].includes(t)
-    )
-  ) {
-    return 'activite';
-  }
-  if (types.some((t) => ['park', 'campground', 'natural_feature'].includes(t))) {
-    return 'nature';
-  }
-  if (
-    types.some((t) =>
-      ['art_gallery', 'museum', 'library', 'tourist_attraction', 'church'].includes(t)
-    )
+    typeSet.has('museum') ||
+    typeSet.has('art_gallery') ||
+    typeSet.has('church') ||
+    typeSet.has('hindu_temple') ||
+    typeSet.has('mosque') ||
+    typeSet.has('synagogue') ||
+    typeSet.has('tourist_attraction')
   ) {
     return 'culture';
   }
+
+  if (
+    typeSet.has('park') ||
+    typeSet.has('natural_feature') ||
+    typeSet.has('campground')
+  ) {
+    return 'nature';
+  }
+
   return 'activite';
 }
 
 /**
- * Convertit un résultat de Place Details en un PoiItem prêt pour la carte
+ * Convertit un résultat détaillé Google Place en PlaceItem
  */
-export function googlePlaceDetailsToPoiItem(details: GooglePlaceDetailsResult): PoiItem {
+export function googlePlaceDetailsToPlaceItem(
+  details: GooglePlaceDetailsResult
+): PlaceItem {
   const category = mapGoogleTypesToCategory(details.types);
-  const apiKey = getApiKey();
+  const address =
+    details.formatted_address || details.vicinity || 'Adresse non spécifiée';
 
-  const photoUrls =
-    details.photos?.slice(0, 5).map((p) =>
-      `${BASE_URL}/photo?maxwidth=600&photo_reference=${p.photo_reference}&key=${apiKey}`
+  const apiKey = getApiKey();
+  const photos =
+    details.photos?.map((photo) =>
+      `${BASE_URL}/photo?maxwidth=800&photo_reference=${photo.photo_reference}&key=${apiKey}`
     ) || [];
 
   return {
@@ -104,13 +134,13 @@ export function googlePlaceDetailsToPoiItem(details: GooglePlaceDetailsResult): 
     category,
     latitude: details.geometry.location.lat,
     longitude: details.geometry.location.lng,
-    address: details.formatted_address || details.vicinity || 'Adresse non spécifiée',
-    rating: details.rating ?? 0,
+    address,
+    rating: details.rating ?? 4.0,
     reviewsCount: details.user_ratings_total ?? 0,
     description: '',
     priceRange: details.price_level ? '€'.repeat(details.price_level) : '',
-    imageUrl: photoUrls[0] || undefined,
-    images: photoUrls,
+    imageUrl: photos[0],
+    images: photos,
     openingHours: details.opening_hours?.weekday_text,
     isOpenNow: details.opening_hours?.open_now,
     phone: details.formatted_phone_number,
@@ -119,52 +149,54 @@ export function googlePlaceDetailsToPoiItem(details: GooglePlaceDetailsResult): 
 }
 
 /**
- * Récupère les suggestions d'autocomplétion pour un texte saisi.
- * Restreint par défaut à la France (country:fr).
+ * Rétrocompatibilité : alias PoiItem
+ */
+export const googlePlaceDetailsToPoiItem = googlePlaceDetailsToPlaceItem;
+
+/**
+ * Recherche des prédictions d'adresses ou de lieux via Google Places Autocomplete.
  */
 export async function fetchGooglePlaceAutocomplete(
-  input: string,
-  location?: { lat: number; lng: number }
+  input: string
 ): Promise<GoogleAutocompletePrediction[]> {
   const apiKey = getApiKey();
-  if (!input || input.trim().length < 2) {
-    return [];
-  }
+  if (!input || input.trim().length < 2) return [];
 
   if (!apiKey) {
     console.warn('[googlePlacesService] EXPO_PUBLIC_GOOGLE_PLACES_API_KEY est manquante.');
     return [];
   }
 
-  let url = `${BASE_URL}/autocomplete/json?input=${encodeURIComponent(
+  const url = `${BASE_URL}/autocomplete/json?input=${encodeURIComponent(
     input
-  )}&key=${apiKey}&language=fr&components=country:fr`;
-
-  if (location) {
-    url += `&location=${location.lat},${location.lng}&radius=50000`;
-  }
+  )}&components=country:fr&language=fr&key=${apiKey}`;
 
   try {
     const response = await fetch(url);
     const data = await response.json();
 
-    if (data.status === 'OK' && Array.isArray(data.predictions)) {
-      return data.predictions;
+    if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+      console.warn(`[googlePlacesService] Autocomplete status: ${data.status}`);
+      return [];
     }
 
-    if (data.status !== 'ZERO_RESULTS') {
-      console.warn('[googlePlacesService] Status Autocomplete:', data.status, data.error_message);
-    }
-
-    return [];
-  } catch (error) {
-    console.error('[googlePlacesService] Erreur lors de la requête autocomplete:', error);
+    return (data.predictions || []).map((p: RawGooglePrediction) => ({
+      place_id: p.place_id,
+      description: p.description,
+      structured_formatting: {
+        main_text: p.structured_formatting?.main_text || p.description,
+        secondary_text: p.structured_formatting?.secondary_text,
+      },
+      types: p.types,
+    }));
+  } catch (err) {
+    console.error('[googlePlacesService] Erreur réseau autocomplete:', err);
     return [];
   }
 }
 
 /**
- * Récupère les détails d'un lieu à partir de son place_id
+ * Récupère les détails d'un lieu via son place_id Google.
  */
 export async function fetchGooglePlaceDetails(
   placeId: string
@@ -177,22 +209,67 @@ export async function fetchGooglePlaceDetails(
     return null;
   }
 
-  const fields =
-    'place_id,name,formatted_address,geometry,types,rating,user_ratings_total,price_level,vicinity,opening_hours,photos,formatted_phone_number,website';
-  const url = `${BASE_URL}/details/json?place_id=${placeId}&fields=${fields}&key=${apiKey}&language=fr`;
+  const fields = [
+    'place_id',
+    'name',
+    'formatted_address',
+    'vicinity',
+    'geometry',
+    'rating',
+    'user_ratings_total',
+    'price_level',
+    'types',
+    'opening_hours',
+    'photos',
+    'formatted_phone_number',
+    'website',
+  ].join(',');
+
+  const url = `${BASE_URL}/details/json?place_id=${encodeURIComponent(
+    placeId
+  )}&fields=${fields}&key=${apiKey}&language=fr`;
 
   try {
     const response = await fetch(url);
     const data = await response.json();
 
-    if (data.status === 'OK' && data.result) {
-      return data.result as GooglePlaceDetailsResult;
+    if (data.status !== 'OK') {
+      console.warn(`[googlePlacesService] Place details status: ${data.status}`);
+      return null;
     }
 
-    console.warn('[googlePlacesService] Status Place Details:', data.status, data.error_message);
-    return null;
-  } catch (error) {
-    console.error('[googlePlacesService] Erreur lors de la requête place details:', error);
+    const r = data.result;
+    return {
+      place_id: r.place_id,
+      name: r.name,
+      formatted_address: r.formatted_address,
+      vicinity: r.vicinity,
+      geometry: {
+        location: {
+          lat: r.geometry?.location?.lat ?? 0,
+          lng: r.geometry?.location?.lng ?? 0,
+        },
+      },
+      rating: r.rating,
+      user_ratings_total: r.user_ratings_total,
+      price_level: r.price_level,
+      types: r.types,
+      opening_hours: r.opening_hours
+        ? {
+            open_now: r.opening_hours.open_now,
+            weekday_text: r.opening_hours.weekday_text,
+          }
+        : undefined,
+      photos: r.photos?.map((photo: RawGooglePhoto) => ({
+        photo_reference: photo.photo_reference,
+        height: photo.height,
+        width: photo.width,
+      })),
+      formatted_phone_number: r.formatted_phone_number,
+      website: r.website,
+    };
+  } catch (err) {
+    console.error('[googlePlacesService] Erreur réseau place details:', err);
     return null;
   }
 }

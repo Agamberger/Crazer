@@ -1,11 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import {
+  View,
+  StyleSheet,
+  Text,
   ActivityIndicator,
   FlatList,
   RefreshControl,
-  StyleSheet,
-  Text,
-  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from 'expo-router';
@@ -16,76 +16,105 @@ import {
   PlannedOutingEditForm,
   useOutingsStore,
 } from '@/features/outings';
-import { useFriends, PendingFriendRequestsBanner } from '@/features/profil';
+import {
+  useFriends,
+  PendingFriendRequestsBanner,
+} from '@/features/profil';
 import { Button } from '@/shared/components/Button';
 import { colors, spacing, typography } from '@/shared/constants/theme';
 import { OutingUpdate, PlannedOutingUpdate } from '@/shared/types';
 
-export default function OutingsScreen() {
+export default function HomeScreen() {
+  const { user } = useAuth();
   const navigation = useNavigation();
+
+  // Outings store state
   const outings = useOutingsStore((state) => state.outings);
-  const selectedOutingId = useOutingsStore((state) => state.selectedOutingId);
-  const selectedPlannedOutingId = useOutingsStore((state) => state.selectedPlannedOutingId);
-  const plannedOutings = useOutingsStore((state) => state.plannedOutings);
-  const selectOuting = useOutingsStore((state) => state.selectOuting);
-  const selectPlannedOuting = useOutingsStore((state) => state.selectPlannedOuting);
+  const isLoading = useOutingsStore((state) => state.isLoading);
+  const error = useOutingsStore((state) => state.error);
   const fetchOutings = useOutingsStore((state) => state.fetchOutings);
-  const fetchOutingById = useOutingsStore((state) => state.fetchOutingById);
   const createOuting = useOutingsStore((state) => state.createOuting);
   const updateOuting = useOutingsStore((state) => state.updateOuting);
-  const updatePlannedOuting = useOutingsStore((state) => state.updatePlannedOuting);
-  const deletePlannedOuting = useOutingsStore((state) => state.deletePlannedOuting);
-  const isLoading = useOutingsStore((state) => state.isLoading);
-  const isLoadingPlannedOutings = useOutingsStore((state) => state.isLoadingPlannedOutings);
-  const error = useOutingsStore((state) => state.error);
 
-  const { user } = useAuth();
-  const { pendingRequests, fetchFriendsList, acceptFriendRequest, removeFriendship } = useFriends();
+  // Selection state
+  const selectedOutingId = useOutingsStore((state) => state.selectedOutingId);
+  const selectOuting = useOutingsStore((state) => state.selectOuting);
+  const selectedPlannedOutingId = useOutingsStore(
+    (state) => state.selectedPlannedOutingId
+  );
+  const selectPlannedOuting = useOutingsStore(
+    (state) => state.selectPlannedOuting
+  );
+  const plannedOutings = useOutingsStore((state) => state.plannedOutings);
+  const fetchPlannedOutings = useOutingsStore(
+    (state) => state.fetchPlannedOutings
+  );
+  const updatePlannedOuting = useOutingsStore(
+    (state) => state.updatePlannedOuting
+  );
+  const deletePlannedOuting = useOutingsStore(
+    (state) => state.deletePlannedOuting
+  );
+  const isLoadingPlannedOutings = useOutingsStore(
+    (state) => state.isLoadingPlannedOutings
+  );
+
+  const {
+    pendingRequests,
+    fetchFriendsList,
+    acceptFriendRequest,
+    removeFriendship,
+  } = useFriends();
+
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    fetchFriendsList();
     fetchOutings();
-  }, [fetchFriendsList, fetchOutings]);
-
-  const selectedOuting = outings.find((o) => o.id === selectedOutingId);
-  const selectedPlannedOuting = plannedOutings.find((p) => p.id === selectedPlannedOutingId);
+  }, [fetchOutings]);
 
   useEffect(() => {
-    if (navigation?.setOptions) {
-      if (selectedPlannedOuting) {
-        navigation.setOptions({
-          headerTitle: selectedPlannedOuting.title,
-        });
-      } else if (selectedOuting) {
-        navigation.setOptions({
-          headerTitle: selectedOuting.title,
-        });
-      } else {
-        navigation.setOptions({
-          headerTitle: 'Mes Sorties',
-        });
-      }
+    if (user && typeof fetchFriendsList === 'function') {
+      fetchFriendsList();
     }
-  }, [navigation, selectedOuting, selectedPlannedOuting]);
+  }, [user, fetchFriendsList]);
 
   useEffect(() => {
-    const nav = navigation as unknown as { addListener?: (event: string, cb: () => void) => () => void };
-    const unsubscribe = nav?.addListener?.('tabPress', () => {
-      selectPlannedOuting(null);
-      selectOuting(null);
-    });
-    return () => {
-      if (typeof unsubscribe === 'function') {
-        unsubscribe();
-      }
-    };
+    if (selectedOutingId && !selectedPlannedOutingId) {
+      fetchPlannedOutings(selectedOutingId);
+    }
+  }, [selectedOutingId, selectedPlannedOutingId, fetchPlannedOutings]);
+
+  useEffect(() => {
+    if (navigation?.addListener) {
+      const unsubscribe = navigation.addListener('tabPress', () => {
+        selectOuting(null);
+        selectPlannedOuting(null);
+      });
+      return unsubscribe;
+    }
   }, [navigation, selectOuting, selectPlannedOuting]);
 
-  useEffect(() => {
-    if (selectedOutingId && !selectedOuting) {
-      fetchOutingById(selectedOutingId);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        fetchOutings(),
+        user && typeof fetchFriendsList === 'function'
+          ? fetchFriendsList()
+          : Promise.resolve(),
+      ]);
+    } finally {
+      setRefreshing(false);
     }
-  }, [selectedOutingId, selectedOuting, fetchOutingById]);
+  }, [fetchOutings, fetchFriendsList, user]);
+
+  const handleSelectOuting = (id: string) => {
+    selectOuting(id);
+  };
+
+  const handleSelectPlannedOuting = (id: string) => {
+    selectPlannedOuting(id);
+  };
 
   const handleCreateOuting = async () => {
     await createOuting(user?.id);
@@ -93,9 +122,11 @@ export default function OutingsScreen() {
 
   const handleUpdateOuting = async (updates: OutingUpdate) => {
     if (!selectedOutingId) return;
-    const result = await updateOuting(selectedOutingId, updates);
-    if (result) {
+    try {
+      await updateOuting(selectedOutingId, updates);
       selectOuting(null);
+    } catch {
+      // Error handled in store
     }
   };
 
@@ -105,17 +136,21 @@ export default function OutingsScreen() {
 
   const handleUpdatePlannedOuting = async (updates: PlannedOutingUpdate) => {
     if (!selectedPlannedOutingId) return;
-    const result = await updatePlannedOuting(selectedPlannedOutingId, updates);
-    if (result) {
+    try {
+      await updatePlannedOuting(selectedPlannedOutingId, updates);
       selectPlannedOuting(null);
+    } catch {
+      // Error handled in store
     }
   };
 
   const handleDeletePlannedOuting = async () => {
     if (!selectedPlannedOutingId) return;
-    const success = await deletePlannedOuting(selectedPlannedOutingId);
-    if (success) {
+    try {
+      await deletePlannedOuting(selectedPlannedOutingId);
       selectPlannedOuting(null);
+    } catch {
+      // Error handled in store
     }
   };
 
@@ -125,21 +160,34 @@ export default function OutingsScreen() {
 
   // Case 1: Editing a selected planned outing
   if (selectedPlannedOutingId) {
+    const selectedPlannedOuting = plannedOutings.find(
+      (p) => p.id === selectedPlannedOutingId
+    );
+    const selectedOuting = outings.find((o) => o.id === selectedOutingId);
+
     if (isLoadingPlannedOutings && !selectedPlannedOuting) {
       return (
-        <SafeAreaView style={styles.centerContainer} edges={['top', 'left', 'right']} testID="planned-loading-state">
+        <SafeAreaView
+          style={styles.centerContainer}
+          edges={['top', 'left', 'right']}
+          testID="planned-loading-state"
+        >
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Chargement de l'étape...</Text>
+          <Text style={styles.loadingText}>Chargement de l&apos;étape...</Text>
         </SafeAreaView>
       );
     }
 
     if (!selectedPlannedOuting) {
       return (
-        <SafeAreaView style={styles.centerContainer} edges={['top', 'left', 'right']} testID="planned-not-found-state">
+        <SafeAreaView
+          style={styles.centerContainer}
+          edges={['top', 'left', 'right']}
+          testID="planned-not-found-state"
+        >
           <Text style={styles.notFoundTitle}>Étape introuvable</Text>
           <Text style={styles.notFoundSubtitle}>
-            L'étape demandée n'existe pas ou a été supprimée.
+            L&apos;étape demandée n&apos;existe pas ou a été supprimée.
           </Text>
           <Button
             title="Retour à la sortie"
@@ -152,7 +200,11 @@ export default function OutingsScreen() {
     }
 
     return (
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']} testID="planned-outing-edit-screen">
+      <SafeAreaView
+        style={styles.container}
+        edges={['top', 'left', 'right']}
+        testID="planned-outing-edit-screen"
+      >
         <PlannedOutingEditForm
           plannedOuting={selectedPlannedOuting}
           parentOutingTitle={selectedOuting?.title}
@@ -161,6 +213,9 @@ export default function OutingsScreen() {
           onCancel={handleCancelPlannedEdit}
           isLoading={isLoadingPlannedOutings}
           error={error}
+          submitTestID="btn-submit-planned-edit"
+          cancelTestID="btn-cancel-planned-edit"
+          deleteTestID="btn-delete-planned-edit"
         />
       </SafeAreaView>
     );
@@ -168,9 +223,15 @@ export default function OutingsScreen() {
 
   // Case 2: Editing a selected outing
   if (selectedOutingId) {
+    const selectedOuting = outings.find((o) => o.id === selectedOutingId);
+
     if (isLoading && !selectedOuting) {
       return (
-        <SafeAreaView style={styles.centerContainer} edges={['top', 'left', 'right']} testID="loading-state">
+        <SafeAreaView
+          style={styles.centerContainer}
+          edges={['top', 'left', 'right']}
+          testID="loading-state"
+        >
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Chargement de la sortie...</Text>
         </SafeAreaView>
@@ -179,10 +240,14 @@ export default function OutingsScreen() {
 
     if (!selectedOuting) {
       return (
-        <SafeAreaView style={styles.centerContainer} edges={['top', 'left', 'right']} testID="not-found-state">
+        <SafeAreaView
+          style={styles.centerContainer}
+          edges={['top', 'left', 'right']}
+          testID="not-found-state"
+        >
           <Text style={styles.notFoundTitle}>Sortie introuvable</Text>
           <Text style={styles.notFoundSubtitle}>
-            {"La sortie demandée n'existe pas ou vous n'avez pas les autorisations nécessaires."}
+            La sortie demandée n&apos;existe pas ou vous n&apos;avez pas les autorisations nécessaires.
           </Text>
           <Button
             title="Retour aux sorties"
@@ -202,6 +267,8 @@ export default function OutingsScreen() {
           isLoading={isLoading}
           error={error}
           onCancel={handleCancelEdit}
+          plannedOutings={plannedOutings}
+          onSelectPlannedOuting={(po) => handleSelectPlannedOuting(po.id)}
         />
       </SafeAreaView>
     );
@@ -217,45 +284,56 @@ export default function OutingsScreen() {
       />
 
       <View style={styles.headerArea}>
-        <Text style={styles.subtitle}>Organise et rejoins des sorties entre amis !</Text>
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        <Text style={styles.subtitle}>
+          Organise et rejoins des sorties entre amis !
+        </Text>
+        <Button
+          title="+ Organiser une sortie"
+          variant="primary"
+          onPress={handleCreateOuting}
+          style={styles.createButton}
+        />
       </View>
 
       <FlatList
         data={outings}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <OutingCard outing={item} onPress={() => selectOuting(item.id)} />
+          <OutingCard
+            outing={item}
+            onPress={() => handleSelectOuting(item.id)}
+          />
         )}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl
-            refreshing={isLoading && outings.length > 0}
-            onRefresh={fetchOutings}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
             tintColor={colors.primary}
           />
         }
         ListEmptyComponent={
-          <Text style={styles.emptyText}>
-            {isLoading ? 'Chargement des sorties...' : 'Aucune sortie prévue pour le moment.'}
-          </Text>
+          !isLoading ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>
+                Aucune sortie pour le moment.
+              </Text>
+              <Text style={styles.emptySubtext}>
+                Crée ta première sortie en cliquant ci-dessus !
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.centerContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          )
         }
       />
-      <View style={styles.actionArea}>
-        <Button
-          title="+ Organiser une sortie"
-          onPress={handleCreateOuting}
-          loading={isLoading}
-        />
-      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  actionArea: {
-    padding: spacing.md,
-  },
   backButton: {
     marginTop: spacing.md,
   },
@@ -270,45 +348,54 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     flex: 1,
   },
-  emptyText: {
-    color: colors.textMuted,
-    fontSize: typography.fontSizes.md,
-    marginTop: spacing.xl,
-    textAlign: 'center',
+  createButton: {
+    marginTop: spacing.sm,
   },
-  errorText: {
-    color: colors.error,
+  emptyContainer: {
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  emptySubtext: {
+    color: colors.textMuted,
     fontSize: typography.fontSizes.sm,
     marginTop: spacing.xs,
+    textAlign: 'center',
+  },
+  emptyText: {
+    color: colors.textSecondary,
+    fontSize: typography.fontSizes.md,
+    fontWeight: typography.fontWeights.semibold,
+    textAlign: 'center',
   },
   headerArea: {
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
+    paddingVertical: spacing.sm,
   },
   listContent: {
-    padding: spacing.md,
+    paddingBottom: spacing.xxl,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
   },
   loadingText: {
     color: colors.textSecondary,
-    fontSize: typography.fontSizes.sm,
+    fontSize: typography.fontSizes.md,
     marginTop: spacing.md,
   },
   notFoundSubtitle: {
-    color: colors.textSecondary,
+    color: colors.textMuted,
     fontSize: typography.fontSizes.sm,
-    marginBottom: spacing.lg,
+    lineHeight: 20,
+    marginTop: spacing.xs,
     textAlign: 'center',
   },
   notFoundTitle: {
     color: colors.textPrimary,
-    fontSize: typography.fontSizes.xl,
+    fontSize: typography.fontSizes.lg,
     fontWeight: typography.fontWeights.bold,
-    marginBottom: spacing.sm,
     textAlign: 'center',
   },
   subtitle: {
     color: colors.textSecondary,
-    fontSize: typography.fontSizes.md,
-    marginBottom: spacing.xs,
+    fontSize: typography.fontSizes.sm,
   },
 });
