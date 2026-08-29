@@ -1,5 +1,5 @@
 import { supabase } from '@/shared/lib/supabase';
-import { OutingInsert, OutingRow } from '@/shared/types';
+import { OutingInsert, OutingRow, OutingUpdate } from '@/shared/types';
 
 export const outingService = {
   /**
@@ -19,12 +19,47 @@ export const outingService = {
   },
 
   /**
+   * Récupère une sortie spécifique par son identifiant.
+   */
+  getOutingById: async (id: string): Promise<OutingRow> => {
+    const { data, error } = await supabase
+      .from('outings')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
+  },
+
+  /**
    * Crée une nouvelle sortie dans Supabase.
    */
   createOuting: async (payload: OutingInsert): Promise<OutingRow> => {
     const { data, error } = await supabase
       .from('outings')
       .insert(payload)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
+  },
+
+  /**
+   * Met à jour une sortie existante dans Supabase.
+   */
+  updateOuting: async (id: string, updates: OutingUpdate): Promise<OutingRow> => {
+    const { data, error } = await supabase
+      .from('outings')
+      .update(updates)
+      .eq('id', id)
       .select()
       .single();
 

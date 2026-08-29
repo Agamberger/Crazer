@@ -4,6 +4,8 @@
 
 export * from './database.types';
 
+import { Database, Enums } from './database.types';
+
 /** Utilisateur Crazer */
 export interface User {
   id: string;
@@ -14,12 +16,25 @@ export interface User {
   friendsCount: number;
 }
 
-import { Database } from './database.types';
-
-/** Types Supabase pour Outings */
+/** Types Supabase pour Outings dérivés directement du schéma PostgreSQL / Supabase */
 export type OutingRow = Database['public']['Tables']['outings']['Row'];
 export type OutingInsert = Database['public']['Tables']['outings']['Insert'];
-export type OutingStatus = Database['public']['Enums']['outing_status'];
+export type OutingUpdate = Database['public']['Tables']['outings']['Update'];
+
+/** Type de statut extrait directement des Enums de la base de données Supabase */
+export type OutingStatus = Enums<'outing_status'>;
+
+/** Configuration UI (libellés & émojis) strictement typée sur l'enum de la base de données */
+export const OUTING_STATUS_CONFIG: Record<
+  OutingStatus,
+  { label: string; emoji: string }
+> = {
+  draft: { label: 'Brouillon', emoji: '📝' },
+  planned: { label: 'Planifiée', emoji: '📅' },
+  ongoing: { label: 'En cours', emoji: '⚡' },
+  done: { label: 'Terminée', emoji: '✅' },
+  cancelled: { label: 'Annulée', emoji: '❌' },
+};
 
 /** Alias rétro-compatible */
 export type SortieRow = OutingRow;

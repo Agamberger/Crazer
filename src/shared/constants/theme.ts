@@ -14,6 +14,7 @@ export const colors = {
   warning: '#FDCB6E',
   error: '#D63031',
   errorBackground: '#3D1B1F',
+  overlay: 'rgba(0, 0, 0, 0.75)',
   transparent: 'transparent',
   white: '#FFFFFF',
   black: '#000000',

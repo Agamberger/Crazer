@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Card } from '@/shared/components/Card';
 import { colors, spacing, typography } from '@/shared/constants/theme';
-import { OutingRow } from '@/shared/types';
+import { OutingRow, OUTING_STATUS_CONFIG } from '@/shared/types';
 
 interface OutingCardProps {
   outing: OutingRow;
@@ -20,12 +20,15 @@ export const OutingCard: React.FC<OutingCardProps> = ({ outing, onPress }) => {
       })
     : '';
 
+  const statusConfig = OUTING_STATUS_CONFIG[outing.status];
+  const statusText = statusConfig ? `${statusConfig.emoji} ${statusConfig.label}` : outing.status;
+
   const content = (
     <Card style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>{outing.title}</Text>
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>{outing.status.toUpperCase()}</Text>
+          <Text style={styles.badgeText}>{statusText}</Text>
         </View>
       </View>
       {outing.description ? <Text style={styles.description}>{outing.description}</Text> : null}
