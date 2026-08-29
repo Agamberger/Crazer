@@ -48,6 +48,16 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="finances"
+        options={{
+          title: 'Finances',
+          headerTitle: 'Finances Partagées',
+          tabBarIcon: ({ color, focused, size }) => (
+            <Ionicons name={focused ? 'wallet' : 'wallet-outline'} size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profil"
         options={{
           title: 'Profil',

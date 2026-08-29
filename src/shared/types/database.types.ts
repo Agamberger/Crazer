@@ -83,6 +83,198 @@ export type Database = {
           }
         ]
       }
+      expenses: {
+        Row: {
+          amount_cents: number
+          category: 'restaurant' | 'bar' | 'transport' | 'logement' | 'activite' | 'courses' | 'autre'
+          created_at: string
+          created_by: string
+          date: string
+          id: string
+          payer_id: string
+          sortie_id: string
+          split_type: 'equal' | 'exact' | 'percentage' | 'shares'
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          category: 'restaurant' | 'bar' | 'transport' | 'logement' | 'activite' | 'courses' | 'autre'
+          created_at?: string
+          created_by: string
+          date?: string
+          id?: string
+          payer_id: string
+          sortie_id: string
+          split_type?: 'equal' | 'exact' | 'percentage' | 'shares'
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          category?: 'restaurant' | 'bar' | 'transport' | 'logement' | 'activite' | 'courses' | 'autre'
+          created_at?: string
+          created_by?: string
+          date?: string
+          id?: string
+          payer_id?: string
+          sortie_id?: string
+          split_type?: 'equal' | 'exact' | 'percentage' | 'shares'
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_payer_id_fkey"
+            columns: ["payer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      expense_payers: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          expense_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          expense_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          expense_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_payers_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_payers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      expense_splits: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          expense_id: string
+          id: string
+          percentage: number | null
+          shares: number | null
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          expense_id: string
+          id?: string
+          percentage?: number | null
+          shares?: number | null
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          expense_id?: string
+          id?: string
+          percentage?: number | null
+          shares?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_splits_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_splits_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      settlements: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          date: string
+          id: string
+          notes: string | null
+          payer_id: string
+          recipient_id: string
+          sortie_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          payer_id: string
+          recipient_id: string
+          sortie_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          payer_id?: string
+          recipient_id?: string
+          sortie_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "settlements_payer_id_fkey"
+            columns: ["payer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "settlements_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
