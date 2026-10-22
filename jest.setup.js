@@ -19,7 +19,7 @@ jest.mock('expo-router', () => ({
 
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage', () =>
-  require('@react-native-async-storage/async-storage/jest')
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
 
 // Polyfill WebSocket pour l'environnement de test Jest (Node < 22)
