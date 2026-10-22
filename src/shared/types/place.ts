@@ -110,7 +110,7 @@ export interface PlaceSearchResult {
   source: PlaceSource;
   distance_m: number | null; // null si pas de coordonnées fournies
   description?: string | null;
-  opening_hours?: any;
+  opening_hours?: string[] | { weekday_text?: string[] } | null;
   phone?: string | null;
   website?: string | null;
 }

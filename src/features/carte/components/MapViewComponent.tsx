@@ -48,6 +48,9 @@ const MarkerComponent: React.ElementType =
   (defaultObj?.MarkerView as React.ElementType) ||
   View;
 
+const USER_MARKER_COLOR = '#3B82F6';
+const USER_MARKER_HALO_COLOR = 'rgba(59, 130, 246, 0.3)';
+
 export interface MapViewComponentProps {
   pois: PoiItem[];
   onSelectPoi: (poi: PoiItem) => void;
@@ -88,90 +91,13 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
     }
   };
 
-  // If MapLibre Native Module is available (native dev client build), render native MapLibre vector map
-  if (isMapLibreAvailable) {
-    return (
-      <View style={styles.container} testID="map-view-container">
-        <MapComponent
-          style={styles.map}
-          mapStyle={styleURL}
-          styleURL={styleURL}
-          logo={false}
-          logoEnabled={false}
-          attribution={true}
-          attributionEnabled={true}
-          compass={true}
-          compassEnabled={true}
-          testID="maplibre-map-view"
-        >
-          <CameraComponent
-            center={[centerRegion.longitude, centerRegion.latitude]}
-            centerCoordinate={[centerRegion.longitude, centerRegion.latitude]}
-            zoom={centerRegion.zoomLevel}
-            zoomLevel={centerRegion.zoomLevel}
-            animationMode="flyTo"
-            animationDuration={1000}
-          />
-
-          {userLocation && (
-            <MarkerComponent
-              key="user-location-marker"
-              id="user-location-marker"
-              lngLat={[userLocation.longitude, userLocation.latitude]}
-              coordinate={[userLocation.longitude, userLocation.latitude]}
-            >
-              <View
-                style={styles.userMarkerContainer}
-                accessibilityLabel="Votre position"
-                accessibilityRole="image"
-              >
-                <View style={styles.userMarkerDot} />
-              </View>
-            </MarkerComponent>
-          )}
-
-          {pois.map((poi) => {
-            const isSelected = selectedPoiId === poi.id;
-            const emoji = CATEGORY_EMOJIS[poi.category] || CATEGORY_EMOJIS.all;
-
-            return (
-              <MarkerComponent
-                key={poi.id}
-                id={poi.id}
-                lngLat={[poi.longitude, poi.latitude]}
-                coordinate={[poi.longitude, poi.latitude]}
-              >
-                <TouchableOpacity
-                  style={[
-                    styles.markerContainer,
-                    isSelected && styles.markerSelected,
-                  ]}
-                  onPress={() => onSelectPoi(poi)}
-                  accessibilityLabel={`Sélectionner ${poi.title}`}
-                  accessibilityRole="button"
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.markerEmoji}>{emoji}</Text>
-                  {isSelected && (
-                    <View style={styles.selectedBadge}>
-                      <Text style={styles.selectedBadgeText} numberOfLines={1}>
-                        {poi.title}
-                      </Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              </MarkerComponent>
-            );
-          })}
-        </MapComponent>
-      </View>
-    );
-  }
-
-  const webViewRef = React.useRef<any>(null);
+  const webViewRef = React.useRef<React.ComponentRef<typeof WebView>>(null);
 
   // OpenStreetMap Leaflet Map via WebView for Expo Go & Web environments
   const leafletHtmlSource = React.useMemo(() => {
+    if (isMapLibreAvailable) {
+      return { html: '' };
+    }
     const tileUrl =
       mapStyleMode === 'voyager'
         ? 'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png'
@@ -276,6 +202,9 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
     `;
 
     return { html };
+    // Le HTML n'est reconstruit que si le style change : l'état de la carte est ensuite
+    // poussé via injectJavaScript pour éviter de recharger la WebView.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapStyleMode]);
 
   // Update WebView map markers & center position dynamically without reloading HTML
@@ -290,6 +219,86 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
       webViewRef.current.injectJavaScript(js);
     }
   }, [pois, selectedPoiId, centerRegion, userLocation]);
+
+  // If MapLibre Native Module is available (native dev client build), render native MapLibre vector map
+  if (isMapLibreAvailable) {
+    return (
+      <View style={styles.container} testID="map-view-container">
+        <MapComponent
+          style={styles.map}
+          mapStyle={styleURL}
+          styleURL={styleURL}
+          logo={false}
+          logoEnabled={false}
+          attribution={true}
+          attributionEnabled={true}
+          compass={true}
+          compassEnabled={true}
+          testID="maplibre-map-view"
+        >
+          <CameraComponent
+            center={[centerRegion.longitude, centerRegion.latitude]}
+            centerCoordinate={[centerRegion.longitude, centerRegion.latitude]}
+            zoom={centerRegion.zoomLevel}
+            zoomLevel={centerRegion.zoomLevel}
+            animationMode="flyTo"
+            animationDuration={1000}
+          />
+
+          {userLocation && (
+            <MarkerComponent
+              key="user-location-marker"
+              id="user-location-marker"
+              lngLat={[userLocation.longitude, userLocation.latitude]}
+              coordinate={[userLocation.longitude, userLocation.latitude]}
+            >
+              <View
+                style={styles.userMarkerContainer}
+                accessibilityLabel="Votre position"
+                accessibilityRole="image"
+              >
+                <View style={styles.userMarkerDot} />
+              </View>
+            </MarkerComponent>
+          )}
+
+          {pois.map((poi) => {
+            const isSelected = selectedPoiId === poi.id;
+            const emoji = CATEGORY_EMOJIS[poi.category] || CATEGORY_EMOJIS.all;
+
+            return (
+              <MarkerComponent
+                key={poi.id}
+                id={poi.id}
+                lngLat={[poi.longitude, poi.latitude]}
+                coordinate={[poi.longitude, poi.latitude]}
+              >
+                <TouchableOpacity
+                  style={[
+                    styles.markerContainer,
+                    isSelected && styles.markerSelected,
+                  ]}
+                  onPress={() => onSelectPoi(poi)}
+                  accessibilityLabel={`Sélectionner ${poi.title}`}
+                  accessibilityRole="button"
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.markerEmoji}>{emoji}</Text>
+                  {isSelected && (
+                    <View style={styles.selectedBadge}>
+                      <Text style={styles.selectedBadgeText} numberOfLines={1}>
+                        {poi.title}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </MarkerComponent>
+            );
+          })}
+        </MapComponent>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container} testID="map-view-container">
@@ -416,7 +425,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: 'rgba(59, 130, 246, 0.3)',
+    backgroundColor: USER_MARKER_HALO_COLOR,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -424,7 +433,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#3B82F6',
+    backgroundColor: USER_MARKER_COLOR,
     borderWidth: 2,
     borderColor: colors.white,
   },
