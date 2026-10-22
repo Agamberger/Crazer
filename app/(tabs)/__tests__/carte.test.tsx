@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, act, waitFor } from '@testing-library/react-native';
+import { render, waitFor } from '@testing-library/react-native';
 import CarteScreen from '../carte';
 
 jest.mock('expo-location', () => ({

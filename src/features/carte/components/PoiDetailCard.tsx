@@ -311,7 +311,7 @@ export const PoiDetailCard: React.FC<PoiDetailCardProps> = ({
               accessibilityLabel="Afficher ou masquer les horaires d'ouverture"
               accessibilityRole="button"
             >
-              <Text style={styles.hoursTitle}>🕒 Horaires d'ouverture</Text>
+              <Text style={styles.hoursTitle}>{"🕒 Horaires d'ouverture"}</Text>
               <Text style={styles.hoursChevron}>
                 {showHours || isExpanded ? '▲' : '▼'}
               </Text>
@@ -437,10 +437,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   openBadge: {
-    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    backgroundColor: colors.successBackground,
   },
   closedBadge: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    backgroundColor: colors.errorBackground,
   },
   openStatusText: {
     fontSize: typography.fontSizes.xs,

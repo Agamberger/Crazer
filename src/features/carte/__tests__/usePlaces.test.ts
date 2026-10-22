@@ -5,7 +5,7 @@
  * la logique du hook sans appels réseau ou GPS réels.
  */
 
-import { renderHook, act, waitFor } from '@testing-library/react-native';
+import { renderHook, act } from '@testing-library/react-native';
 import { usePlaces } from '../hooks/usePlaces';
 
 // ── Mock expo-location ───────────────────────────────────────────────────────
@@ -29,7 +29,7 @@ jest.mock('../store/useMapStore', () => {
     centerRegion: { latitude: 48.8566, longitude: 2.3522, zoomLevel: 12 },
     userLocation: null,
   };
-  const useMapStoreMock: any = (selector: any) => selector(state);
+  const useMapStoreMock = (selector: (s: typeof state) => unknown) => selector(state);
   useMapStoreMock.getState = () => state;
   return {
     useMapStore: useMapStoreMock,
@@ -40,9 +40,8 @@ import { useMapStore } from '../store/useMapStore';
 import * as Location from 'expo-location';
 import { fetchNearbyPlaces, searchPlaces } from '../services/placeService';
 
-const mockState = (useMapStore as any).getState();
+const mockState = (useMapStore as unknown as { getState: () => { setPois: jest.Mock; setUserLocation: jest.Mock } }).getState();
 const mockSetPois = mockState.setPois;
-const mockSetCenterRegion = mockState.setCenterRegion;
 const mockSetUserLocation = mockState.setUserLocation;
 
 const mockLocation = Location as jest.Mocked<typeof Location>;
