@@ -23,7 +23,7 @@ export default function TabLayout() {
           title: 'Sorties',
           headerTitle: 'Mes Sorties',
           tabBarIcon: ({ color, focused, size }) => (
-            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={size} color={color} />
+            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={size} color={String(color)} />
           ),
         }}
       />
@@ -33,7 +33,7 @@ export default function TabLayout() {
           title: 'Activités',
           headerTitle: 'Découvrir',
           tabBarIcon: ({ color, focused, size }) => (
-            <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} size={size} color={color} />
+            <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} size={size} color={String(color)} />
           ),
         }}
       />
@@ -43,7 +43,7 @@ export default function TabLayout() {
           title: 'Carte',
           headerTitle: 'Carte & Explorer',
           tabBarIcon: ({ color, focused, size }) => (
-            <Ionicons name={focused ? 'map' : 'map-outline'} size={size} color={color} />
+            <Ionicons name={focused ? 'map' : 'map-outline'} size={size} color={String(color)} />
           ),
         }}
       />
@@ -53,7 +53,7 @@ export default function TabLayout() {
           title: 'Profil',
           headerTitle: 'Mon Profil',
           tabBarIcon: ({ color, focused, size }) => (
-            <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={String(color)} />
           ),
         }}
       />

@@ -7,11 +7,6 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "scheme": "crazer",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#121214"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.crazer.app"
@@ -29,6 +24,14 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#121214"
+        }
+      ],
       "@maplibre/maplibre-react-native",
       [
         "expo-build-properties",
@@ -48,7 +51,8 @@
           "locationWhenInUsePermission": "Crazer utilise votre position pour afficher les lieux à proximité.",
           "isAndroidBackgroundLocationEnabled": false
         }
-      ]
+      ],
+      "expo-splash-screen"
     ],
     "experiments": {
       "typedRoutes": true
