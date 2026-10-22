@@ -24,18 +24,6 @@
     },
     "plugins": [
       "expo-router",
-      "@maplibre/maplibre-react-native",
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "minSdkVersion": 24
-          },
-          "ios": {
-            "useFrameworks": "dynamic"
-          }
-        }
-      ],
       [
         "expo-splash-screen",
         {

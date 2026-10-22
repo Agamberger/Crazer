@@ -83,7 +83,7 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
 
   const styleURL = MAP_STYLE_URLS[mapStyleMode];
 
-  const webViewRef = React.useRef<WebView>(null);
+  const webViewRef = React.useRef<React.ComponentRef<typeof WebView>>(null);
 
   // OpenStreetMap Leaflet Map via WebView for Expo Go & Web environments
   const leafletHtmlSource = React.useMemo(() => {

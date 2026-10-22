@@ -51,7 +51,7 @@ export const MapHeaderSearch: React.FC<MapHeaderSearchProps> = ({
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
 
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<React.ComponentRef<typeof TextInput>>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const justSelectedRef = useRef(false);
 
