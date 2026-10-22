@@ -1,37 +1,29 @@
-/**
- * placeService.ts
- *
- * Couche d'accès données pour les Places stockées dans Supabase.
- * Provider-agnostique : supporte les lieux OSM importés et les lieux custom.
- *
- * Fonctions exposées :
- *  - searchPlaces()      → RPC Supabase search_places (full-text + géospatial)
- *  - createCustomPlace() → INSERT d'un lieu créé par l'utilisateur
- *  - upsertPlace()       → INSERT … ON CONFLICT UPDATE (pour imports futurs)
- */
-
+import { Json } from '@/shared/types';
 import { supabase } from '@/shared/lib/supabase';
-import { Json } from '@/shared/types/database.types';
 import {
   CreatePlaceDto,
   PlaceCategory,
   PlaceSearchResult,
   SearchPlacesParams,
 } from '@/shared/types/place';
+import {
+  PlaceItem,
+  placeItemToCreatePlaceDto,
+} from '../types/carte';
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Recherche (full-text + géospatial via RPC SQL)
-// ──────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Recherche de lieux (RPC search_places)
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Recherche des places dans Supabase via la fonction SQL `search_places`.
- * Tous les paramètres sont optionnels.
+ * Recherche des lieux autour d'une position GPS avec filtres et recherche plein texte.
+ * Appelle la fonction RPC Supabase `search_places`.
  *
- * @param params - Critères de recherche (query, coordonnées, catégorie, rayon)
- * @returns Liste de PlaceSearchResult triée par pertinence + proximité
+ * @param params - Paramètres de recherche (lat, lng, radius_m, query, filter_cat, max_results)
+ * @returns Liste de lieux triés par pertinence / distance
  */
 export async function searchPlaces(
-  params: SearchPlacesParams = {},
+  params: SearchPlacesParams,
 ): Promise<PlaceSearchResult[]> {
   const {
     query,
@@ -39,150 +31,189 @@ export async function searchPlaces(
     lng,
     radius_m = 2000,
     filter_cat,
-    max_results = 30,
+    max_results = 20,
   } = params;
 
   const { data, error } = await supabase.rpc('search_places', {
-    query: query ?? undefined,
+    query: query && query.trim() ? query.trim() : undefined,
     lat: lat ?? undefined,
     lng: lng ?? undefined,
-    radius_m,
-    filter_cat: filter_cat ?? undefined,
+    radius_m: radius_m ?? 2000,
+    filter_cat: filter_cat || undefined,
     max_results,
   });
 
   if (error) {
-    throw new Error(`[placeService] searchPlaces échoué : ${error.message}`);
+    console.error('[placeService] Erreur lors de search_places:', error);
+    throw new Error(error.message);
   }
 
-  return (data ?? []) as PlaceSearchResult[];
+  return (data || []) as PlaceSearchResult[];
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Récupération par zone géographique (sans recherche texte)
-// ──────────────────────────────────────────────────────────────────────────────
-
 /**
- * Charge toutes les places publiques dans un rayon autour d'une position GPS.
- *
- * @param lat       - Latitude du centre
- * @param lng       - Longitude du centre
- * @param radius_m  - Rayon en mètres (défaut : 2000m)
- * @param category  - Filtre optionnel sur la catégorie
+ * Récupère les lieux dans un rayon géographique donné.
+ * Raccourci vers `searchPlaces` sans recherche textuelle.
  */
 export async function fetchNearbyPlaces(
   lat: number,
   lng: number,
   radius_m = 2000,
-  category?: PlaceCategory,
+  filter_cat?: PlaceCategory,
 ): Promise<PlaceSearchResult[]> {
-  return searchPlaces({ lat, lng, radius_m, filter_cat: category, max_results: 50 });
+  return searchPlaces({ lat, lng, radius_m, filter_cat });
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Création d'un lieu custom (par un utilisateur authentifié)
-// ──────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Création et Upsert de lieux
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Crée un lieu custom dans Supabase.
- * Le champ `source` est forcé à `'custom'`.
+ * Upsert un lieu dans la base de données :
+ * - Si le lieu existe déjà (même source + source_id, ou même nom + coordonnées proches), il est mis à jour
+ * - Sinon, il est créé
  *
- * @param dto - Données du lieu à créer (sans id, created_at, updated_at)
- * @returns L'id du lieu créé
+ * @param dto - Données du lieu à persister
+ * @returns L'identifiant UUID du lieu dans Supabase
  */
-export async function createCustomPlace(
-  dto: Omit<CreatePlaceDto, 'source'>,
-): Promise<string> {
-  // PostGIS Geography attend un WKT : 'POINT(lng lat)'
-  const location = `POINT(${dto.longitude} ${dto.latitude})`;
+export async function upsertPlace(dto: CreatePlaceDto): Promise<string> {
+  // 1. Recherche par source_id si disponible
+  if (dto.source_id && dto.source !== 'custom') {
+    const { data: existingBySource } = await supabase
+      .from('places')
+      .select('id')
+      .eq('source', dto.source)
+      .eq('source_id', dto.source_id)
+      .maybeSingle();
 
-  const { data, error } = await supabase
+    if (existingBySource?.id) {
+      // Mise à jour des informations enrichies
+      await supabase
+        .from('places')
+        .update({
+          name: dto.name,
+          category: dto.category,
+          address: dto.address,
+          description: dto.description,
+          phone: dto.phone,
+          website: dto.website,
+          opening_hours: dto.opening_hours,
+          price_range: dto.price_range,
+          rating: dto.rating,
+          reviews_count: dto.reviews_count,
+          images: dto.images,
+          tags: dto.tags,
+          metadata: dto.metadata as Json,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingBySource.id);
+
+      return existingBySource.id;
+    }
+  }
+
+  // 2. Recherche par nom exact si c'est un lieu personnalisé ou si pas de source_id
+  const { data: existingByName } = await supabase
+    .from('places')
+    .select('id')
+    .ilike('name', dto.name)
+    .maybeSingle();
+
+  if (existingByName?.id) {
+    return existingByName.id;
+  }
+
+  // 3. Insertion d'un nouveau lieu (PostGIS geography point: POINT(lng lat))
+  const longitude = dto.longitude ?? 0;
+  const latitude = dto.latitude ?? 0;
+  const location = `POINT(${longitude} ${latitude})`;
+
+  const { data: newPlace, error: insertError } = await supabase
     .from('places')
     .insert({
-      address: dto.address,
-      category: dto.category,
-      city: dto.city,
-      country_code: dto.country_code,
-      created_by: dto.created_by,
-      description: dto.description,
-      images: dto.images,
-      is_public: dto.is_public,
-      location,
-      metadata: dto.metadata as Json,
       name: dto.name,
-      opening_hours: dto.opening_hours,
-      phone: dto.phone,
+      category: dto.category,
+      location,
+      address: dto.address,
+      street: dto.street,
+      city: dto.city,
       postcode: dto.postcode,
-      price_range: dto.price_range,
-      rating: dto.rating,
-      reviews_count: dto.reviews_count,
-      source: 'custom' as const,
+      country_code: dto.country_code,
+      source: dto.source,
       source_id: dto.source_id,
       source_url: dto.source_url,
-      street: dto.street,
-      tags: dto.tags,
+      description: dto.description,
+      phone: dto.phone,
       website: dto.website,
+      opening_hours: dto.opening_hours,
+      price_range: dto.price_range,
+      rating: dto.rating,
+      reviews_count: dto.reviews_count || 0,
+      images: dto.images,
+      tags: dto.tags,
+      metadata: dto.metadata as Json,
+      created_by: dto.created_by,
+      is_public: dto.is_public,
     })
     .select('id')
     .single();
 
-  if (error) {
-    throw new Error(`[placeService] createCustomPlace échoué : ${error.message}`);
+  if (insertError) {
+    console.error('[placeService] Erreur lors de la création du lieu:', insertError);
+    throw new Error(insertError.message);
   }
 
-  return data.id;
+  return newPlace.id;
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Upsert générique (pour imports futurs depuis providers OSM, Google…)
-// ──────────────────────────────────────────────────────────────────────────────
+/**
+ * Crée un lieu personnalisé directement saisi par l'utilisateur.
+ *
+ * @param place - Données de l'UI représentant le lieu personnalisé
+ * @param userId - ID de l'utilisateur créateur
+ * @returns UUID du lieu créé
+ */
+export async function createCustomPlace(
+  place: PlaceItem,
+  userId?: string,
+): Promise<string> {
+  const dto = placeItemToCreatePlaceDto(place, userId);
+  return upsertPlace(dto);
+}
 
 /**
- * Insère ou met à jour un lieu (basé sur la contrainte UNIQUE source + source_id).
- * Utilisé pour les imports en masse depuis des providers externes.
+ * S'assure qu'un lieu (carte ou personnalisé) est bien persisté dans la base `places`.
+ * Si c'est un UUID existant dans `places`, retourne l'ID tel quel.
+ * Sinon, crée ou upsert le lieu et retourne le nouvel UUID.
  *
- * @param dto - Données complètes du lieu incluant source et source_id
- * @returns L'id du lieu créé ou mis à jour
+ * @param place - Données du lieu
+ * @param userId - ID de l'utilisateur courant (pour ownership si custom)
+ * @returns UUID garanti dans la table `places`
  */
-export async function upsertPlace(dto: CreatePlaceDto): Promise<string> {
-  const location = `POINT(${dto.longitude} ${dto.latitude})`;
+export async function ensurePlaceExists(
+  place: PlaceItem,
+  userId?: string,
+): Promise<string> {
+  // Si le lieu a déjà un UUID de base (pas un id 'osm-xxx' ou 'google-xxx')
+  const isUuid =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      place.id,
+    );
 
-  const { data, error } = await supabase
-    .from('places')
-    .upsert(
-      {
-        address: dto.address,
-        category: dto.category,
-        city: dto.city,
-        country_code: dto.country_code,
-        created_by: dto.created_by,
-        description: dto.description,
-        images: dto.images,
-        is_public: dto.is_public,
-        location,
-        metadata: dto.metadata as Json,
-        name: dto.name,
-        opening_hours: dto.opening_hours,
-        phone: dto.phone,
-        postcode: dto.postcode,
-        price_range: dto.price_range,
-        rating: dto.rating,
-        reviews_count: dto.reviews_count,
-        source: dto.source,
-        source_id: dto.source_id,
-        source_url: dto.source_url,
-        street: dto.street,
-        tags: dto.tags,
-        website: dto.website,
-      },
-      { onConflict: 'source,source_id', ignoreDuplicates: false },
-    )
-    .select('id')
-    .single();
+  if (isUuid && !place.id.startsWith('custom-')) {
+    // Vérifier si l'ID existe déjà dans la base
+    const { data: existing } = await supabase
+      .from('places')
+      .select('id')
+      .eq('id', place.id)
+      .maybeSingle();
 
-  if (error) {
-    throw new Error(`[placeService] upsertPlace échoué : ${error.message}`);
+    if (existing?.id) {
+      return existing.id;
+    }
   }
 
-  return data.id;
+  // Si c'est un POI externe (OSM/Google...) ou un custom non persisté
+  const dto = placeItemToCreatePlaceDto(place, userId);
+  return upsertPlace(dto);
 }

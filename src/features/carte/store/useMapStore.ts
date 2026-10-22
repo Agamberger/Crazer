@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { PoiItem, PoiCategory, MapStyleMode, MapRegion } from '../types/carte';
+import { PlaceItem, PlaceCategoryFilter, MapStyleMode, MapRegion } from '../types/carte';
 
 // OpenStreetMap styles (Raster / Vector styles using standard Osm / CartoDB basemaps)
 export const MAP_STYLE_URLS: Record<MapStyleMode, string> = {
@@ -8,7 +8,8 @@ export const MAP_STYLE_URLS: Record<MapStyleMode, string> = {
   outdoor: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
 };
 
-export const INITIAL_POIS: PoiItem[] = [];
+export const INITIAL_PLACES: PlaceItem[] = [];
+export const INITIAL_POIS = INITIAL_PLACES;
 
 export const INITIAL_REGION: MapRegion = {
   latitude: 46.603354,
@@ -17,87 +18,116 @@ export const INITIAL_REGION: MapRegion = {
 };
 
 interface MapState {
-  pois: PoiItem[];
-  selectedCategory: PoiCategory;
-  selectedPoiId: string | null;
   searchQuery: string;
+  selectedCategory: PlaceCategoryFilter;
   mapStyleMode: MapStyleMode;
+  places: PlaceItem[];
+  pois: PlaceItem[];
+  savedWaypoints: PlaceItem[];
+  selectedPlaceId: string | null;
+  selectedPoiId: string | null;
+  targetOutingId: string | null;
   centerRegion: MapRegion;
   userLocation: { latitude: number; longitude: number } | null;
-  savedWaypoints: PoiItem[];
-
-  // États asynchrones (Supabase / géolocalisation)
   isLoading: boolean;
   error: string | null;
-
-  // Actions
-  setSelectedCategory: (category: PoiCategory) => void;
-  setSelectedPoiId: (id: string | null) => void;
   setSearchQuery: (query: string) => void;
+  setSelectedCategory: (category: PlaceCategoryFilter) => void;
   setMapStyleMode: (mode: MapStyleMode) => void;
-  setCenterRegion: (region: MapRegion) => void;
+  setPlaces: (places: PlaceItem[]) => void;
+  setPois: (pois: PlaceItem[]) => void;
+  toggleSavedWaypoint: (place: PlaceItem) => void;
+  setSelectedPlaceId: (id: string | null) => void;
+  setSelectedPoiId: (id: string | null) => void;
+  setTargetOutingId: (id: string | null) => void;
+  setCenterRegion: (region: Partial<MapRegion>) => void;
   setUserLocation: (location: { latitude: number; longitude: number } | null) => void;
-  setPois: (pois: PoiItem[]) => void;
-  setIsLoading: (value: boolean) => void;
-  setError: (message: string | null) => void;
-  toggleSavedWaypoint: (poi: PoiItem) => void;
+  setIsLoading: (isLoading: boolean) => void;
+  setError: (error: string | null) => void;
   resetFilters: () => void;
-  getFilteredPois: () => PoiItem[];
+  getFilteredPlaces: () => PlaceItem[];
+  getFilteredPois: () => PlaceItem[];
 }
 
 export const useMapStore = create<MapState>((set, get) => ({
-  pois: INITIAL_POIS,
-  selectedCategory: 'all',
-  selectedPoiId: null,
   searchQuery: '',
+  selectedCategory: 'all',
   mapStyleMode: 'dark',
+  places: INITIAL_PLACES,
+  pois: INITIAL_POIS,
+  savedWaypoints: [],
+  selectedPlaceId: null,
+  selectedPoiId: null,
+  targetOutingId: null,
   centerRegion: INITIAL_REGION,
   userLocation: null,
-  savedWaypoints: [],
-
-  // États asynchrones initiaux
   isLoading: false,
   error: null,
 
-  setSelectedCategory: (category) => set({ selectedCategory: category }),
-  setSelectedPoiId: (id) => set({ selectedPoiId: id }),
-  setSearchQuery: (query) => set({ searchQuery: query }),
-  setMapStyleMode: (mode) => set({ mapStyleMode: mode }),
-  setCenterRegion: (region) => set({ centerRegion: region }),
-  setUserLocation: (location) => set({ userLocation: location }),
-  setPois: (pois) => set({ pois }),
-  setIsLoading: (value) => set({ isLoading: value }),
-  setError: (message) => set({ error: message }),
+  setSearchQuery: (query: string) => set({ searchQuery: query }),
 
-  toggleSavedWaypoint: (poi) =>
+  setSelectedCategory: (category: PlaceCategoryFilter) =>
+    set({ selectedCategory: category }),
+
+  setMapStyleMode: (mode: MapStyleMode) => set({ mapStyleMode: mode }),
+
+  setPlaces: (places: PlaceItem[]) => set({ places, pois: places }),
+  setPois: (pois: PlaceItem[]) => set({ places: pois, pois }),
+
+  toggleSavedWaypoint: (place: PlaceItem) =>
     set((state) => {
-      const exists = state.savedWaypoints.some((item) => item.id === poi.id);
+      const exists = state.savedWaypoints.some((p) => p.id === place.id);
       return {
         savedWaypoints: exists
-          ? state.savedWaypoints.filter((item) => item.id !== poi.id)
-          : [...state.savedWaypoints, poi],
+          ? state.savedWaypoints.filter((p) => p.id !== place.id)
+          : [...state.savedWaypoints, place],
       };
     }),
 
+  setSelectedPlaceId: (id: string | null) =>
+    set({ selectedPlaceId: id, selectedPoiId: id }),
+  setSelectedPoiId: (id: string | null) =>
+    set({ selectedPlaceId: id, selectedPoiId: id }),
+
+  setTargetOutingId: (id: string | null) => set({ targetOutingId: id }),
+
+  setCenterRegion: (region: Partial<MapRegion>) =>
+    set((state) => ({
+      centerRegion: { ...state.centerRegion, ...region },
+    })),
+
+  setUserLocation: (location: { latitude: number; longitude: number } | null) =>
+    set({ userLocation: location }),
+
+  setIsLoading: (isLoading: boolean) => set({ isLoading }),
+
+  setError: (error: string | null) => set({ error }),
+
   resetFilters: () =>
     set({
-      selectedCategory: 'all',
       searchQuery: '',
+      selectedCategory: 'all',
+      selectedPlaceId: null,
       selectedPoiId: null,
     }),
 
-  getFilteredPois: () => {
-    const { pois, selectedCategory, searchQuery } = get();
-    return pois.filter((poi) => {
-      const matchesCategory =
-        selectedCategory === 'all' || poi.category === selectedCategory;
-      const matchesSearch =
+  getFilteredPlaces: () => {
+    const { places, selectedCategory, searchQuery } = get();
+    return places.filter((place) => {
+      const matchCategory =
+        selectedCategory === 'all' || place.category === selectedCategory;
+      const matchSearch =
         searchQuery.trim() === '' ||
-        poi.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        poi.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        poi.address.toLowerCase().includes(searchQuery.toLowerCase());
+        place.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        place.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (place.description &&
+          place.description.toLowerCase().includes(searchQuery.toLowerCase()));
 
-      return matchesCategory && matchesSearch;
+      return matchCategory && matchSearch;
     });
+  },
+
+  getFilteredPois: () => {
+    return get().getFilteredPlaces();
   },
 }));

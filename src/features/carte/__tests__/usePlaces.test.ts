@@ -5,32 +5,37 @@
  * la logique du hook sans appels réseau ou GPS réels.
  */
 
-import { renderHook, act, waitFor } from '@testing-library/react-native';
+import { renderHook, act } from '@testing-library/react-native';
 import { usePlaces } from '../hooks/usePlaces';
 
-// ── Mock expo-location ───────────────────────────────────────────────────────
+// ── Mock expo-location ────────────────────────────────────────────────────────
 jest.mock('expo-location', () => ({
   requestForegroundPermissionsAsync: jest.fn(),
   getCurrentPositionAsync: jest.fn(),
+  getLastKnownPositionAsync: jest.fn(),
   Accuracy: { Balanced: 3 },
 }));
 
-// ── Mock placeService ─────────────────────────────────────────────────────────
+// ── Mock placeService ────────────────────────────────────────────────────────
 jest.mock('../services/placeService', () => ({
   fetchNearbyPlaces: jest.fn(),
   searchPlaces: jest.fn(),
 }));
 
+const mockStoreState = {
+  setPlaces: jest.fn(),
+  setPois: jest.fn(),
+  setCenterRegion: jest.fn(),
+  setUserLocation: jest.fn(),
+  centerRegion: { latitude: 48.8566, longitude: 2.3522, zoomLevel: 12 },
+  userLocation: null,
+};
+
 jest.mock('../store/useMapStore', () => {
-  const state = {
-    setPois: jest.fn(),
-    setCenterRegion: jest.fn(),
-    setUserLocation: jest.fn(),
-    centerRegion: { latitude: 48.8566, longitude: 2.3522, zoomLevel: 12 },
-    userLocation: null,
-  };
-  const useMapStoreMock: any = (selector: any) => selector(state);
-  useMapStoreMock.getState = () => state;
+  const useMapStoreMock = Object.assign(
+    <T>(selector: (state: typeof mockStoreState) => T) => selector(mockStoreState),
+    { getState: () => mockStoreState }
+  );
   return {
     useMapStore: useMapStoreMock,
   };
@@ -40,9 +45,8 @@ import { useMapStore } from '../store/useMapStore';
 import * as Location from 'expo-location';
 import { fetchNearbyPlaces, searchPlaces } from '../services/placeService';
 
-const mockState = (useMapStore as any).getState();
-const mockSetPois = mockState.setPois;
-const mockSetCenterRegion = mockState.setCenterRegion;
+const mockState = (useMapStore as unknown as { getState: () => typeof mockStoreState }).getState();
+const mockSetPlaces = mockState.setPlaces;
 const mockSetUserLocation = mockState.setUserLocation;
 
 const mockLocation = Location as jest.Mocked<typeof Location>;
@@ -128,7 +132,7 @@ describe('usePlaces', () => {
     expect(result.current.error).toBeNull();
   });
 
-  test('loadNearby — charge les places et appelle setPois', async () => {
+  test('loadNearby — charge les places et appelle setPlaces', async () => {
     const { result } = renderHook(() => usePlaces());
 
     await act(async () => {
@@ -136,10 +140,10 @@ describe('usePlaces', () => {
     });
 
     expect(mockFetchNearby).toHaveBeenCalledWith(48.8566, 2.3522, 2000, undefined);
-    expect(mockSetPois).toHaveBeenCalled();
-    const poisArg = mockSetPois.mock.calls.at(-1)[0];
-    expect(poisArg[0].id).toBe('place-1');
-    expect(poisArg[0].title).toBe('Café de Flore');
+    expect(mockSetPlaces).toHaveBeenCalled();
+    const placesArg = mockSetPlaces.mock.calls.at(-1)[0];
+    expect(placesArg[0].id).toBe('place-1');
+    expect(placesArg[0].title).toBe('Café de Flore');
   });
 
   test('loadNearby — utilise Paris en fallback si pas de position', async () => {
