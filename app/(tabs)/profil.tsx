@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/features/auth';
 import { useGamificationStore } from '@/features/gamification';
 import {
@@ -39,41 +40,42 @@ export default function ProfilScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <ProfileHeaderCard
-        displayName={displayName}
-        displayEmail={displayEmail}
-        friendsCount={friendsCount}
-        pendingRequestsCount={pendingRequests.length}
-        unlockedBadgesCount={unlockedBadgesCount}
-        totalBadgesCount={badges.length}
-        onOpenFriendsSearch={() => setIsSearchModalVisible(true)}
-      />
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <ProfileHeaderCard
+          displayName={displayName}
+          displayEmail={displayEmail}
+          friendsCount={friendsCount}
+          pendingRequestsCount={pendingRequests.length}
+          unlockedBadgesCount={unlockedBadgesCount}
+          totalBadgesCount={badges.length}
+          onOpenFriendsSearch={() => setIsSearchModalVisible(true)}
+        />
 
-      <InterestsSection interests={mockUser.interests} />
+        <InterestsSection interests={mockUser.interests} />
 
-      <BadgesSection badges={badges} />
+        <BadgesSection badges={badges} />
 
-      <Button
-        title="Se déconnecter"
-        variant="outline"
-        loading={isLoading}
-        onPress={handleLogout}
-        style={styles.logoutButton}
-        testID="btn-logout"
-      />
+        <Button
+          title="Se déconnecter"
+          variant="outline"
+          loading={isLoading}
+          onPress={handleLogout}
+          style={styles.logoutButton}
+          testID="btn-logout"
+        />
 
-      <UserSearchModal
-        visible={isSearchModalVisible}
-        onClose={() => setIsSearchModalVisible(false)}
-      />
-    </ScrollView>
+        <UserSearchModal
+          visible={isSearchModalVisible}
+          onClose={() => setIsSearchModalVisible(false)}
+        />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.background,
     flexGrow: 1,
     padding: spacing.md,
   },
@@ -81,5 +83,9 @@ const styles = StyleSheet.create({
     borderColor: colors.error,
     marginBottom: spacing.lg,
     marginTop: spacing.md,
+  },
+  safeArea: {
+    backgroundColor: colors.background,
+    flex: 1,
   },
 });

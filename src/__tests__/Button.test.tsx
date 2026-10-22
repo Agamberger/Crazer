@@ -8,6 +8,14 @@ describe('Button Component', () => {
     expect(getByText('Organiser une sortie')).toBeTruthy();
   });
 
+  it('supports different sizes like sm, md, lg', () => {
+    const { getByText: getByTextSm } = render(<Button title="Petit bouton" size="sm" />);
+    expect(getByTextSm('Petit bouton')).toBeTruthy();
+
+    const { getByText: getByTextLg } = render(<Button title="Grand bouton" size="lg" />);
+    expect(getByTextLg('Grand bouton')).toBeTruthy();
+  });
+
   it('calls onPress when clicked', () => {
     const onPressMock = jest.fn();
     const { getByText } = render(<Button title="Cliquez ici" onPress={onPressMock} />);

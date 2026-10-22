@@ -42,13 +42,13 @@ Des raccourcis npm ont été configurés dans `package.json` pour simplifier tou
 ### 2. 🔐 Sécurité & Row Level Security (RLS)
 - **RLS Obligatoire** : Toute nouvelle table créée **DOIT** avoir le Row Level Security activé :
   ```sql
-  ALTER TABLE public.sorties ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE public.outings ENABLE ROW LEVEL SECURITY;
   ```
 - **Politiques (Policies) explicites** : Définissez toujours des politiques strictes basées sur `auth.uid()` pour restreindre la lecture/écriture aux utilisateurs autorisés.
 - **Sécurité des clés API** : Seule la clé publique anonyme `EXPO_PUBLIC_SUPABASE_ANON_KEY` doit être exposée dans l'application mobile. Ne jamais stocker ni utiliser la clé `service_role` dans le code source React Native.
 
 ### 3. 🏷️ Synchronisation des Types TypeScript
-- Le fichier `src/shared/types/database.types.ts` est la source de vérité pour le typage du client Supabase (`supabase.from('sorties')`).
+- Le fichier `src/shared/types/database.types.ts` est la source de vérité pour le typage du client Supabase (`supabase.from('outings')`).
 - À chaque ajout de table, colonne ou enum dans Supabase, vous **devez** exécuter :
   ```bash
   npm run db:types

@@ -3,6 +3,9 @@
  */
 
 export * from './database.types';
+export * from './place';
+
+import { Database, Enums } from './database.types';
 
 /** Utilisateur Crazer */
 export interface User {
@@ -14,24 +17,49 @@ export interface User {
   friendsCount: number;
 }
 
-/** Statut d'une Sortie */
-export type SortieStatus = 'draft' | 'voting' | 'planned' | 'completed' | 'cancelled';
+/** Types Supabase pour Outings dérivés directement du schéma PostgreSQL / Supabase */
+export type OutingRow = Database['public']['Tables']['outings']['Row'];
+export type OutingInsert = Database['public']['Tables']['outings']['Insert'];
+export type OutingUpdate = Database['public']['Tables']['outings']['Update'];
 
-/** Sortie : rassemblement d'une ou plusieurs personnes */
-export interface Sortie {
-  id: string;
-  title: string;
-  description?: string;
-  isPrivate: boolean;
-  creatorId: string;
-  participantIds: string[];
-  status: SortieStatus;
-  scheduledDate?: string;
-  meetingPoint?: string;
-  activityIds: string[];
-  itineraryId?: string;
-  createdAt: string;
-}
+/** Type de statut extrait directement des Enums de la base de données Supabase */
+export type OutingStatus = Enums<'outing_status'>;
+
+/** Configuration UI (libellés & émojis) strictement typée sur l'enum de la base de données */
+export const OUTING_STATUS_CONFIG: Record<
+  OutingStatus,
+  { label: string; emoji: string }
+> = {
+  draft: { label: 'Brouillon', emoji: '📝' },
+  planned: { label: 'Planifiée', emoji: '📅' },
+  ongoing: { label: 'En cours', emoji: '⚡' },
+  done: { label: 'Terminée', emoji: '✅' },
+  cancelled: { label: 'Annulée', emoji: '❌' },
+};
+
+/** Types Supabase pour Planned Outings dérivés directement du schéma PostgreSQL / Supabase */
+export type PlannedOutingRow = Database['public']['Tables']['planned_outings']['Row'];
+export type PlannedOutingInsert = Database['public']['Tables']['planned_outings']['Insert'];
+export type PlannedOutingUpdate = Database['public']['Tables']['planned_outings']['Update'];
+
+/** Type de statut de planned_outing extrait directement des Enums de la base de données */
+export type PlannedOutingStatus = Enums<'planned_outing_status'>;
+
+/** Configuration UI (libellés & émojis) pour Planned Outings */
+export const PLANNED_OUTING_STATUS_CONFIG: Record<
+  PlannedOutingStatus,
+  { label: string; emoji: string }
+> = {
+  pending: { label: 'En attente', emoji: '⏳' },
+  confirmed: { label: 'Confirmée', emoji: '✅' },
+  skipped: { label: 'Passée', emoji: '⏭️' },
+  cancelled: { label: 'Annulée', emoji: '❌' },
+};
+
+/** Alias rétro-compatible */
+export type SortieRow = OutingRow;
+export type Sortie = OutingRow;
+
 
 /** Activité : quelque chose à faire (proposé par un établissement, etc.) */
 export interface Activite {

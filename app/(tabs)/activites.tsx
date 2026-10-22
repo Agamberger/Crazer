@@ -1,5 +1,6 @@
 import React from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useActivitesStore } from '@/features/activites';
 import { Card } from '@/shared/components/Card';
 import { Button } from '@/shared/components/Button';
@@ -9,7 +10,7 @@ export default function ActivitesScreen() {
   const { activites, userVotes, voteActivite } = useActivitesStore();
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <Text style={styles.subtitle}>{"Trouvez l'activité idéale par vote ou swipe !"}</Text>
       <FlatList
         data={activites}
@@ -22,7 +23,7 @@ export default function ActivitesScreen() {
               <Text style={styles.title}>{item.title}</Text>
               <Text style={styles.description}>{item.description}</Text>
               <Text style={styles.details}>
-                📍 {item.location.address} • 💶 env. {item.estimatedBudget}€ • ⭐ {item.rating}
+                📍 {item.location.address} • 💵 env. {item.estimatedBudget}€ • ⭐ {item.rating}
               </Text>
               <View style={styles.voteRow}>
                 <Button
@@ -42,7 +43,7 @@ export default function ActivitesScreen() {
           );
         }}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -53,7 +54,8 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.background,
     flex: 1,
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
   },
   description: {
     color: colors.textSecondary,

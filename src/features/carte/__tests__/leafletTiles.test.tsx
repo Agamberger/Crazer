@@ -9,17 +9,6 @@ jest.mock('@maplibre/maplibre-react-native', () => {
   throw new Error('Module natif indisponible');
 });
 
-jest.mock('react-native-webview', () => {
-  const { forwardRef, useImperativeHandle, createElement } = jest.requireActual('react');
-  const { View } = jest.requireActual('react-native');
-  const WebView = forwardRef((props: Record<string, unknown>, ref: unknown) => {
-    useImperativeHandle(ref, () => ({ injectJavaScript: jest.fn() }));
-    return createElement(View, { testID: 'leaflet-webview', ...props });
-  });
-  WebView.displayName = 'WebViewMock';
-  return { WebView };
-});
-
 /**
  * Le fallback Leaflet (Expo Go / web) ne doit utiliser que des tuiles raster sans clé API :
  * CARTO renvoie l'image "API KEY REQUIRED" pour tous ses chemins de tuiles raster.
@@ -29,8 +18,8 @@ describe('MapViewComponent — tuiles Leaflet', () => {
 
   const renderHtml = (mode: MapStyleMode): string => {
     useMapStore.getState().setMapStyleMode(mode);
-    const { getByTestId } = render(<MapViewComponent pois={[]} onSelectPoi={jest.fn()} />);
-    return (getByTestId('leaflet-webview').props.source as { html: string }).html;
+    const { getByTestId } = render(<MapViewComponent places={[]} onSelectPlace={jest.fn()} />);
+    return (getByTestId('leaflet-webview-map').props.source as { html: string }).html;
   };
 
   test.each(modes)("n'utilise aucune tuile raster CARTO (mode %s)", (mode) => {
