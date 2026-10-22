@@ -85,8 +85,9 @@ export default function HomeScreen() {
   }, [selectedOutingId, selectedPlannedOutingId, fetchPlannedOutings]);
 
   useEffect(() => {
-    if (navigation?.addListener) {
-      const unsubscribe = navigation.addListener('tabPress', () => {
+    if (navigation && 'addListener' in navigation) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const unsubscribe = (navigation as any).addListener('tabPress', () => {
         selectOuting(null);
         selectPlannedOuting(null);
       });
@@ -117,7 +118,8 @@ export default function HomeScreen() {
   };
 
   const handleCreateOuting = async () => {
-    await createOuting(user?.id);
+    if (!user?.id) return;
+    await createOuting(user.id);
   };
 
   const handleUpdateOuting = async (updates: OutingUpdate) => {

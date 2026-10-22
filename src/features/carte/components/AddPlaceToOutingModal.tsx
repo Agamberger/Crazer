@@ -172,16 +172,7 @@ export const AddPlaceToOutingModal: React.FC<AddPlaceToOutingModalProps> = ({
 
     setIsCreatingOuting(true);
     try {
-      const now = new Date();
-      const defaultEndDate = new Date(now.getTime() + 4 * 60 * 60 * 1000);
-      const newOuting = await createOuting({
-        title: `Sortie avec ${place?.title || 'étape'}`,
-        description: `Sortie incluant ${place?.title || 'un nouveau lieu'}`,
-        start_date: now.toISOString(),
-        end_date: defaultEndDate.toISOString(),
-        status: 'planned',
-        created_by: user.id,
-      });
+      const newOuting = await createOuting(user.id);
 
       if (newOuting) {
         handleSelectOuting(newOuting);

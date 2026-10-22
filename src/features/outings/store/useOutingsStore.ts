@@ -9,6 +9,10 @@ import {
 } from '@/shared/types';
 import { outingService } from '../services/outingService';
 
+export interface CreatePlannedOutingOptions extends Partial<PlannedOutingInsert> {
+  userId?: string;
+}
+
 interface OutingsState {
   outings: OutingRow[];
   selectedOutingId: string | null;
@@ -32,7 +36,7 @@ interface OutingsState {
   fetchPlannedOutings: (outingId: string) => Promise<PlannedOutingRow[]>;
   createPlannedOuting: (
     outingId: string,
-    userIdOrStep?: string | Partial<PlannedOutingInsert>
+    options?: CreatePlannedOutingOptions
   ) => Promise<PlannedOutingRow>;
   addPlannedOuting: (payload: PlannedOutingInsert) => Promise<PlannedOutingRow>;
   updatePlannedOuting: (
@@ -130,8 +134,7 @@ export const useOutingsStore = create<OutingsState>((set, get) => ({
   deleteOuting: async (id: string) => {
     set({ isLoading: true, error: null });
     try {
-      const { error } = await supabase.from('outings').delete().eq('id', id);
-      if (error) throw error;
+      await outingService.deleteOuting(id);
       set((state) => ({
         outings: state.outings.filter((o) => o.id !== id),
         selectedOutingId: state.selectedOutingId === id ? null : state.selectedOutingId,
@@ -146,38 +149,44 @@ export const useOutingsStore = create<OutingsState>((set, get) => ({
   },
 
   setSelectedOutingId: (id: string | null) => {
-    set({ selectedOutingId: id, selectedPlannedOutingId: null });
-    if (id) {
-      get().fetchPlannedOutings(id);
-    } else {
-      set({ plannedOutings: [] });
-    }
+    set({
+      selectedOutingId: id,
+      selectedPlannedOutingId: null,
+      ...(id === null ? { plannedOutings: [] } : {}),
+    });
   },
 
   selectOuting: (id: string | null) => {
     get().setSelectedOutingId(id);
   },
 
-  // ── Planned Outings Actions ──────────────────────────────────────────────────
+  // --- Planned Outings Actions ---
   fetchPlannedOutings: async (outingId: string) => {
-    set({ isLoadingPlannedOutings: true });
+    set({ isLoadingPlannedOutings: true, error: null });
     try {
       const steps = await outingService.fetchPlannedOutings(outingId);
-      set({ plannedOutings: steps, isLoadingPlannedOutings: false });
+      // Protection contre les réponses tardives : ne pas écraser si une autre sortie a été sélectionnée entre-temps
+      if (get().selectedOutingId === outingId || get().selectedOutingId === null) {
+        set({ plannedOutings: steps, isLoadingPlannedOutings: false });
+      } else {
+        set({ isLoadingPlannedOutings: false });
+      }
       return steps;
     } catch (err) {
-      set({ isLoadingPlannedOutings: false });
+      const message =
+        err instanceof Error ? err.message : 'Erreur lors du chargement des étapes';
+      set({ error: message, isLoadingPlannedOutings: false });
       return [];
     }
   },
 
   createPlannedOuting: async (
     outingId: string,
-    userIdOrStep?: string | Partial<PlannedOutingInsert>
+    options?: CreatePlannedOutingOptions
   ) => {
-    set({ isLoadingPlannedOutings: true });
+    set({ isLoadingPlannedOutings: true, error: null });
     try {
-      let payload: PlannedOutingInsert;
+      const opts = typeof options === 'string' ? { userId: options } : (options ?? {});
       const currentSteps = get().plannedOutings;
       const parentOuting = get().outings.find((o) => o.id === outingId);
 
@@ -191,40 +200,28 @@ export const useOutingsStore = create<OutingsState>((set, get) => ({
         scheduledFor = lastDate.toISOString();
       }
 
-      let createdBy: string | undefined;
-      if (typeof userIdOrStep === 'string') {
-        createdBy = userIdOrStep;
-      } else if (userIdOrStep?.created_by) {
-        createdBy = userIdOrStep.created_by;
-      }
+      let createdBy: string | undefined = opts.userId || opts.created_by;
 
       if (!createdBy) {
         const { data } = await supabase.auth.getUser();
         createdBy = data?.user?.id || parentOuting?.created_by;
       }
 
-      if (typeof userIdOrStep === 'string' || userIdOrStep === undefined) {
-        payload = {
-          outing_id: outingId,
-          title: `Étape ${currentSteps.length + 1}`,
-          scheduled_for: scheduledFor,
-          duration_min: 60,
-          status: 'pending',
-          created_by: createdBy,
-        };
-      } else {
-        payload = {
-          outing_id: outingId,
-          title: userIdOrStep.title || `Étape ${currentSteps.length + 1}`,
-          scheduled_for: userIdOrStep.scheduled_for || scheduledFor,
-          duration_min: userIdOrStep.duration_min ?? 60,
-          status: userIdOrStep.status || 'pending',
-          place_id: userIdOrStep.place_id || null,
-          description: userIdOrStep.description || null,
-          notes: userIdOrStep.notes || null,
-          created_by: createdBy,
-        };
+      if (!createdBy) {
+        throw new Error('Utilisateur non connecté');
       }
+
+      const payload: PlannedOutingInsert = {
+        outing_id: outingId,
+        title: opts.title || `Étape ${currentSteps.length + 1}`,
+        scheduled_for: opts.scheduled_for || scheduledFor,
+        duration_min: opts.duration_min ?? 60,
+        status: opts.status || 'pending',
+        place_id: opts.place_id || null,
+        description: opts.description || null,
+        notes: opts.notes || null,
+        created_by: createdBy,
+      };
 
       const newPlanned = await outingService.createPlannedOuting(payload);
       set((state) => ({
@@ -234,13 +231,15 @@ export const useOutingsStore = create<OutingsState>((set, get) => ({
       }));
       return newPlanned;
     } catch (err) {
-      set({ isLoadingPlannedOutings: false });
+      const message =
+        err instanceof Error ? err.message : 'Erreur lors de la création de l\'étape';
+      set({ error: message, isLoadingPlannedOutings: false });
       throw err;
     }
   },
 
   addPlannedOuting: async (payload: PlannedOutingInsert) => {
-    set({ isLoadingPlannedOutings: true });
+    set({ isLoadingPlannedOutings: true, error: null });
     try {
       let finalPayload = payload;
       if (!finalPayload.created_by) {
@@ -256,13 +255,15 @@ export const useOutingsStore = create<OutingsState>((set, get) => ({
       }));
       return newPlanned;
     } catch (err) {
-      set({ isLoadingPlannedOutings: false });
+      const message =
+        err instanceof Error ? err.message : 'Erreur lors de l\'ajout de l\'étape';
+      set({ error: message, isLoadingPlannedOutings: false });
       throw err;
     }
   },
 
   updatePlannedOuting: async (id: string, updates: PlannedOutingUpdate) => {
-    set({ isLoadingPlannedOutings: true });
+    set({ isLoadingPlannedOutings: true, error: null });
     try {
       const updated = await outingService.updatePlannedOuting(id, updates);
       set((state) => ({
@@ -271,13 +272,15 @@ export const useOutingsStore = create<OutingsState>((set, get) => ({
       }));
       return updated;
     } catch (err) {
-      set({ isLoadingPlannedOutings: false });
+      const message =
+        err instanceof Error ? err.message : 'Erreur lors de la modification de l\'étape';
+      set({ error: message, isLoadingPlannedOutings: false });
       return null;
     }
   },
 
   deletePlannedOuting: async (id: string) => {
-    set({ isLoadingPlannedOutings: true });
+    set({ isLoadingPlannedOutings: true, error: null });
     try {
       await outingService.deletePlannedOuting(id);
       set((state) => ({
@@ -287,7 +290,9 @@ export const useOutingsStore = create<OutingsState>((set, get) => ({
       }));
       return true;
     } catch (err) {
-      set({ isLoadingPlannedOutings: false });
+      const message =
+        err instanceof Error ? err.message : 'Erreur lors de la suppression de l\'étape';
+      set({ error: message, isLoadingPlannedOutings: false });
       return false;
     }
   },

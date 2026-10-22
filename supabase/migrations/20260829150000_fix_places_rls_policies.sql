@@ -10,11 +10,12 @@ DROP POLICY IF EXISTS "Utilisateurs authentifiés peuvent créer des lieux" ON p
 
 -- 2. Créer la nouvelle politique permissive pour l'INSERT
 -- Permet aux utilisateurs connectés de créer ou d'importer n'importe quel lieu
+-- Impose que created_by corresponde à l'utilisateur authentifié
 CREATE POLICY "Utilisateurs authentifiés peuvent créer ou importer des lieux"
   ON public.places FOR INSERT
   TO authenticated
   WITH CHECK (
-    auth.uid() = created_by OR created_by IS NULL OR source != 'custom'
+    auth.uid() = created_by
   );
 
 -- 3. Mettre à jour la politique UPDATE pour autoriser les enrichissements

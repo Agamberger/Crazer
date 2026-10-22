@@ -122,7 +122,7 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({ visible, onClo
                       onPressSelect={() => setSelectedUser(item)}
                       onAddFriend={() => sendFriendRequest(item.id)}
                       onAcceptRequest={() => acceptFriendRequest(item.friendshipId || '')}
-                      onRemoveFriend={() => removeFriendship(item.friendshipId || '')}
+                      onRemoveFriend={() => removeFriendship(item.friendshipId || '', item.id)}
                     />
                   )}
                 />
@@ -144,7 +144,7 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({ visible, onClo
                         user={item}
                         onPressSelect={() => setSelectedUser(item)}
                         onAcceptRequest={() => acceptFriendRequest(item.friendshipId || '')}
-                        onRemoveFriend={() => removeFriendship(item.friendshipId || '')}
+                        onRemoveFriend={() => removeFriendship(item.friendshipId || '', item.id)}
                       />
                     )}
                   />
@@ -170,7 +170,7 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({ visible, onClo
                       <UserListItem
                         user={item}
                         onPressSelect={() => setSelectedUser(item)}
-                        onRemoveFriend={() => removeFriendship(item.friendshipId || '')}
+                        onRemoveFriend={() => removeFriendship(item.friendshipId || '', item.id)}
                       />
                     )}
                   />
@@ -186,7 +186,7 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({ visible, onClo
           onClose={() => setSelectedUser(null)}
           onAddFriend={(userId) => sendFriendRequest(userId)}
           onAcceptRequest={(friendshipId) => acceptFriendRequest(friendshipId)}
-          onRemoveFriend={(friendshipId) => removeFriendship(friendshipId)}
+          onRemoveFriend={(friendshipId) => removeFriendship(friendshipId, currentSelectedUserInResults?.id || '')}
         />
       </View>
     </Modal>

@@ -14,6 +14,7 @@ jest.mock('../services/outingService', () => ({
     createOuting: jest.fn(),
     getOutingById: jest.fn(),
     updateOuting: jest.fn(),
+    deleteOuting: jest.fn(),
     fetchPlannedOutings: jest.fn(),
     createPlannedOuting: jest.fn(),
     updatePlannedOuting: jest.fn(),
@@ -182,6 +183,44 @@ describe('useOutingsStore', () => {
     expect(useOutingsStore.getState().error).toBe('Erreur de mise à jour');
   });
 
+  it('deleteOuting calls outingService.deleteOuting and updates state', async () => {
+    const existingOuting: OutingRow = {
+      id: 'out-del',
+      title: 'À supprimer',
+      description: null,
+      start_date: '2026-08-25T12:00:00Z',
+      created_by: 'user-1',
+      status: 'draft',
+      cover_image: null,
+      created_at: '2026-08-24T20:00:00Z',
+      updated_at: '2026-08-24T20:00:00Z',
+    };
+    useOutingsStore.setState({
+      outings: [existingOuting],
+      selectedOutingId: 'out-del',
+    });
+
+    (outingService.deleteOuting as jest.Mock).mockResolvedValue(undefined);
+
+    const success = await useOutingsStore.getState().deleteOuting('out-del');
+
+    expect(outingService.deleteOuting).toHaveBeenCalledWith('out-del');
+    expect(success).toBe(true);
+    expect(useOutingsStore.getState().outings).toEqual([]);
+    expect(useOutingsStore.getState().selectedOutingId).toBeNull();
+  });
+
+  it('deleteOuting handles error gracefully', async () => {
+    (outingService.deleteOuting as jest.Mock).mockRejectedValue(
+      new Error('Erreur suppression')
+    );
+
+    const success = await useOutingsStore.getState().deleteOuting('out-999');
+
+    expect(success).toBe(false);
+    expect(useOutingsStore.getState().error).toBe('Erreur suppression');
+  });
+
   it('selectOuting updates selectedOutingId and resets selectedPlannedOutingId', () => {
     useOutingsStore.setState({ selectedPlannedOutingId: 'po-123' });
     useOutingsStore.getState().selectOuting('out-123');
@@ -224,6 +263,53 @@ describe('useOutingsStore', () => {
       expect(useOutingsStore.getState().plannedOutings).toEqual(mockSteps);
     });
 
+    it('fetchPlannedOutings handles error gracefully and sets error state', async () => {
+      (outingService.fetchPlannedOutings as jest.Mock).mockRejectedValue(
+        new Error('Réseau indisponible')
+      );
+
+      const result = await useOutingsStore.getState().fetchPlannedOutings('out-1');
+
+      expect(result).toEqual([]);
+      expect(useOutingsStore.getState().error).toBe('Réseau indisponible');
+      expect(useOutingsStore.getState().isLoadingPlannedOutings).toBe(false);
+    });
+
+    it('fetchPlannedOutings ignores late response if another outing is selected', async () => {
+      let resolveFirstCall: (val: PlannedOutingRow[]) => void = () => {};
+      (outingService.fetchPlannedOutings as jest.Mock).mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirstCall = resolve;
+          })
+      );
+
+      useOutingsStore.setState({ selectedOutingId: 'out-1', plannedOutings: [] });
+
+      const promise1 = useOutingsStore.getState().fetchPlannedOutings('out-1');
+      useOutingsStore.setState({ selectedOutingId: 'out-2', plannedOutings: [] });
+
+      resolveFirstCall([
+        {
+          id: 'po-stale',
+          outing_id: 'out-1',
+          title: 'Étape périmée',
+          description: null,
+          notes: null,
+          scheduled_for: '2026-08-30T18:00:00Z',
+          duration_min: 60,
+          status: 'pending',
+          place_id: null,
+          created_by: 'user-1',
+          created_at: '2026-08-24T20:00:00Z',
+          updated_at: '2026-08-24T20:00:00Z',
+        },
+      ]);
+      await promise1;
+
+      expect(useOutingsStore.getState().plannedOutings).toEqual([]);
+    });
+
     it('createPlannedOuting creates a first step starting at outing start_date', async () => {
       const parentOuting: OutingRow = {
         id: 'out-1',
@@ -255,7 +341,7 @@ describe('useOutingsStore', () => {
 
       (outingService.createPlannedOuting as jest.Mock).mockResolvedValue(createdStep);
 
-      const result = await useOutingsStore.getState().createPlannedOuting('out-1', 'user-1');
+      const result = await useOutingsStore.getState().createPlannedOuting('out-1', { userId: 'user-1' });
 
       expect(outingService.createPlannedOuting).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -369,7 +455,7 @@ describe('useOutingsStore', () => {
 
       (outingService.createPlannedOuting as jest.Mock).mockResolvedValue(createdStep2);
 
-      const result = await useOutingsStore.getState().createPlannedOuting('out-1', 'user-1');
+      const result = await useOutingsStore.getState().createPlannedOuting('out-1', { userId: 'user-1' });
 
       expect(outingService.createPlannedOuting).toHaveBeenCalledWith(
         expect.objectContaining({

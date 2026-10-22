@@ -52,7 +52,7 @@ export const MapHeaderSearch: React.FC<MapHeaderSearchProps> = ({
   const [isFocused, setIsFocused] = useState(false);
 
   const inputRef = useRef<TextInput>(null);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const justSelectedRef = useRef(false);
 
   // Gérer l'autocomplétion Google Places au fil de la frappe

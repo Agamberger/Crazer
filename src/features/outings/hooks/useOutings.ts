@@ -20,7 +20,8 @@ export function useOutings() {
   }, [fetchOutings]);
 
   const createOuting = useCallback(async () => {
-    return await createOutingAction(user?.id);
+    if (!user?.id) throw new Error('Utilisateur non connecté');
+    return await createOutingAction(user.id);
   }, [createOutingAction, user?.id]);
 
   useEffect(() => {
