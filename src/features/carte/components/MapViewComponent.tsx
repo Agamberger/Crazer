@@ -92,7 +92,13 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
         ? 'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png'
         : mapStyleMode === 'outdoor'
         ? 'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png'
-        : 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png';
+        : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+    // Les tuiles raster sombres de CARTO exigent une clé API : on inverse les tuiles OSM standard.
+    const darkTilesFilter =
+      mapStyleMode === 'dark'
+        ? '.leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9); }'
+        : '';
 
     const html = `
       <!DOCTYPE html>
@@ -104,6 +110,7 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <style>
           body, html, #map { margin: 0; padding: 0; width: 100%; height: 100%; background: #121214; }
+          ${darkTilesFilter}
           .leaflet-control-attribution { font-size: 9px !important; background: rgba(0,0,0,0.6) !important; color: #aaa !important; }
           .custom-marker {
             display: flex;
@@ -146,7 +153,7 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
 
           L.tileLayer('${tileUrl}', {
             maxZoom: 19,
-            attribution: '© OpenStreetMap © CARTO'
+            attribution: '© OpenStreetMap contributors'
           }).addTo(map);
 
           function updateMapState(placesData, selectedId, emojis, center, userLoc) {
