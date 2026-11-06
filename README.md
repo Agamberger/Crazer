@@ -116,6 +116,16 @@ npm run db:push      # Applique les migrations SQL locales à la base distante
 npm run db:migration <nom> # Crée une nouvelle migration SQL
 ```
 
+### 7. Assets de l'application (icône, splash, favicon)
+Les images référencées par `app.json` (`assets/icon.png`, `adaptive-icon.png`, `splash.png`, `favicon.png`) sont générées par un script Node sans dépendance. Il produit un logo provisoire aux couleurs du thème :
+```bash
+node scripts/generate-assets.js   # Régénère (et écrase) les PNG de ./assets
+```
+Pour mettre le logo définitif, remplacer directement ces fichiers en respectant ces contraintes, vérifiées par `scripts/__tests__/assets.test.ts` :
+- PNG valides (un PNG corrompu fait échouer la phase *Prebuild* du build EAS iOS) ;
+- `icon.png` en **1024×1024 sans canal alpha** (exigence App Store) ;
+- `adaptive-icon.png` en 1024×1024, logo dans les 66 % centraux (zone de sécurité Android).
+
 ---
 
 ## 📜 Guides et Conventions
