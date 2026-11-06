@@ -6,7 +6,7 @@ Ce module gère l'affichage de la carte interactive, des lieux (Places) et des s
 
 - **`MapViewComponent`** : Composant cartographique principal.
   - *Mode Natif (Dev Client)* : Utilise `@maplibre/maplibre-react-native` pour un rendu vectoriel 3D haute performance.
-  - *Mode Expo Go (Développement)* : Intègre automatiquement une carte **OpenStreetMap / Leaflet** interactive via `react-native-webview` (tuiles CartoDB Dark Matter / Positron / OpenStreetMap). Cela permet d'avoir une **vraie carte totalement fonctionnelle directement dans Expo Go**, sans aucun crash ni compilation de binaire natif requis !
+  - *Mode Expo Go (Développement)* : Intègre automatiquement une carte **OpenStreetMap / Leaflet** interactive via `react-native-webview` (tuiles OpenStreetMap, avec un filtre CSS d'inversion pour le style sombre : les tuiles raster CARTO exigent une clé API). Cela permet d'avoir une **vraie carte totalement fonctionnelle directement dans Expo Go**, sans aucun crash ni compilation de binaire natif requis !
 - **`MapHeaderSearch`** : Barre de recherche et filtres de catégories avec autocomplétion Google Places.
 - **`PlaceDetailCard`** : Fiche d'affichage des détails d'un lieu sélectionné (note, avis, prix, horaires, photos, boutons d'action).
 - **`AddPlaceToOutingModal`** : Modal pour ajouter un lieu à une sortie active avec préremplissage automatique des informations.
