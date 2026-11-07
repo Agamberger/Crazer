@@ -134,4 +134,14 @@ describe('useMapStore', () => {
     useMapStore.getState().setError(null);
     expect(useMapStore.getState().error).toBeNull();
   });
+  test('setCenterRegion numérote chaque demande de centrage, même vers le même point', () => {
+    const before = useMapStore.getState().centerVersion;
+    const region = { latitude: 43.6, longitude: 1.44, zoomLevel: 14 };
+
+    useMapStore.getState().setCenterRegion(region);
+    useMapStore.getState().setCenterRegion(region);
+
+    expect(useMapStore.getState().centerVersion).toBe(before + 2);
+    expect(useMapStore.getState().centerRegion).toEqual(region);
+  });
 });

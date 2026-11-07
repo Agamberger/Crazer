@@ -216,4 +216,74 @@ describe('usePlaces', () => {
 
     expect(result.current.error).toBeNull();
   });
+  test('requestLocation — demande une position fraîche et ignore une dernière position trop ancienne', async () => {
+    const { result } = renderHook(() => usePlaces());
+
+    await act(async () => {
+      await result.current.requestLocation();
+    });
+
+    // Sur le web, expo-location passe ces options à navigator.geolocation : sans maximumAge: 0,
+    // le navigateur peut renvoyer une position en cache, prise ailleurs.
+    expect(mockLocation.getCurrentPositionAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ maximumAge: 0 })
+    );
+    expect(mockLocation.getLastKnownPositionAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ maxAge: expect.any(Number) })
+    );
+  });
+
+  test('loadVisibleArea — charge les lieux de toute la zone visible, après un délai', async () => {
+    const { result } = renderHook(() => usePlaces());
+
+    act(() => {
+      result.current.loadVisibleArea({ latitude: 46.6, longitude: 1.88, zoomLevel: 6, radiusM: 600_000 });
+      result.current.loadVisibleArea({ latitude: 43.6, longitude: 1.44, zoomLevel: 13, radiusM: 3_500 });
+    });
+    expect(mockFetchNearby).not.toHaveBeenCalled();
+
+    await act(async () => {
+      jest.advanceTimersByTime(400);
+    });
+
+    // Seule la dernière zone est chargée, avec son rayon réel.
+    expect(mockFetchNearby).toHaveBeenCalledTimes(1);
+    expect(mockFetchNearby).toHaveBeenCalledWith(43.6, 1.44, 3_500, undefined, expect.any(Number));
+    expect(mockSetPlaces).toHaveBeenCalled();
+  });
+
+  test('loadVisibleArea — borne le rayon demandé', async () => {
+    const { result } = renderHook(() => usePlaces());
+
+    act(() => {
+      result.current.loadVisibleArea({ latitude: 0, longitude: 0, zoomLevel: 1, radiusM: 50_000_000 });
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(400);
+    });
+
+    const radius = mockFetchNearby.mock.calls[0][2];
+    expect(radius).toBeLessThanOrEqual(1_000_000);
+  });
+
+  test('ignore la réponse d’un chargement plus ancien arrivée en dernier', async () => {
+    let resolveSlow: (value: typeof mockPlaceResult[]) => void = () => undefined;
+    mockFetchNearby
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveSlow = resolve; }))
+      .mockResolvedValueOnce([{ ...mockPlaceResult, id: 'recent' }]);
+    const { result } = renderHook(() => usePlaces());
+
+    let slow: Promise<void> = Promise.resolve();
+    await act(async () => {
+      slow = result.current.loadNearby(46.6, 1.88);
+      await result.current.loadNearby(43.6, 1.44);
+    });
+    await act(async () => {
+      resolveSlow([{ ...mockPlaceResult, id: 'ancien' }]);
+      await slow;
+    });
+
+    const lastPlaces = mockSetPlaces.mock.calls.at(-1)[0];
+    expect(lastPlaces.map((p: { id: string }) => p.id)).toEqual(['recent']);
+  });
 });

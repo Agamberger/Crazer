@@ -1,15 +1,27 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Platform, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { colors, typography } from '@/shared/constants/theme';
 import { PlaceItem } from '../types/carte';
 import { useMapStore, MAP_STYLE_URLS } from '../store/useMapStore';
+import {
+  buildLeafletHtml,
+  buildLeafletUpdateScript,
+  CATEGORY_EMOJIS,
+  LeafletMapState,
+  MapVisibleArea,
+  parseLeafletRegion,
+  parseLeafletSelection,
+} from '../utils/leafletMap';
+import { LeafletWebFrame } from './LeafletWebFrame';
 
 // Safe dynamic resolution of MapLibre React Native for native & Expo Go compatibility
 let MapLibreRN: unknown = null;
 let isMapLibreAvailable = false;
 
 try {
+  // Sur le web, MapLibre React Native n'a pas de rendu : on passe directement au fallback Leaflet.
+  if (Platform.OS === 'web') throw new Error('MapLibre natif indisponible sur le web');
   MapLibreRN = require('@maplibre/maplibre-react-native');
   const mapObj = MapLibreRN as unknown as Record<string, unknown>;
   const defObj = mapObj?.default as Record<string, unknown> | undefined;
@@ -53,25 +65,20 @@ export interface MapViewComponentProps {
   pois?: PlaceItem[];
   onSelectPlace?: (place: PlaceItem) => void;
   onSelectPoi?: (poi: PlaceItem) => void;
+  /** Zone visible de la carte Leaflet (chargement, déplacement, zoom), pour y charger les lieux. */
+  onRegionChange?: (area: MapVisibleArea) => void;
 }
 
 const USER_MARKER_CONTAINER_BG = 'rgba(59, 130, 246, 0.3)';
 const USER_MARKER_DOT_BG = '#3B82F6';
 
-const CATEGORY_EMOJIS: Record<string, string> = {
-  resto: '🍕',
-  bar: '🍸',
-  activite: '🎯',
-  nature: '🌲',
-  culture: '🎨',
-  all: '📍',
-};
 
 export const MapViewComponent: React.FC<MapViewComponentProps> = ({
   places,
   pois,
   onSelectPlace,
   onSelectPoi,
+  onRegionChange,
 }) => {
   const activePlaces = React.useMemo(() => places || pois || [], [places, pois]);
   const handleSelect = onSelectPlace || onSelectPoi || (() => {});
@@ -79,154 +86,70 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
   const mapStyleMode = useMapStore((state) => state.mapStyleMode);
   const selectedPlaceId = useMapStore((state) => state.selectedPlaceId);
   const centerRegion = useMapStore((state) => state.centerRegion);
+  const centerVersion = useMapStore((state) => state.centerVersion);
   const userLocation = useMapStore((state) => state.userLocation);
 
   const styleURL = MAP_STYLE_URLS[mapStyleMode];
 
   const webViewRef = React.useRef<React.ComponentRef<typeof WebView>>(null);
 
-  // OpenStreetMap Leaflet Map via WebView for Expo Go & Web environments
-  const leafletHtmlSource = React.useMemo(() => {
-    const tileUrl =
-      mapStyleMode === 'voyager'
-        ? 'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png'
-        : mapStyleMode === 'outdoor'
-        ? 'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png'
-        : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+  const leafletState: LeafletMapState = React.useMemo(
+    () => ({
+      places: activePlaces,
+      selectedPlaceId,
+      center: centerRegion,
+      centerVersion,
+      userLocation,
+    }),
+    [activePlaces, selectedPlaceId, centerRegion, centerVersion, userLocation]
+  );
+  const leafletStateRef = React.useRef(leafletState);
+  leafletStateRef.current = leafletState;
 
-    // Les tuiles raster sombres de CARTO exigent une clé API : on inverse les tuiles OSM standard.
-    const darkTilesFilter =
-      mapStyleMode === 'dark'
-        ? '.leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9); }'
-        : '';
+  // Fallback OpenStreetMap / Leaflet (Expo Go via WebView, web via iframe).
+  // Le HTML n'est reconstruit que si le style change : sinon chaque nouveau lieu rechargeait
+  // toute la carte et annulait le déplacement de l'utilisateur. Le reste passe par injectJavaScript.
+  const leafletHtmlSource = React.useMemo(
+    () => ({ html: buildLeafletHtml(mapStyleMode, leafletStateRef.current) }),
+    [mapStyleMode]
+  );
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-        <style>
-          body, html, #map { margin: 0; padding: 0; width: 100%; height: 100%; background: #121214; }
-          ${darkTilesFilter}
-          .leaflet-control-attribution { font-size: 9px !important; background: rgba(0,0,0,0.6) !important; color: #aaa !important; }
-          .custom-marker {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 38px;
-            height: 38px;
-            border-radius: 19px;
-            background-color: #1E2028;
-            border: 2px solid #FF6B35;
-            font-size: 18px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
-            transition: transform 0.2s ease;
-          }
-          .custom-marker.selected {
-            background-color: #FF6B35;
-            border-color: #FFFFFF;
-            transform: scale(1.25);
-            z-index: 9999 !important;
-          }
-          .user-marker {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 14px;
-            height: 14px;
-            border-radius: 7px;
-            background-color: #3B82F6;
-            border: 2px solid #FFFFFF;
-            box-shadow: 0 0 0 5px rgba(59, 130, 246, 0.3), 0 2px 5px rgba(0,0,0,0.3);
-          }
-        </style>
-      </head>
-      <body>
-        <div id="map"></div>
-        <script>
-          var map = L.map('map', { zoomControl: false }).setView([${centerRegion.latitude}, ${centerRegion.longitude}], ${centerRegion.zoomLevel});
-          var markersLayer = L.layerGroup().addTo(map);
-          var userLayer = L.layerGroup().addTo(map);
-
-          L.tileLayer('${tileUrl}', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap contributors'
-          }).addTo(map);
-
-          function updateMapState(placesData, selectedId, emojis, center, userLoc) {
-            if (center && center.latitude && center.longitude) {
-              map.flyTo([center.latitude, center.longitude], center.zoomLevel || map.getZoom());
-            }
-            userLayer.clearLayers();
-            if (userLoc && userLoc.latitude && userLoc.longitude) {
-              var userIcon = L.divIcon({
-                className: '',
-                html: '<div class="user-marker" title="Votre position"></div>',
-                iconSize: [14, 14],
-                iconAnchor: [7, 7]
-              });
-              L.marker([userLoc.latitude, userLoc.longitude], { icon: userIcon, zIndexOffset: 1000 }).addTo(userLayer);
-            }
-            markersLayer.clearLayers();
-            (placesData || []).forEach(function(place) {
-              var isSelected = place.id === selectedId;
-              var emoji = emojis[place.category] || '📍';
-              
-              var icon = L.divIcon({
-                className: '',
-                html: '<div class="custom-marker ' + (isSelected ? 'selected' : '') + '">' + emoji + '</div>',
-                iconSize: [38, 38],
-                iconAnchor: [19, 19]
-              });
-
-              var marker = L.marker([place.latitude, place.longitude], { icon: icon }).addTo(markersLayer);
-              marker.on('click', function() {
-                if (window.ReactNativeWebView) {
-                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'SELECT_PLACE', id: place.id }));
-                }
-              });
-            });
-          }
-
-          updateMapState(${JSON.stringify(activePlaces)}, ${JSON.stringify(selectedPlaceId)}, ${JSON.stringify(CATEGORY_EMOJIS)}, ${JSON.stringify(centerRegion)}, ${JSON.stringify(userLocation)});
-        </script>
-      </body>
-      </html>
-    `;
-
-    return { html };
-  }, [activePlaces, centerRegion, mapStyleMode, selectedPlaceId, userLocation]);
+  const selectPlaceById = (id: string) => {
+    const place = activePlaces.find((p) => p.id === id);
+    if (place) handleSelect(place);
+  };
 
   // Update WebView map markers & center position dynamically without reloading HTML
   React.useEffect(() => {
     if (!isMapLibreAvailable && webViewRef.current) {
-      const js = `
-        if (typeof updateMapState === 'function') {
-          updateMapState(${JSON.stringify(activePlaces)}, ${JSON.stringify(selectedPlaceId)}, ${JSON.stringify(CATEGORY_EMOJIS)}, ${JSON.stringify(centerRegion)}, ${JSON.stringify(userLocation)});
-        }
-        true;
-      `;
-      webViewRef.current.injectJavaScript(js);
+      webViewRef.current.injectJavaScript(buildLeafletUpdateScript(leafletState));
     }
-  }, [activePlaces, centerRegion, selectedPlaceId, userLocation]);
+  }, [leafletState]);
 
   // Handle messages sent from WebView Leaflet map
   const handleWebViewMessage = (event: { nativeEvent: { data: string } }) => {
-    try {
-      const data = JSON.parse(event.nativeEvent.data);
-      if (data.type === 'SELECT_PLACE' || data.type === 'SELECT_POI') {
-        const place = activePlaces.find((p) => p.id === data.id);
-        if (place) {
-          handleSelect(place);
-        }
-      }
-    } catch {
-      // Ignored
+    const id = parseLeafletSelection(event.nativeEvent.data);
+    if (id) {
+      selectPlaceById(id);
+      return;
     }
+    const area = parseLeafletRegion(event.nativeEvent.data);
+    if (area) onRegionChange?.(area);
   };
+
+  // Web : react-native-webview n'a pas d'implémentation, la carte Leaflet passe par une iframe.
+  if (Platform.OS === 'web') {
+    return (
+      <View style={styles.container} testID="map-view-container">
+        <LeafletWebFrame
+          mapStyleMode={mapStyleMode}
+          state={leafletState}
+          onSelectPlaceId={selectPlaceById}
+          onRegionChange={onRegionChange}
+        />
+      </View>
+    );
+  }
 
   // If MapLibre Native Module is available (native dev client build), render native MapLibre vector map
   if (isMapLibreAvailable) {
@@ -317,15 +240,7 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
         style={styles.webView}
         onMessage={handleWebViewMessage}
         onLoadEnd={() => {
-          if (webViewRef.current) {
-            const js = `
-              if (typeof updateMapState === 'function') {
-                updateMapState(${JSON.stringify(activePlaces)}, ${JSON.stringify(selectedPlaceId)}, ${JSON.stringify(CATEGORY_EMOJIS)}, ${JSON.stringify(centerRegion)}, ${JSON.stringify(userLocation)});
-              }
-              true;
-            `;
-            webViewRef.current.injectJavaScript(js);
-          }
+          webViewRef.current?.injectJavaScript(buildLeafletUpdateScript(leafletStateRef.current));
         }}
         testID="leaflet-webview-map"
       />

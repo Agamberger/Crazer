@@ -52,7 +52,7 @@ export async function searchPlaces(
 }
 
 /**
- * Récupère les lieux dans un rayon géographique donné.
+ * Récupère les lieux dans un rayon géographique donné (les plus proches d'abord).
  * Raccourci vers `searchPlaces` sans recherche textuelle.
  */
 export async function fetchNearbyPlaces(
@@ -60,8 +60,9 @@ export async function fetchNearbyPlaces(
   lng: number,
   radius_m = 2000,
   filter_cat?: PlaceCategory,
+  max_results?: number,
 ): Promise<PlaceSearchResult[]> {
-  return searchPlaces({ lat, lng, radius_m, filter_cat });
+  return searchPlaces({ lat, lng, radius_m, filter_cat, max_results });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
