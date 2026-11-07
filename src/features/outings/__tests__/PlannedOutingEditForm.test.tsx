@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
-import { Alert } from 'react-native';
 import { PlannedOutingEditForm } from '../components/PlannedOutingEditForm';
 import { PlannedOutingRow } from '@/shared/types';
 
@@ -130,16 +129,9 @@ describe('PlannedOutingEditForm Component', () => {
     expect(handleCancel).toHaveBeenCalledTimes(2);
   });
 
-  it('triggers confirmation alert and calls onDelete when confirmed', () => {
+  it('asks for confirmation in a dialog and calls onDelete only when confirmed', async () => {
     const handleDelete = jest.fn();
-    jest.spyOn(Alert, 'alert').mockImplementation((title, msg, buttons) => {
-      const confirmButton = buttons?.find((b) => b.style === 'destructive');
-      if (confirmButton && confirmButton.onPress) {
-        confirmButton.onPress();
-      }
-    });
-
-    const { getByTestId } = render(
+    const { getByTestId, queryByText, getByText } = render(
       <PlannedOutingEditForm
         plannedOuting={mockPlannedOuting}
         onSubmit={jest.fn()}
@@ -148,9 +140,17 @@ describe('PlannedOutingEditForm Component', () => {
       />
     );
 
+    // Annuler : la boîte se ferme sans supprimer
     fireEvent.press(getByTestId('btn-delete-planned'));
-    expect(Alert.alert).toHaveBeenCalled();
-    expect(handleDelete).toHaveBeenCalledTimes(1);
+    expect(getByText("Supprimer l'étape")).toBeTruthy();
+    fireEvent.press(getByTestId('confirm-delete-planned-cancel'));
+    expect(handleDelete).not.toHaveBeenCalled();
+    expect(queryByText("Supprimer l'étape")).toBeNull();
+
+    // Confirmer : onDelete est appelé avec l'id de l'étape
+    fireEvent.press(getByTestId('btn-delete-planned'));
+    fireEvent.press(getByTestId('confirm-delete-planned-confirm'));
+    await waitFor(() => expect(handleDelete).toHaveBeenCalledWith(mockPlannedOuting.id));
   });
 
   it('displays error container when error prop is provided', () => {

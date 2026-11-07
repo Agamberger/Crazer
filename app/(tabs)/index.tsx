@@ -1,14 +1,7 @@
 import React, { useEffect, useCallback, useState } from 'react';
-import {
-  View,
-  StyleSheet,
-  Text,
-  ActivityIndicator,
-  FlatList,
-  RefreshControl,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View } from 'react-native';
 import { useNavigation } from 'expo-router';
+import { AppText, Button, EmptyState, List, Loader, Screen } from '@/shared/components';
 import { useAuth } from '@/features/auth';
 import {
   OutingCard,
@@ -16,12 +9,8 @@ import {
   PlannedOutingEditForm,
   useOutingsStore,
 } from '@/features/outings';
-import {
-  useFriends,
-  PendingFriendRequestsBanner,
-} from '@/features/profil';
-import { Button } from '@/shared/components/Button';
-import { colors, spacing, typography } from '@/shared/constants/theme';
+import { useFriends, PendingFriendRequestsBanner } from '@/features/profil';
+import { spacing } from '@/shared/constants/theme';
 import { OutingUpdate, PlannedOutingUpdate } from '@/shared/types';
 
 export default function HomeScreen() {
@@ -39,32 +28,15 @@ export default function HomeScreen() {
   // Selection state
   const selectedOutingId = useOutingsStore((state) => state.selectedOutingId);
   const selectOuting = useOutingsStore((state) => state.selectOuting);
-  const selectedPlannedOutingId = useOutingsStore(
-    (state) => state.selectedPlannedOutingId
-  );
-  const selectPlannedOuting = useOutingsStore(
-    (state) => state.selectPlannedOuting
-  );
+  const selectedPlannedOutingId = useOutingsStore((state) => state.selectedPlannedOutingId);
+  const selectPlannedOuting = useOutingsStore((state) => state.selectPlannedOuting);
   const plannedOutings = useOutingsStore((state) => state.plannedOutings);
-  const fetchPlannedOutings = useOutingsStore(
-    (state) => state.fetchPlannedOutings
-  );
-  const updatePlannedOuting = useOutingsStore(
-    (state) => state.updatePlannedOuting
-  );
-  const deletePlannedOuting = useOutingsStore(
-    (state) => state.deletePlannedOuting
-  );
-  const isLoadingPlannedOutings = useOutingsStore(
-    (state) => state.isLoadingPlannedOutings
-  );
+  const fetchPlannedOutings = useOutingsStore((state) => state.fetchPlannedOutings);
+  const updatePlannedOuting = useOutingsStore((state) => state.updatePlannedOuting);
+  const deletePlannedOuting = useOutingsStore((state) => state.deletePlannedOuting);
+  const isLoadingPlannedOutings = useOutingsStore((state) => state.isLoadingPlannedOutings);
 
-  const {
-    pendingRequests,
-    fetchFriendsList,
-    acceptFriendRequest,
-    removeFriendship,
-  } = useFriends();
+  const { pendingRequests, fetchFriendsList, acceptFriendRequest, removeFriendship } = useFriends();
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -100,9 +72,7 @@ export default function HomeScreen() {
     try {
       await Promise.all([
         fetchOutings(),
-        user && typeof fetchFriendsList === 'function'
-          ? fetchFriendsList()
-          : Promise.resolve(),
+        user && typeof fetchFriendsList === 'function' ? fetchFriendsList() : Promise.resolve(),
       ]);
     } finally {
       setRefreshing(false);
@@ -162,51 +132,33 @@ export default function HomeScreen() {
 
   // Case 1: Editing a selected planned outing
   if (selectedPlannedOutingId) {
-    const selectedPlannedOuting = plannedOutings.find(
-      (p) => p.id === selectedPlannedOutingId
-    );
+    const selectedPlannedOuting = plannedOutings.find((p) => p.id === selectedPlannedOutingId);
     const selectedOuting = outings.find((o) => o.id === selectedOutingId);
 
     if (isLoadingPlannedOutings && !selectedPlannedOuting) {
       return (
-        <SafeAreaView
-          style={styles.centerContainer}
-          edges={['top', 'left', 'right']}
-          testID="planned-loading-state"
-        >
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Chargement de l&apos;étape...</Text>
-        </SafeAreaView>
+        <Screen edges={SCREEN_EDGES} testID="planned-loading-state">
+          <Loader fullScreen message="Chargement de l'étape..." />
+        </Screen>
       );
     }
 
     if (!selectedPlannedOuting) {
       return (
-        <SafeAreaView
-          style={styles.centerContainer}
-          edges={['top', 'left', 'right']}
-          testID="planned-not-found-state"
-        >
-          <Text style={styles.notFoundTitle}>Étape introuvable</Text>
-          <Text style={styles.notFoundSubtitle}>
-            L&apos;étape demandée n&apos;existe pas ou a été supprimée.
-          </Text>
-          <Button
-            title="Retour à la sortie"
-            variant="primary"
-            onPress={handleCancelPlannedEdit}
-            style={styles.backButton}
+        <Screen edges={SCREEN_EDGES} contentStyle={styles.center} testID="planned-not-found-state">
+          <EmptyState
+            icon="help-circle-outline"
+            title="Étape introuvable"
+            description="L'étape demandée n'existe pas ou a été supprimée."
+            actionLabel="Retour à la sortie"
+            onAction={handleCancelPlannedEdit}
           />
-        </SafeAreaView>
+        </Screen>
       );
     }
 
     return (
-      <SafeAreaView
-        style={styles.container}
-        edges={['top', 'left', 'right']}
-        testID="planned-outing-edit-screen"
-      >
+      <Screen edges={SCREEN_EDGES} padded={false} testID="planned-outing-edit-screen">
         <PlannedOutingEditForm
           plannedOuting={selectedPlannedOuting}
           parentOutingTitle={selectedOuting?.title}
@@ -219,7 +171,7 @@ export default function HomeScreen() {
           cancelTestID="btn-cancel-planned-edit"
           deleteTestID="btn-delete-planned-edit"
         />
-      </SafeAreaView>
+      </Screen>
     );
   }
 
@@ -229,40 +181,28 @@ export default function HomeScreen() {
 
     if (isLoading && !selectedOuting) {
       return (
-        <SafeAreaView
-          style={styles.centerContainer}
-          edges={['top', 'left', 'right']}
-          testID="loading-state"
-        >
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Chargement de la sortie...</Text>
-        </SafeAreaView>
+        <Screen edges={SCREEN_EDGES} testID="loading-state">
+          <Loader fullScreen message="Chargement de la sortie..." />
+        </Screen>
       );
     }
 
     if (!selectedOuting) {
       return (
-        <SafeAreaView
-          style={styles.centerContainer}
-          edges={['top', 'left', 'right']}
-          testID="not-found-state"
-        >
-          <Text style={styles.notFoundTitle}>Sortie introuvable</Text>
-          <Text style={styles.notFoundSubtitle}>
-            La sortie demandée n&apos;existe pas ou vous n&apos;avez pas les autorisations nécessaires.
-          </Text>
-          <Button
-            title="Retour aux sorties"
-            variant="primary"
-            onPress={handleCancelEdit}
-            style={styles.backButton}
+        <Screen edges={SCREEN_EDGES} contentStyle={styles.center} testID="not-found-state">
+          <EmptyState
+            icon="help-circle-outline"
+            title="Sortie introuvable"
+            description="La sortie demandée n'existe pas ou vous n'avez pas les autorisations nécessaires."
+            actionLabel="Retour aux sorties"
+            onAction={handleCancelEdit}
           />
-        </SafeAreaView>
+        </Screen>
       );
     }
 
     return (
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <Screen edges={SCREEN_EDGES} padded={false}>
         <OutingEditForm
           outing={selectedOuting}
           onSubmit={handleUpdateOuting}
@@ -272,13 +212,13 @@ export default function HomeScreen() {
           plannedOutings={plannedOutings}
           onSelectPlannedOuting={(po) => handleSelectPlannedOuting(po.id)}
         />
-      </SafeAreaView>
+      </Screen>
     );
   }
 
   // Case 3: Outings list
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <Screen edges={SCREEN_EDGES} padded={false}>
       <PendingFriendRequestsBanner
         pendingRequests={pendingRequests}
         onAccept={acceptFriendRequest}
@@ -286,88 +226,44 @@ export default function HomeScreen() {
       />
 
       <View style={styles.headerArea}>
-        <Text style={styles.subtitle}>
+        <AppText variant="bodySmall" color="secondary">
           Organise et rejoins des sorties entre amis !
-        </Text>
+        </AppText>
         <Button
           title="+ Organiser une sortie"
-          variant="primary"
           onPress={handleCreateOuting}
           style={styles.createButton}
         />
       </View>
 
-      <FlatList
+      <List
         data={outings}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <OutingCard
-            outing={item}
-            onPress={() => handleSelectOuting(item.id)}
-          />
+          <OutingCard outing={item} onPress={() => handleSelectOuting(item.id)} />
         )}
         contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={colors.primary}
-          />
-        }
-        ListEmptyComponent={
-          !isLoading ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>
-                Aucune sortie pour le moment.
-              </Text>
-              <Text style={styles.emptySubtext}>
-                Crée ta première sortie en cliquant ci-dessus !
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.centerContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-            </View>
-          )
-        }
+        loading={isLoading}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
+        empty={{
+          icon: 'calendar-outline',
+          title: 'Aucune sortie pour le moment.',
+          description: 'Crée ta première sortie en cliquant ci-dessus !',
+        }}
       />
-    </SafeAreaView>
+    </Screen>
   );
 }
 
+const SCREEN_EDGES: ('top' | 'left' | 'right')[] = ['top', 'left', 'right'];
+
 const styles = StyleSheet.create({
-  backButton: {
-    marginTop: spacing.md,
-  },
-  centerContainer: {
-    alignItems: 'center',
-    backgroundColor: colors.background,
-    flex: 1,
+  center: {
     justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  container: {
-    backgroundColor: colors.background,
-    flex: 1,
   },
   createButton: {
     marginTop: spacing.sm,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    padding: spacing.xl,
-  },
-  emptySubtext: {
-    color: colors.textMuted,
-    fontSize: typography.fontSizes.sm,
-    marginTop: spacing.xs,
-    textAlign: 'center',
-  },
-  emptyText: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSizes.md,
-    fontWeight: typography.fontWeights.semibold,
-    textAlign: 'center',
   },
   headerArea: {
     paddingHorizontal: spacing.md,
@@ -377,27 +273,5 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.xs,
-  },
-  loadingText: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSizes.md,
-    marginTop: spacing.md,
-  },
-  notFoundSubtitle: {
-    color: colors.textMuted,
-    fontSize: typography.fontSizes.sm,
-    lineHeight: 20,
-    marginTop: spacing.xs,
-    textAlign: 'center',
-  },
-  notFoundTitle: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.lg,
-    fontWeight: typography.fontWeights.bold,
-    textAlign: 'center',
-  },
-  subtitle: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSizes.sm,
   },
 });

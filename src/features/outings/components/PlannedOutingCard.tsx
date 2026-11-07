@@ -1,18 +1,26 @@
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Card } from '@/shared/components/Card';
-import { colors, spacing, typography } from '@/shared/constants/theme';
-import {
-  PLANNED_OUTING_STATUS_CONFIG,
-  PlannedOutingRow,
-} from '@/shared/types';
+import React from 'react';
+import { StyleSheet, View } from 'react-native';
+import { AppText, Badge, Card } from '@/shared/components';
+import { colors, iconSizes, radii, spacing } from '@/shared/constants/theme';
+import { PLANNED_OUTING_STATUS_CONFIG, PlannedOutingRow } from '@/shared/types';
 
 export interface PlannedOutingCardProps {
   plannedOuting: PlannedOutingRow;
   stepIndex?: number;
   onPress?: () => void;
 }
+
+/** Formate une durée en minutes : 90 → « 1h30 », 120 → « 2h », 45 → « 45 min ». */
+export const formatDuration = (mins: number | null): string | null => {
+  if (!mins || mins <= 0) return null;
+  const hours = Math.floor(mins / 60);
+  const remainingMins = mins % 60;
+  if (hours > 0 && remainingMins > 0)
+    return `${hours}h${remainingMins.toString().padStart(2, '0')}`;
+  if (hours > 0) return `${hours}h`;
+  return `${mins} min`;
+};
 
 export const PlannedOutingCard: React.FC<PlannedOutingCardProps> = ({
   plannedOuting,
@@ -29,127 +37,84 @@ export const PlannedOutingCard: React.FC<PlannedOutingCardProps> = ({
         month: 'short',
       })
     : '';
-
   const formattedTime = isValidDate
-    ? scheduledDate.toLocaleTimeString('fr-FR', {
-        hour: '2-digit',
-        minute: '2-digit',
-      })
+    ? scheduledDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
     : '';
 
   const statusConfig = PLANNED_OUTING_STATUS_CONFIG[plannedOuting.status] || {
     label: plannedOuting.status,
     emoji: '📌',
   };
-
-  const formatDuration = (mins: number | null) => {
-    if (!mins || mins <= 0) return null;
-    const hours = Math.floor(mins / 60);
-    const remainingMins = mins % 60;
-    if (hours > 0 && remainingMins > 0) {
-      return `${hours}h${remainingMins.toString().padStart(2, '0')}`;
-    }
-    if (hours > 0) {
-      return `${hours}h`;
-    }
-    return `${mins} min`;
-  };
-
   const durationStr = formatDuration(plannedOuting.duration_min);
 
-  const cardContent = (
-    <Card style={styles.card} testID={`planned-outing-card-${plannedOuting.id}`}>
+  return (
+    <Card
+      style={styles.card}
+      onPress={onPress}
+      accessibilityLabel={onPress ? `Modifier l'étape ${plannedOuting.title}` : undefined}
+      testID={`planned-outing-card-${plannedOuting.id}`}
+    >
       <View style={styles.header}>
         <View style={styles.titleWrapper}>
-          {stepIndex !== undefined && (
-            <View style={styles.stepBadge}>
-              <Text style={styles.stepBadgeText}>#{stepIndex + 1}</Text>
-            </View>
-          )}
-          <Text style={styles.title} numberOfLines={2}>
+          {stepIndex !== undefined ? (
+            <Badge label={`#${stepIndex + 1}`} style={styles.stepBadge} />
+          ) : null}
+          <AppText weight="bold" numberOfLines={2} style={styles.title}>
             {plannedOuting.title}
-          </Text>
+          </AppText>
         </View>
         <View style={styles.headerRight}>
-          <View style={styles.statusBadge} testID="planned-outing-status-badge">
-            <Text style={styles.statusBadgeText}>
-              {statusConfig.emoji} {statusConfig.label}
-            </Text>
-          </View>
-          {onPress && (
+          <Badge
+            label={`${statusConfig.emoji} ${statusConfig.label}`}
+            tone="neutral"
+            testID="planned-outing-status-badge"
+          />
+          {onPress ? (
             <Ionicons
               name="chevron-forward"
-              size={16}
+              size={iconSizes.sm}
               color={colors.textMuted}
               style={styles.chevron}
             />
-          )}
+          ) : null}
         </View>
       </View>
 
       <View style={styles.metaRow}>
-        {isValidDate && (
-          <View style={styles.metaItem}>
-            <Text style={styles.metaText}>
-              🕒 {formattedDate ? `${formattedDate} à ` : ''}{formattedTime}
-            </Text>
-          </View>
-        )}
-        {durationStr && (
-          <View style={styles.metaItem}>
-            <Text style={styles.metaText}>⏱️ {durationStr}</Text>
-          </View>
-        )}
+        {isValidDate ? (
+          <Badge
+            label={`🕒 ${formattedDate ? `${formattedDate} à ` : ''}${formattedTime}`}
+            tone="neutral"
+          />
+        ) : null}
+        {durationStr ? <Badge label={`⏱️ ${durationStr}`} tone="neutral" /> : null}
       </View>
 
       {plannedOuting.description ? (
-        <Text style={styles.description} numberOfLines={3}>
+        <AppText variant="bodySmall" color="secondary" numberOfLines={3} style={styles.description}>
           {plannedOuting.description}
-        </Text>
+        </AppText>
       ) : null}
 
       {plannedOuting.notes ? (
         <View style={styles.notesContainer}>
-          <Text style={styles.notesText} numberOfLines={2}>
+          <AppText variant="caption" color="muted" numberOfLines={2} style={styles.notesText}>
             💬 {plannedOuting.notes}
-          </Text>
+          </AppText>
         </View>
       ) : null}
     </Card>
   );
-
-  if (onPress) {
-    return (
-      <TouchableOpacity
-        onPress={onPress}
-        activeOpacity={0.7}
-        accessibilityRole="button"
-        accessibilityLabel={`Modifier l'étape ${plannedOuting.title}`}
-        style={styles.touchable}
-      >
-        {cardContent}
-      </TouchableOpacity>
-    );
-  }
-
-  return cardContent;
 };
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 14,
-    borderWidth: 1,
     flex: 1,
-    padding: spacing.md,
   },
   chevron: {
     marginLeft: spacing.xs / 2,
   },
   description: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSizes.sm,
     lineHeight: 18,
     marginTop: spacing.xs,
   },
@@ -163,74 +128,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
   },
-  metaItem: {
-    alignItems: 'center',
-    backgroundColor: colors.surfaceLight,
-    borderRadius: 6,
-    flexDirection: 'row',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-  },
   metaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.xs,
     marginVertical: spacing.xs,
   },
-  metaText: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.xs,
-    fontWeight: typography.fontWeights.medium,
-  },
   notesContainer: {
     backgroundColor: colors.surfaceLight,
-    borderRadius: 6,
+    borderRadius: radii.sm - 2,
     marginTop: spacing.xs,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs / 2,
   },
   notesText: {
-    color: colors.textMuted,
-    fontSize: typography.fontSizes.xs,
     fontStyle: 'italic',
   },
-  statusBadge: {
-    backgroundColor: colors.surfaceLight,
-    borderColor: colors.border,
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-  },
-  statusBadgeText: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSizes.xs,
-    fontWeight: typography.fontWeights.semibold,
-  },
   stepBadge: {
-    backgroundColor: colors.primaryDark,
-    borderRadius: 6,
+    alignSelf: 'center',
     marginRight: spacing.xs,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  stepBadgeText: {
-    color: colors.white,
-    fontSize: typography.fontSizes.xs,
-    fontWeight: typography.fontWeights.bold,
   },
   title: {
-    color: colors.textPrimary,
     flex: 1,
-    fontSize: typography.fontSizes.md,
-    fontWeight: typography.fontWeights.bold,
   },
   titleWrapper: {
     alignItems: 'center',
     flex: 1,
     flexDirection: 'row',
-  },
-  touchable: {
-    flex: 1,
   },
 });
