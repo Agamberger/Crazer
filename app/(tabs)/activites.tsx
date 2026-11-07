@@ -1,30 +1,37 @@
 import React from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View } from 'react-native';
+import { AppText, Button, Card, List, Screen } from '@/shared/components';
 import { useActivitesStore } from '@/features/activites';
-import { Card } from '@/shared/components/Card';
-import { Button } from '@/shared/components/Button';
-import { colors, spacing, typography } from '@/shared/constants/theme';
+import { spacing } from '@/shared/constants/theme';
 
 export default function ActivitesScreen() {
-  const { activites, userVotes, voteActivite } = useActivitesStore();
+  const activites = useActivitesStore((state) => state.activites);
+  const userVotes = useActivitesStore((state) => state.userVotes);
+  const voteActivite = useActivitesStore((state) => state.voteActivite);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <Text style={styles.subtitle}>{"Trouvez l'activité idéale par vote ou swipe !"}</Text>
-      <FlatList
+    <Screen edges={['top', 'left', 'right']} contentStyle={styles.container}>
+      <AppText color="secondary" style={styles.subtitle}>
+        Trouvez l&apos;activité idéale par vote ou swipe !
+      </AppText>
+      <List
         data={activites}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        empty={{ icon: 'compass-outline', title: 'Aucune activité pour le moment' }}
         renderItem={({ item }) => {
           const vote = userVotes[item.id];
           return (
             <Card style={styles.card}>
-              <Text style={styles.title}>{item.title}</Text>
-              <Text style={styles.description}>{item.description}</Text>
-              <Text style={styles.details}>
+              <AppText variant="h3" weight="bold" style={styles.title}>
+                {item.title}
+              </AppText>
+              <AppText variant="bodySmall" color="secondary" style={styles.description}>
+                {item.description}
+              </AppText>
+              <AppText variant="caption" color="muted" style={styles.details}>
                 📍 {item.location.address} • 💵 env. {item.estimatedBudget}€ • ⭐ {item.rating}
-              </Text>
+              </AppText>
               <View style={styles.voteRow}>
                 <Button
                   title={vote === 'like' ? '❤️ Liké' : '👍 Voter pour'}
@@ -43,7 +50,7 @@ export default function ActivitesScreen() {
           );
         }}
       />
-    </SafeAreaView>
+    </Screen>
   );
 }
 
@@ -52,42 +59,29 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   container: {
-    backgroundColor: colors.background,
-    flex: 1,
-    paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
   },
   description: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSizes.sm,
     marginBottom: spacing.xs,
   },
   details: {
-    color: colors.textMuted,
-    fontSize: typography.fontSizes.xs,
     marginBottom: spacing.md,
   },
   listContent: {
     paddingBottom: spacing.lg,
   },
   subtitle: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSizes.md,
     marginBottom: spacing.md,
   },
   title: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.lg,
-    fontWeight: typography.fontWeights.bold,
     marginBottom: spacing.xs,
   },
   voteButton: {
     flex: 1,
-    marginHorizontal: spacing.xs,
   },
   voteRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: spacing.sm,
     marginTop: spacing.xs,
   },
 });
