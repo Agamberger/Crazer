@@ -12,6 +12,7 @@ import {
 } from '@/shared/components';
 import { spacing } from '@/shared/constants/theme';
 import { FriendStatus, UserSearchResult } from '../types';
+import { getUserDisplayName } from '../utils/userDisplay';
 
 export interface UserProfileDetailModalProps {
   user: UserSearchResult | null;
@@ -50,7 +51,7 @@ export const UserProfileDetailModal: React.FC<UserProfileDetailModalProps> = ({
 }) => {
   if (!user) return null;
 
-  const displayName = user.fullName || user.email.split('@')[0];
+  const displayName = getUserDisplayName(user);
   const friendshipId = user.friendshipId || '';
 
   const getAction = (): DetailAction => {
@@ -109,7 +110,7 @@ export const UserProfileDetailModal: React.FC<UserProfileDetailModalProps> = ({
         <Card style={styles.profileCard}>
           <Avatar
             name={user.fullName}
-            fallback={user.email}
+            fallback={displayName}
             imageUrl={user.avatarUrl}
             size="xl"
             style={styles.avatar}
@@ -117,9 +118,11 @@ export const UserProfileDetailModal: React.FC<UserProfileDetailModalProps> = ({
           <AppText variant="h3" weight="bold" style={styles.name}>
             {displayName}
           </AppText>
-          <AppText variant="bodySmall" color="secondary">
-            {user.email}
-          </AppText>
+          {user.email ? (
+            <AppText variant="bodySmall" color="secondary">
+              {user.email}
+            </AppText>
+          ) : null}
 
           <Divider style={styles.divider} />
 

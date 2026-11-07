@@ -29,6 +29,9 @@ jobs:
       - name: 🔍 Lint database migrations
         run: supabase db lint
 
+      - name: 🛡️ Run pgTAP RLS tests
+        run: supabase test db
+
   deploy-migrations:
     name: Deploy Migrations to Supabase (Production)
     needs: lint-migrations

@@ -3,6 +3,7 @@ import { StyleSheet } from 'react-native';
 import { Avatar, Button, ButtonVariant, ListItem } from '@/shared/components';
 import { spacing } from '@/shared/constants/theme';
 import { UserSearchResult } from '../types';
+import { getUserDisplayName } from '../utils/userDisplay';
 
 export interface UserListItemProps {
   user: UserSearchResult;
@@ -28,7 +29,7 @@ export const UserListItem: React.FC<UserListItemProps> = ({
   onRemoveFriend,
   onCancelRequest,
 }) => {
-  const displayName = user.fullName || user.email.split('@')[0];
+  const displayName = getUserDisplayName(user);
   const { friendshipId } = user;
 
   const getAction = (): FriendAction => {
@@ -72,8 +73,8 @@ export const UserListItem: React.FC<UserListItemProps> = ({
     <ListItem
       bordered
       title={displayName}
-      subtitle={user.email}
-      left={<Avatar name={user.fullName} fallback={user.email} imageUrl={user.avatarUrl} />}
+      subtitle={user.email ?? undefined}
+      left={<Avatar name={user.fullName} fallback={displayName} imageUrl={user.avatarUrl} />}
       onPress={() => onPressSelect?.(user)}
       showChevron={false}
       accessibilityLabel={`Voir le profil de ${displayName}`}

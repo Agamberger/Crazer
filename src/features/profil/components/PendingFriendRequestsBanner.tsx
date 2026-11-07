@@ -3,6 +3,7 @@ import { FlatList, StyleSheet, View } from 'react-native';
 import { AppText, Avatar, Button, Card } from '@/shared/components';
 import { colors, spacing } from '@/shared/constants/theme';
 import { UserSearchResult } from '../types';
+import { getUserDisplayName } from '../utils/userDisplay';
 
 export interface PendingFriendRequestsBannerProps {
   pendingRequests: UserSearchResult[];
@@ -55,13 +56,13 @@ export const PendingFriendRequestsBanner: React.FC<PendingFriendRequestsBannerPr
             <View style={styles.userInfo}>
               <Avatar
                 name={item.fullName}
-                fallback={item.email}
+                fallback={getUserDisplayName(item)}
                 imageUrl={item.avatarUrl}
                 style={styles.avatar}
               />
               <View style={styles.userText}>
                 <AppText variant="bodySmall" weight="semibold" numberOfLines={1}>
-                  {item.fullName || item.email.split('@')[0]}
+                  {getUserDisplayName(item)}
                 </AppText>
                 <AppText variant="caption" color="secondary" numberOfLines={1}>
                   souhaite vous ajouter en ami

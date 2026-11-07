@@ -19,6 +19,7 @@
     "db:migration": "supabase migration new",
     "db:diff": "supabase db diff",
     "db:lint": "supabase db lint",
+    "db:test": "supabase test db",
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:status": "supabase status",
