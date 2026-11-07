@@ -113,7 +113,7 @@ Alternative : modifier le schéma dans le Studio local puis `npx supabase db dif
 | `permission denied for table …` | `GRANT` manquant pour `authenticated` / `anon` dans la migration. |
 | `infinite recursion detected in policy` | Policy qui se référence via une autre table : passer par une fonction `SECURITY DEFINER` (cf. `is_outing_participant`). |
 | Clé anon invalide après `supabase stop --no-backup` | Relancer `npm run env:local`. |
-| `WARN: config section [inbucket] is deprecated` | Avertissement sans conséquence du CLI récent (Mailpit remplace Inbucket). |
+| `[inbucket] in supabase/config.toml is no longer supported` | CLI ≥ 3 : la section s'appelle désormais `[local_smtp]` dans `supabase/config.toml` (Mailpit remplace Inbucket). |
 
 ## 6. Ce qu'il ne faut pas faire
 
