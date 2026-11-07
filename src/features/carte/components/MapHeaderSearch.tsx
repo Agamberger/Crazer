@@ -4,8 +4,8 @@ import { AppText, Chip, ListItem, SearchBar } from '@/shared/components';
 import { colors, radii, spacing, typography } from '@/shared/constants/theme';
 import { PlaceCategoryFilter, MapCategoryFilter, PlaceItem } from '../types/carte';
 import { useMapStore } from '../store/useMapStore';
+import { usePlacesSessionToken } from '../hooks/usePlacesSessionToken';
 import {
-  createPlacesSessionToken,
   fetchGooglePlaceAutocomplete,
   fetchGooglePlaceDetails,
   googlePlaceDetailsToPlaceItem,
@@ -48,11 +48,7 @@ export const MapHeaderSearch: React.FC<MapHeaderSearchProps> = ({
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const justSelectedRef = useRef(false);
   // Un jeton par session de recherche Google (frappes + détail du lieu choisi)
-  const sessionTokenRef = useRef<string | null>(null);
-  const getSessionToken = useCallback(() => {
-    if (!sessionTokenRef.current) sessionTokenRef.current = createPlacesSessionToken();
-    return sessionTokenRef.current;
-  }, []);
+  const { getToken: getSessionToken, endSession: endPlacesSession } = usePlacesSessionToken();
 
   // Gérer l'autocomplétion Google Places au fil de la frappe
   useEffect(() => {
@@ -84,6 +80,8 @@ export const MapHeaderSearch: React.FC<MapHeaderSearchProps> = ({
         }
       }, 350);
     } else if (searchQuery.trim().length < 2) {
+      // Recherche effacée : la prochaine saisie ouvre une nouvelle session Google
+      endPlacesSession();
       setPredictions([]);
       setIsDropdownVisible(false);
       setIsSearchingGoogle(false);
@@ -95,7 +93,7 @@ export const MapHeaderSearch: React.FC<MapHeaderSearchProps> = ({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [searchQuery, isFocused, getSessionToken]);
+  }, [searchQuery, isFocused, getSessionToken, endPlacesSession]);
 
   const handleSelectCategory = (cat: PlaceCategoryFilter) => {
     setSelectedCategory(cat);
@@ -132,7 +130,7 @@ export const MapHeaderSearch: React.FC<MapHeaderSearchProps> = ({
       setIsSearchingGoogle(true);
       const details = await fetchGooglePlaceDetails(prediction.place_id, getSessionToken());
       // La session Google se termine avec la requête de détail
-      sessionTokenRef.current = null;
+      endPlacesSession();
       if (details) {
         const newPlace = googlePlaceDetailsToPlaceItem(details);
 

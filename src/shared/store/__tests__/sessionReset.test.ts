@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import {
+  bindSetToSession,
+  captureUserSession,
   registerUserScopedReset,
   registerUserScopedStore,
   resetUserScopedStores,
@@ -52,5 +54,30 @@ describe('sessionReset', () => {
     resetUserScopedStores();
 
     expect(reset).not.toHaveBeenCalled();
+  });
+  it('captureUserSession devient faux après une remise à zéro', () => {
+    const isCurrent = captureUserSession();
+    expect(isCurrent()).toBe(true);
+
+    resetUserScopedStores();
+
+    expect(isCurrent()).toBe(false);
+    expect(captureUserSession()()).toBe(true);
+  });
+
+  it('bindSetToSession ignore les écritures après une déconnexion', () => {
+    const useCounter = create<CounterState>((set) => ({
+      items: [],
+      add: (item) => set((state) => ({ items: [...state.items, item] })),
+    }));
+    const setLive = bindSetToSession(useCounter.setState);
+
+    setLive({ items: ['avant'] });
+    expect(useCounter.getState().items).toEqual(['avant']);
+
+    resetUserScopedStores();
+    setLive({ items: ['réponse tardive'] });
+
+    expect(useCounter.getState().items).toEqual(['avant']);
   });
 });

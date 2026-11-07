@@ -12,6 +12,30 @@ type ResetFn = () => void;
 
 const resetters = new Set<ResetFn>();
 
+/** Incrémenté à chaque remise à zéro : identifie la session utilisateur courante. */
+let sessionGeneration = 0;
+
+/**
+ * Capture la session courante. La fonction retournée renvoie `false` dès qu'une
+ * remise à zéro (déconnexion) a eu lieu : une réponse réseau arrivée ensuite
+ * appartient au compte précédent et doit être ignorée.
+ */
+export function captureUserSession(): () => boolean {
+  const generation = sessionGeneration;
+  return () => generation === sessionGeneration;
+}
+
+/**
+ * `set` Zustand lié à la session courante : à appeler au début d'une action
+ * asynchrone, ses écritures sont ignorées si l'utilisateur s'est déconnecté entre-temps.
+ */
+export function bindSetToSession<T>(set: StoreApi<T>['setState']): StoreApi<T>['setState'] {
+  const isCurrentSession = captureUserSession();
+  return (partial, replace) => {
+    if (isCurrentSession()) set(partial, replace);
+  };
+}
+
 /** Enregistre une fonction de remise à zéro ; retourne de quoi la désenregistrer. */
 export function registerUserScopedReset(reset: ResetFn): () => void {
   resetters.add(reset);
@@ -27,6 +51,8 @@ export function registerUserScopedStore<T>(store: UseBoundStore<StoreApi<T>>): (
 
 /** Remet à zéro tous les stores enregistrés (une erreur dans l'un n'empêche pas les autres). */
 export function resetUserScopedStores(): void {
+  // Invalide d'abord les requêtes en cours, puis vide les stores.
+  sessionGeneration += 1;
   resetters.forEach((reset) => {
     try {
       reset();

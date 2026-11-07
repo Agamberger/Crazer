@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Location from 'expo-location';
+import { captureUserSession } from '@/shared/store/sessionReset';
 import { fetchNearbyPlaces, searchPlaces } from '../services/placeService';
 import { placeToPlaceItem } from '../types/carte';
 import { useMapStore } from '../store/useMapStore';
@@ -158,11 +159,13 @@ export function usePlaces(): UsePlacesReturn {
   const runPlacesRequest = useCallback(
     async (request: () => Promise<PlaceSearchResult[]>, fallbackError: string): Promise<void> => {
       const requestId = ++requestIdRef.current;
+      // Une réponse arrivée après une déconnexion ne doit pas remplir la carte remise à zéro.
+      const isCurrentSession = captureUserSession();
       setIsLoading(true);
       setError(null);
       try {
         const results = await request();
-        if (requestId !== requestIdRef.current) return;
+        if (requestId !== requestIdRef.current || !isCurrentSession()) return;
         setPlaces(results.map(placeToPlaceItem));
       } catch (err) {
         if (requestId !== requestIdRef.current) return;

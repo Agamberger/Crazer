@@ -109,4 +109,31 @@ describe('MapHeaderSearch', () => {
       expect(queryByTestId('autocomplete-dropdown')).toBeNull();
     });
   });
+  test('démarre une nouvelle session Google quand la recherche est effacée puis reprise', async () => {
+    mockGoogleService.createPlacesSessionToken
+      .mockReturnValueOnce('session-1')
+      .mockReturnValueOnce('session-2');
+    mockGoogleService.fetchGooglePlaceAutocomplete.mockResolvedValue([]);
+
+    const { getByPlaceholderText } = render(<MapHeaderSearch />);
+    const input = getByPlaceholderText(/Rechercher un lieu/i);
+
+    fireEvent.changeText(input, 'Tour');
+    await waitFor(() =>
+      expect(mockGoogleService.fetchGooglePlaceAutocomplete).toHaveBeenLastCalledWith(
+        'Tour',
+        'session-1',
+      ),
+    );
+
+    // Recherche abandonnée (champ vidé) puis nouvelle recherche
+    fireEvent.changeText(input, '');
+    fireEvent.changeText(input, 'Bar');
+    await waitFor(() =>
+      expect(mockGoogleService.fetchGooglePlaceAutocomplete).toHaveBeenLastCalledWith(
+        'Bar',
+        'session-2',
+      ),
+    );
+  });
 });

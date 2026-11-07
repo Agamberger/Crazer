@@ -7,7 +7,7 @@ BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET search_path = public, extensions;
 
-SELECT plan(9);
+SELECT plan(11);
 
 -- ── Saisie libre : plusieurs mots, ponctuation, opérateurs tsquery ──────────
 SELECT lives_ok(
@@ -40,6 +40,19 @@ SELECT is(
   (SELECT count(*)::int FROM public.search_places('!!! ???', NULL, NULL, 2000, NULL, 100)),
   (SELECT count(*)::int FROM public.places WHERE is_public),
   'search_places : une saisie sans mot n''applique pas de filtre texte'
+);
+
+-- Mots vides français seuls (« le », « la »…) : to_tsquery renvoie une requête vide
+SELECT is(
+  (SELECT count(*)::int FROM public.search_places('le', NULL, NULL, 2000, NULL, 100)),
+  (SELECT count(*)::int FROM public.places WHERE is_public),
+  'search_places : une saisie faite uniquement de mots vides n''applique pas de filtre texte'
+);
+
+SELECT is(
+  (SELECT name FROM public.search_places('le burger') LIMIT 1),
+  'Le Burger Gourmet',
+  'search_places : les mots vides sont ignorés quand d''autres mots sont saisis'
 );
 
 -- ── Bornes : nombre de résultats et rayon ───────────────────────────────────

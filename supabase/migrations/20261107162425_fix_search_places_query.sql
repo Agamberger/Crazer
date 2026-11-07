@@ -4,7 +4,8 @@
 --   - La requête est découpée en mots (accents et casse ignorés) ; chaque mot
 --     est cherché en préfixe et tous doivent correspondre. Les opérateurs
 --     tsquery saisis (& | ! : ( ) ') ne provoquent plus d'erreur de syntaxe.
---   - Une saisie sans aucun mot n'applique pas de filtre texte.
+--   - Une saisie sans aucun mot (ou faite uniquement de mots vides : « le »,
+--     « la »…) n'applique pas de filtre texte.
 --   - radius_m est borné à [1 ; 1 000 000] m (aligné sur MAX_AREA_RADIUS_M de
 --     usePlaces, carte dézoomée) et max_results à [1 ; 100].
 -- Signature et colonnes de retour inchangées.
@@ -42,10 +43,15 @@ AS $$
   WITH params AS (
     SELECT
       -- Chaque mot alphanumérique devient un lexème préfixe : 'mot':* & 'autre':*
+      -- Une requête vide (aucun mot, ou seulement des mots vides : « le », « la »…)
+      -- devient NULL : pas de filtre texte, au lieu de ne rien trouver.
       (
-        SELECT to_tsquery('french', string_agg(quote_literal(tok) || ':*', ' & '))
-        FROM regexp_split_to_table(lower(unaccent(coalesce(query, ''))), '[^[:alnum:]]+') AS tok
-        WHERE tok <> ''
+        SELECT CASE WHEN numnode(q) > 0 THEN q END
+        FROM (
+          SELECT to_tsquery('french', string_agg(quote_literal(tok) || ':*', ' & ')) AS q
+          FROM regexp_split_to_table(lower(unaccent(coalesce(query, ''))), '[^[:alnum:]]+') AS tok
+          WHERE tok <> ''
+        ) AS built
       ) AS tsq,
       CASE WHEN lat IS NOT NULL AND lng IS NOT NULL
         THEN ST_MakePoint(lng, lat)::geography
