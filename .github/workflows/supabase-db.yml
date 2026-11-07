@@ -5,10 +5,12 @@ on:
     branches: [ main ]
     paths:
       - 'supabase/**'
+      - '.github/workflows/supabase-db.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'supabase/**'
+      - '.github/workflows/supabase-db.yml'
 
 env:
   # Même version que la devDependency `supabase` de package.json.
