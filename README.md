@@ -46,7 +46,7 @@ Crazer/
 │   │   ├── gamification/       # Badges, achievements & rewind annuel
 │   │   └── profil/             # Profil utilisateur, amis, centres d'intérêt
 │   ├── shared/                 # Éléments réutilisables transversaux
-│   │   ├── components/         # Composants UI de base (Button, Card...)
+│   │   ├── components/         # Kit UI réutilisable (voir src/shared/components/README.md)
 │   │   ├── constants/          # Thème (Couleurs, Spacing, Typographie)
 │   │   ├── hooks/              # Hooks personnalisés génériques
 │   │   ├── lib/                # Client Supabase singleton (supabase.ts)
@@ -132,5 +132,6 @@ Pour mettre le logo définitif, remplacer directement ces fichiers en respectant
 
 Avant de contribuer au projet, merci de consulter :
 - ⚡ [docs/SUPABASE.md](docs/SUPABASE.md) : Guide Supabase, commandes CLI, migrations SQL et bonnes pratiques.
+- 🧩 [src/shared/components/README.md](src/shared/components/README.md) : Catalogue des composants UI partagés (boutons, champs, listes, modales…).
 - 📖 [CONVENTIONS.md](CONVENTIONS.md) : Normes de nommage, architecture, Zustand, tests, accessibilité et commits.
 - 🤖 [AGENTS.md](AGENTS.md) : Directives strictes pour les agents IA (TDD bugfix, aucune modification directe sur main, pas de commit/push sans validation humaine).

@@ -1,71 +1,117 @@
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
+  ActivityIndicator,
+  ViewStyle,
+  StyleProp,
   StyleSheet,
   Text,
+  TextStyle,
   TouchableOpacity,
   TouchableOpacityProps,
-  ActivityIndicator,
-  StyleProp,
-  TextStyle,
+  View,
 } from 'react-native';
-import { colors, spacing, typography } from '../constants/theme';
+import { colors, iconSizes, opacity, radii, spacing, typography } from '@/shared/constants/theme';
+import { ComponentSize, IconName } from './types';
+
+export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
 
 export interface ButtonProps extends TouchableOpacityProps {
   title: string;
-  variant?: 'primary' | 'secondary' | 'outline';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: ButtonVariant;
+  size?: ComponentSize;
   loading?: boolean;
+  /** Icône Ionicons affichée avant le texte. */
+  leftIcon?: IconName;
+  /** Icône Ionicons affichée après le texte. */
+  rightIcon?: IconName;
+  /** Le bouton occupe toute la largeur disponible. */
+  fullWidth?: boolean;
   textStyle?: StyleProp<TextStyle>;
 }
+
+const BACKGROUND: Record<ButtonVariant, string> = {
+  primary: colors.primary,
+  secondary: colors.secondary,
+  outline: colors.transparent,
+  ghost: colors.transparent,
+  danger: colors.error,
+};
+
+const FOREGROUND: Record<ButtonVariant, string> = {
+  primary: colors.textPrimary,
+  secondary: colors.textPrimary,
+  outline: colors.primary,
+  ghost: colors.primary,
+  danger: colors.textPrimary,
+};
+
+const ICON_SIZE: Record<ComponentSize, number> = {
+  sm: iconSizes.sm,
+  md: iconSizes.md,
+  lg: iconSizes.lg,
+};
 
 export const Button: React.FC<ButtonProps> = ({
   title,
   variant = 'primary',
   size = 'md',
   loading = false,
+  leftIcon,
+  rightIcon,
+  fullWidth = false,
   style,
   textStyle,
   disabled,
+  accessibilityLabel,
   ...props
 }) => {
-  const getBackgroundColor = () => {
-    if (disabled) return colors.surfaceLight;
-    if (variant === 'primary') return colors.primary;
-    if (variant === 'secondary') return colors.secondary;
-    return 'transparent';
-  };
-
-  const buttonSizeStyle =
-    size === 'sm' ? styles.buttonSm : size === 'lg' ? styles.buttonLg : styles.buttonMd;
-  const textSizeStyle =
-    size === 'sm' ? styles.textSm : size === 'lg' ? styles.textLg : styles.textMd;
+  const isDisabled = Boolean(disabled || loading);
+  const backgroundColor = disabled ? colors.surfaceLight : BACKGROUND[variant];
+  const foreground = disabled ? colors.textMuted : FOREGROUND[variant];
 
   return (
     <TouchableOpacity
       style={[
         styles.button,
-        buttonSizeStyle,
-        { backgroundColor: getBackgroundColor() },
+        SIZE_STYLES[size].button,
+        { backgroundColor },
         variant === 'outline' && styles.outlineBorder,
+        variant === 'outline' && disabled && styles.outlineDisabled,
+        fullWidth && styles.fullWidth,
         style,
       ]}
-      disabled={disabled || loading}
-      activeOpacity={0.8}
+      disabled={isDisabled}
+      activeOpacity={opacity.pressed}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? title}
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
       {...props}
     >
       {loading ? (
-        <ActivityIndicator color={colors.textPrimary} size={size === 'sm' ? 'small' : 'small'} />
+        <ActivityIndicator color={foreground} size="small" testID="button-loader" />
       ) : (
-        <Text
-          style={[
-            styles.text,
-            textSizeStyle,
-            variant === 'outline' && styles.outlineText,
-            textStyle,
-          ]}
-        >
-          {title}
-        </Text>
+        <View style={styles.content}>
+          {leftIcon ? (
+            <Ionicons
+              name={leftIcon}
+              size={ICON_SIZE[size]}
+              color={foreground}
+              style={styles.leftIcon}
+            />
+          ) : null}
+          <Text style={[styles.text, SIZE_STYLES[size].text, { color: foreground }, textStyle]}>
+            {title}
+          </Text>
+          {rightIcon ? (
+            <Ionicons
+              name={rightIcon}
+              size={ICON_SIZE[size]}
+              color={foreground}
+              style={styles.rightIcon}
+            />
+          ) : null}
+        </View>
       )}
     </TouchableOpacity>
   );
@@ -74,40 +120,56 @@ export const Button: React.FC<ButtonProps> = ({
 const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: radii.md,
     justifyContent: 'center',
   },
-  buttonLg: {
+  content: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  fullWidth: {
+    alignSelf: 'stretch',
+  },
+  lg: {
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.lg,
   },
-  buttonMd: {
+  leftIcon: {
+    marginRight: spacing.sm,
+  },
+  md: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-  },
-  buttonSm: {
-    borderRadius: 8,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
   },
   outlineBorder: {
     borderColor: colors.primary,
     borderWidth: 1.5,
   },
-  outlineText: {
-    color: colors.primary,
+  outlineDisabled: {
+    borderColor: colors.border,
+  },
+  rightIcon: {
+    marginLeft: spacing.sm,
+  },
+  sm: {
+    borderRadius: radii.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   text: {
-    color: colors.textPrimary,
     fontWeight: typography.fontWeights.semibold,
   },
-  textLg: {
-    fontSize: typography.fontSizes.lg,
-  },
-  textMd: {
-    fontSize: typography.fontSizes.md,
-  },
-  textSm: {
-    fontSize: typography.fontSizes.sm,
-  },
 });
+
+const textSizeStyles = StyleSheet.create({
+  lg: { fontSize: typography.fontSizes.lg },
+  md: { fontSize: typography.fontSizes.md },
+  sm: { fontSize: typography.fontSizes.sm },
+});
+
+const SIZE_STYLES: Record<ComponentSize, { button: ViewStyle; text: TextStyle }> = {
+  sm: { button: styles.sm, text: textSizeStyles.sm },
+  md: { button: styles.md, text: textSizeStyles.md },
+  lg: { button: styles.lg, text: textSizeStyles.lg },
+};

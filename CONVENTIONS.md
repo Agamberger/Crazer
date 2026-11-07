@@ -66,6 +66,10 @@ import { Button } from '../../../shared/components/Button';
 3. **Typage des Props** :
    - Toujours définir une interface explicitement nommée `[NomComposant]Props`.
    - Ne jamais utiliser `any`.
+4. **Kit UI partagé d'abord** :
+   - Avant de créer un élément d'interface, vérifier le catalogue [`src/shared/components/README.md`](src/shared/components/README.md) et importer depuis `@/shared/components`.
+   - ❌ Pas de `TextInput`, `Modal`, `Alert.alert`, `ActivityIndicator` ou bouton `TouchableOpacity` « fait main » dans une feature quand un composant partagé couvre le besoin (`TextField`, `AppModal`, `ConfirmDialog` / `toast`, `Loader`, `Button` / `IconButton`).
+   - Un besoin récurrent non couvert (≥ 2 features) doit être ajouté au kit partagé, avec ses tests et sa documentation.
 
 ---
 

@@ -15,6 +15,9 @@ export const colors = {
   warning: '#FDCB6E',
   error: '#D63031',
   errorBackground: '#3D1B1F',
+  successBackground: 'rgba(0, 184, 148, 0.12)',
+  warningBackground: 'rgba(253, 203, 110, 0.12)',
+  infoBackground: 'rgba(108, 92, 231, 0.12)',
   overlay: 'rgba(0, 0, 0, 0.75)',
   transparent: 'transparent',
   white: '#FFFFFF',
@@ -46,4 +49,24 @@ export const typography = {
     semibold: '600' as const,
     bold: '700' as const,
   },
+};
+
+export const radii = {
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  full: 9999,
+};
+
+export const iconSizes = {
+  sm: 16,
+  md: 20,
+  lg: 24,
+  xl: 32,
+};
+
+export const opacity = {
+  pressed: 0.8,
+  disabled: 0.5,
 };
