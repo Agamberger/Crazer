@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet } from 'react-native';
+import { Button, Screen } from '@/shared/components';
 import { useAuth } from '@/features/auth';
 import { useGamificationStore } from '@/features/gamification';
 import {
@@ -11,7 +11,6 @@ import {
   InterestsSection,
   BadgesSection,
 } from '@/features/profil';
-import { Button } from '@/shared/components/Button';
 import { colors, spacing } from '@/shared/constants/theme';
 
 export default function ProfilScreen() {
@@ -40,52 +39,45 @@ export default function ProfilScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <ProfileHeaderCard
-          displayName={displayName}
-          displayEmail={displayEmail}
-          friendsCount={friendsCount}
-          pendingRequestsCount={pendingRequests.length}
-          unlockedBadgesCount={unlockedBadgesCount}
-          totalBadgesCount={badges.length}
-          onOpenFriendsSearch={() => setIsSearchModalVisible(true)}
-        />
+    <Screen scrollable edges={['top', 'left', 'right']} contentStyle={styles.container}>
+      <ProfileHeaderCard
+        displayName={displayName}
+        displayEmail={displayEmail}
+        friendsCount={friendsCount}
+        pendingRequestsCount={pendingRequests.length}
+        unlockedBadgesCount={unlockedBadgesCount}
+        totalBadgesCount={badges.length}
+        onOpenFriendsSearch={() => setIsSearchModalVisible(true)}
+      />
 
-        <InterestsSection interests={mockUser.interests} />
+      <InterestsSection interests={mockUser.interests} />
 
-        <BadgesSection badges={badges} />
+      <BadgesSection badges={badges} />
 
-        <Button
-          title="Se déconnecter"
-          variant="outline"
-          loading={isLoading}
-          onPress={handleLogout}
-          style={styles.logoutButton}
-          testID="btn-logout"
-        />
+      <Button
+        title="Se déconnecter"
+        variant="outline"
+        loading={isLoading}
+        onPress={handleLogout}
+        style={styles.logoutButton}
+        testID="btn-logout"
+      />
 
-        <UserSearchModal
-          visible={isSearchModalVisible}
-          onClose={() => setIsSearchModalVisible(false)}
-        />
-      </ScrollView>
-    </SafeAreaView>
+      <UserSearchModal
+        visible={isSearchModalVisible}
+        onClose={() => setIsSearchModalVisible(false)}
+      />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
-    padding: spacing.md,
+    paddingTop: spacing.md,
   },
   logoutButton: {
     borderColor: colors.error,
     marginBottom: spacing.lg,
     marginTop: spacing.md,
-  },
-  safeArea: {
-    backgroundColor: colors.background,
-    flex: 1,
   },
 });

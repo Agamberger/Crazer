@@ -1,10 +1,17 @@
 import React from 'react';
-import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button } from '@/shared/components/Button';
-import { Card } from '@/shared/components/Card';
-import { colors, spacing, typography } from '@/shared/constants/theme';
-import { UserSearchResult } from '../types';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import {
+  AppModal,
+  AppText,
+  Avatar,
+  Badge,
+  Button,
+  ButtonVariant,
+  Card,
+  Divider,
+} from '@/shared/components';
+import { spacing } from '@/shared/constants/theme';
+import { FriendStatus, UserSearchResult } from '../types';
 
 export interface UserProfileDetailModalProps {
   user: UserSearchResult | null;
@@ -16,6 +23,22 @@ export interface UserProfileDetailModalProps {
   onCancelRequest?: (friendshipId: string, userId: string) => void;
 }
 
+const STATUS_LABELS: Record<FriendStatus, string> = {
+  accepted: 'Ami',
+  pending_sent: 'Demande envoyée',
+  pending_received: 'Demande reçue',
+  rejected: 'Non connecté',
+  none: 'Non connecté',
+};
+
+interface DetailAction {
+  title: string;
+  variant: ButtonVariant;
+  accessibilityLabel: string;
+  testID: string;
+  onPress: () => void;
+}
+
 export const UserProfileDetailModal: React.FC<UserProfileDetailModalProps> = ({
   user,
   visible,
@@ -25,239 +48,120 @@ export const UserProfileDetailModal: React.FC<UserProfileDetailModalProps> = ({
   onRemoveFriend,
   onCancelRequest,
 }) => {
-  const insets = useSafeAreaInsets();
-  const topPadding = Math.max(insets.top, 24);
-  const bottomPadding = Math.max(insets.bottom, 16);
-
   if (!user) return null;
 
-  const getInitials = (name: string | null, email: string) => {
-    if (name && name.trim().length > 0) {
-      const parts = name.trim().split(' ');
-      if (parts.length >= 2) {
-        return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-      }
-      return name.slice(0, 2).toUpperCase();
-    }
-    return email.slice(0, 2).toUpperCase();
-  };
-
   const displayName = user.fullName || user.email.split('@')[0];
+  const friendshipId = user.friendshipId || '';
 
-  const renderFriendshipAction = () => {
+  const getAction = (): DetailAction => {
     switch (user.friendshipStatus) {
       case 'accepted':
-        return (
-          <Button
-            title="Ami sur Crazer ✓"
-            variant="outline"
-            style={styles.actionButton}
-            onPress={() => user.friendshipId && onRemoveFriend?.(user.friendshipId, user.id)}
-            accessibilityLabel={`Retirer ${displayName} des amis`}
-            testID="btn-detail-remove-friend"
-          />
-        );
+        return {
+          title: 'Ami sur Crazer ✓',
+          variant: 'outline',
+          accessibilityLabel: `Retirer ${displayName} des amis`,
+          testID: 'btn-detail-remove-friend',
+          onPress: () => friendshipId && onRemoveFriend?.(friendshipId, user.id),
+        };
       case 'pending_sent':
-        return (
-          <Button
-            title="Demande envoyée (Annuler)"
-            variant="secondary"
-            style={styles.actionButton}
-            onPress={() => user.friendshipId && onCancelRequest?.(user.friendshipId, user.id)}
-            accessibilityLabel={`Annuler la demande d'ami à ${displayName}`}
-            testID="btn-detail-cancel-request"
-          />
-        );
+        return {
+          title: 'Demande envoyée (Annuler)',
+          variant: 'secondary',
+          accessibilityLabel: `Annuler la demande d'ami à ${displayName}`,
+          testID: 'btn-detail-cancel-request',
+          onPress: () => friendshipId && onCancelRequest?.(friendshipId, user.id),
+        };
       case 'pending_received':
-        return (
-          <Button
-            title="Accepter la demande d'ami"
-            variant="primary"
-            style={styles.actionButton}
-            onPress={() => user.friendshipId && onAcceptRequest?.(friendshipIdForAccept())}
-            accessibilityLabel={`Accepter la demande d'ami de ${displayName}`}
-            testID="btn-detail-accept-request"
-          />
-        );
+        return {
+          title: "Accepter la demande d'ami",
+          variant: 'primary',
+          accessibilityLabel: `Accepter la demande d'ami de ${displayName}`,
+          testID: 'btn-detail-accept-request',
+          onPress: () => friendshipId && onAcceptRequest?.(friendshipId),
+        };
       case 'none':
       case 'rejected':
       default:
-        return (
-          <Button
-            title="+ Ajouter en ami"
-            variant="primary"
-            style={styles.actionButton}
-            onPress={() => onAddFriend?.(user.id)}
-            accessibilityLabel={`Ajouter ${displayName} en ami`}
-            testID="btn-detail-add-friend"
-          />
-        );
+        return {
+          title: '+ Ajouter en ami',
+          variant: 'primary',
+          accessibilityLabel: `Ajouter ${displayName} en ami`,
+          testID: 'btn-detail-add-friend',
+          onPress: () => onAddFriend?.(user.id),
+        };
     }
   };
 
-  const friendshipIdForAccept = () => user.friendshipId || '';
+  const { title, ...actionProps } = getAction();
 
   return (
-    <Modal
+    <AppModal
       visible={visible}
-      animationType="slide"
-      transparent={false}
-      onRequestClose={onClose}
-      statusBarTranslucent={true}
+      onClose={onClose}
+      variant="fullScreen"
+      title="Profil de l'utilisateur"
+      closeIcon="arrow-back"
+      closeAccessibilityLabel="Retour à la liste"
+      closeButtonTestID="btn-close-profile-detail"
+      testID="modal-user-profile-detail"
     >
-      <View
-        style={[
-          styles.container,
-          {
-            paddingTop: topPadding + spacing.sm,
-            paddingBottom: bottomPadding,
-          },
-        ]}
-        testID="modal-user-profile-detail"
-      >
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={onClose}
-            style={styles.backButton}
-            accessibilityLabel="Retour à la liste"
-            accessibilityRole="button"
-            testID="btn-close-profile-detail"
-          >
-            <Text style={styles.backText}>← Retour</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{"Profil de l'utilisateur"}</Text>
-          <View style={styles.headerRightPlaceholder} />
-        </View>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Card style={styles.profileCard}>
+          <Avatar
+            name={user.fullName}
+            fallback={user.email}
+            imageUrl={user.avatarUrl}
+            size="xl"
+            style={styles.avatar}
+          />
+          <AppText variant="h3" weight="bold" style={styles.name}>
+            {displayName}
+          </AppText>
+          <AppText variant="bodySmall" color="secondary">
+            {user.email}
+          </AppText>
 
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <Card style={styles.profileCard}>
-            <View style={styles.avatarLarge}>
-              <Text style={styles.avatarLargeText}>{getInitials(user.fullName, user.email)}</Text>
-            </View>
-            <Text style={styles.name}>{displayName}</Text>
-            <Text style={styles.email}>{user.email}</Text>
+          <Divider style={styles.divider} />
 
-            <View style={styles.divider} />
+          <View style={styles.infoRow}>
+            <AppText variant="bodySmall" color="muted">
+              Statut
+            </AppText>
+            <Badge label={STATUS_LABELS[user.friendshipStatus]} tone="neutral" />
+          </View>
 
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Statut</Text>
-              <View style={styles.statusBadge}>
-                <Text style={styles.statusBadgeText}>
-                  {user.friendshipStatus === 'accepted'
-                    ? 'Ami'
-                    : user.friendshipStatus === 'pending_sent'
-                    ? 'Demande envoyée'
-                    : user.friendshipStatus === 'pending_received'
-                    ? 'Demande reçue'
-                    : 'Non connecté'}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.actionContainer}>{renderFriendshipAction()}</View>
-          </Card>
-        </ScrollView>
-      </View>
-    </Modal>
+          <Button title={title} fullWidth style={styles.actionButton} {...actionProps} />
+        </Card>
+      </ScrollView>
+    </AppModal>
   );
 };
 
 const styles = StyleSheet.create({
   actionButton: {
-    width: '100%',
-  },
-  actionContainer: {
     marginTop: spacing.md,
-    width: '100%',
   },
-  avatarLarge: {
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: 40,
-    height: 80,
-    justifyContent: 'center',
+  avatar: {
     marginBottom: spacing.md,
-    width: 80,
-  },
-  avatarLargeText: {
-    color: colors.white,
-    fontSize: typography.fontSizes.xxl,
-    fontWeight: typography.fontWeights.bold,
-  },
-  backButton: {
-    padding: spacing.xs,
-  },
-  backText: {
-    color: colors.primary,
-    fontSize: typography.fontSizes.sm,
-    fontWeight: typography.fontWeights.semibold,
-  },
-  container: {
-    backgroundColor: colors.background,
-    flex: 1,
-    paddingHorizontal: spacing.md,
   },
   divider: {
-    backgroundColor: colors.border,
-    height: 1,
-    marginVertical: spacing.md,
-    width: '100%',
-  },
-  email: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSizes.sm,
-    marginBottom: spacing.xs,
-  },
-  header: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-    paddingVertical: spacing.xs,
-  },
-  headerRightPlaceholder: {
-    width: 60,
-  },
-  headerTitle: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.md,
-    fontWeight: typography.fontWeights.bold,
-  },
-  infoLabel: {
-    color: colors.textMuted,
-    fontSize: typography.fontSizes.sm,
+    alignSelf: 'stretch',
   },
   infoRow: {
     alignItems: 'center',
+    alignSelf: 'stretch',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-    width: '100%',
   },
   name: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.lg,
-    fontWeight: typography.fontWeights.bold,
     marginBottom: spacing.xs / 2,
   },
   profileCard: {
     alignItems: 'center',
-    borderColor: colors.border,
     padding: spacing.xl,
   },
   scrollContent: {
     flexGrow: 1,
     paddingVertical: spacing.md,
-  },
-  statusBadge: {
-    backgroundColor: colors.surfaceLight,
-    borderRadius: 6,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs / 2,
-  },
-  statusBadgeText: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSizes.xs,
-    fontWeight: typography.fontWeights.medium,
   },
 });

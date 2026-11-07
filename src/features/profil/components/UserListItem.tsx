@@ -1,7 +1,7 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Button } from '@/shared/components/Button';
-import { colors, spacing, typography } from '@/shared/constants/theme';
+import { StyleSheet } from 'react-native';
+import { Avatar, Button, ButtonVariant, ListItem } from '@/shared/components';
+import { spacing } from '@/shared/constants/theme';
 import { UserSearchResult } from '../types';
 
 export interface UserListItemProps {
@@ -13,6 +13,13 @@ export interface UserListItemProps {
   onCancelRequest?: (friendshipId: string, userId: string) => void;
 }
 
+interface FriendAction {
+  title: string;
+  variant: ButtonVariant;
+  accessibilityLabel: string;
+  onPress: () => void;
+}
+
 export const UserListItem: React.FC<UserListItemProps> = ({
   user,
   onPressSelect,
@@ -21,141 +28,73 @@ export const UserListItem: React.FC<UserListItemProps> = ({
   onRemoveFriend,
   onCancelRequest,
 }) => {
-  const getInitials = (name: string | null, email: string) => {
-    if (name && name.trim().length > 0) {
-      const parts = name.trim().split(' ');
-      if (parts.length >= 2) {
-        return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-      }
-      return name.slice(0, 2).toUpperCase();
-    }
-    return email.slice(0, 2).toUpperCase();
-  };
-
   const displayName = user.fullName || user.email.split('@')[0];
+  const { friendshipId } = user;
 
-  const renderActionButton = () => {
+  const getAction = (): FriendAction => {
     switch (user.friendshipStatus) {
       case 'accepted':
-        return (
-          <Button
-            title="Ami ✓"
-            variant="outline"
-            style={styles.actionButton}
-            onPress={() => user.friendshipId && onRemoveFriend?.(user.friendshipId, user.id)}
-            accessibilityLabel={`Retirer ${displayName} des amis`}
-            testID={`btn-friend-status-${user.id}`}
-          />
-        );
+        return {
+          title: 'Ami ✓',
+          variant: 'outline',
+          accessibilityLabel: `Retirer ${displayName} des amis`,
+          onPress: () => friendshipId && onRemoveFriend?.(friendshipId, user.id),
+        };
       case 'pending_sent':
-        return (
-          <Button
-            title="En attente"
-            variant="secondary"
-            style={styles.actionButton}
-            onPress={() => user.friendshipId && onCancelRequest?.(user.friendshipId, user.id)}
-            accessibilityLabel={`Annuler la demande d'ami à ${displayName}`}
-            testID={`btn-friend-status-${user.id}`}
-          />
-        );
+        return {
+          title: 'En attente',
+          variant: 'secondary',
+          accessibilityLabel: `Annuler la demande d'ami à ${displayName}`,
+          onPress: () => friendshipId && onCancelRequest?.(friendshipId, user.id),
+        };
       case 'pending_received':
-        return (
-          <Button
-            title="Accepter"
-            variant="primary"
-            style={styles.actionButton}
-            onPress={() => user.friendshipId && onAcceptRequest?.(user.friendshipId)}
-            accessibilityLabel={`Accepter la demande d'ami de ${displayName}`}
-            testID={`btn-friend-status-${user.id}`}
-          />
-        );
+        return {
+          title: 'Accepter',
+          variant: 'primary',
+          accessibilityLabel: `Accepter la demande d'ami de ${displayName}`,
+          onPress: () => friendshipId && onAcceptRequest?.(friendshipId),
+        };
       case 'none':
       case 'rejected':
       default:
-        return (
-          <Button
-            title="Ajouter"
-            variant="primary"
-            style={styles.actionButton}
-            onPress={() => onAddFriend?.(user.id)}
-            accessibilityLabel={`Ajouter ${displayName} en ami`}
-            testID={`btn-friend-status-${user.id}`}
-          />
-        );
+        return {
+          title: 'Ajouter',
+          variant: 'primary',
+          accessibilityLabel: `Ajouter ${displayName} en ami`,
+          onPress: () => onAddFriend?.(user.id),
+        };
     }
   };
 
+  const action = getAction();
+
   return (
-    <View style={styles.container} testID={`user-item-${user.id}`}>
-      <TouchableOpacity
-        style={styles.profileTouchable}
-        onPress={() => onPressSelect?.(user)}
-        accessibilityLabel={`Voir le profil de ${displayName}`}
-        accessibilityRole="button"
-        testID={`user-profile-touchable-${user.id}`}
-      >
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{getInitials(user.fullName, user.email)}</Text>
-        </View>
-        <View style={styles.info}>
-          <Text style={styles.name} numberOfLines={1}>
-            {displayName}
-          </Text>
-          <Text style={styles.email} numberOfLines={1}>
-            {user.email}
-          </Text>
-        </View>
-      </TouchableOpacity>
-      {renderActionButton()}
-    </View>
+    <ListItem
+      bordered
+      title={displayName}
+      subtitle={user.email}
+      left={<Avatar name={user.fullName} fallback={user.email} imageUrl={user.avatarUrl} />}
+      onPress={() => onPressSelect?.(user)}
+      showChevron={false}
+      accessibilityLabel={`Voir le profil de ${displayName}`}
+      testID={`user-profile-touchable-${user.id}`}
+      right={
+        <Button
+          title={action.title}
+          variant={action.variant}
+          size="sm"
+          style={styles.actionButton}
+          onPress={action.onPress}
+          accessibilityLabel={action.accessibilityLabel}
+          testID={`btn-friend-status-${user.id}`}
+        />
+      }
+    />
   );
 };
 
 const styles = StyleSheet.create({
   actionButton: {
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  avatar: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryDark,
-    borderRadius: 20,
-    height: 40,
-    justifyContent: 'center',
-    marginRight: spacing.sm,
-    width: 40,
-  },
-  avatarText: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.sm,
-    fontWeight: typography.fontWeights.bold,
-  },
-  container: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 12,
-    borderWidth: 1,
-    flexDirection: 'row',
-    marginBottom: spacing.xs,
-    padding: spacing.sm,
-  },
-  email: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSizes.xs,
-  },
-  info: {
-    flex: 1,
-    marginRight: spacing.sm,
-  },
-  name: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.sm,
-    fontWeight: typography.fontWeights.semibold,
-  },
-  profileTouchable: {
-    alignItems: 'center',
-    flex: 1,
-    flexDirection: 'row',
   },
 });

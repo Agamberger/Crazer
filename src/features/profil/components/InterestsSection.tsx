@@ -1,6 +1,7 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { colors, spacing, typography } from '@/shared/constants/theme';
+import { StyleSheet, View } from 'react-native';
+import { Chip, SectionHeader } from '@/shared/components';
+import { spacing } from '@/shared/constants/theme';
 
 export interface InterestsSectionProps {
   interests: string[];
@@ -17,83 +18,39 @@ const EMOJI_MAP: Record<string, string> = {
   Jeux: '🎮',
 };
 
-export const InterestsSection: React.FC<InterestsSectionProps> = ({
-  interests,
-  onAddInterest,
-}) => {
-  return (
-    <View style={styles.container} testID="interests-section">
-      <View style={styles.header}>
-        <Text style={styles.title}>{"💡 Centres d'intérêt"}</Text>
-        {onAddInterest && (
-          <TouchableOpacity
-            onPress={onAddInterest}
-            style={styles.addButton}
-            accessibilityLabel="Ajouter un centre d'intérêt"
-            accessibilityRole="button"
-          >
-            <Text style={styles.addText}>+ Ajouter</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+const DEFAULT_EMOJI = '🎯';
 
-      <View style={styles.tagsContainer}>
-        {interests.map((interest, index) => {
-          const emoji = EMOJI_MAP[interest] || '🎯';
-          return (
-            <View key={index} style={styles.tag} testID={`tag-interest-${index}`}>
-              <Text style={styles.tagText}>
-                {emoji} {interest}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
+export const InterestsSection: React.FC<InterestsSectionProps> = ({ interests, onAddInterest }) => (
+  <View style={styles.container} testID="interests-section">
+    <SectionHeader
+      title="💡 Centres d'intérêt"
+      actionLabel={onAddInterest ? '+ Ajouter' : undefined}
+      onAction={onAddInterest}
+      style={styles.header}
+    />
+
+    <View style={styles.tagsContainer}>
+      {interests.map((interest, index) => (
+        <Chip
+          key={`${interest}-${index}`}
+          label={`${EMOJI_MAP[interest] || DEFAULT_EMOJI} ${interest}`}
+          testID={`tag-interest-${index}`}
+        />
+      ))}
     </View>
-  );
-};
+  </View>
+);
 
 const styles = StyleSheet.create({
-  addButton: {
-    paddingHorizontal: spacing.xs,
-    paddingVertical: 2,
-  },
-  addText: {
-    color: colors.primary,
-    fontSize: typography.fontSizes.xs,
-    fontWeight: typography.fontWeights.semibold,
-  },
   container: {
     marginBottom: spacing.md,
   },
   header: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xs,
-  },
-  tag: {
-    backgroundColor: colors.surfaceLight,
-    borderColor: colors.border,
-    borderRadius: 20,
-    borderWidth: 1,
-    marginBottom: spacing.xs,
-    marginRight: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-  },
-  tagText: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.xs,
-    fontWeight: typography.fontWeights.medium,
+    marginTop: 0,
   },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-  },
-  title: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.md,
-    fontWeight: typography.fontWeights.bold,
+    gap: spacing.xs,
   },
 });

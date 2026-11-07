@@ -1,12 +1,12 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Button } from '@/shared/components/Button';
-import { Card } from '@/shared/components/Card';
-import { colors, spacing, typography } from '@/shared/constants/theme';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { AppText, Avatar, Button, Card } from '@/shared/components';
+import { colors, opacity, radii, spacing } from '@/shared/constants/theme';
 
 export interface ProfileHeaderCardProps {
   displayName: string;
   displayEmail: string;
+  avatarUrl?: string | null;
   friendsCount: number;
   pendingRequestsCount: number;
   unlockedBadgesCount: number;
@@ -14,75 +14,82 @@ export interface ProfileHeaderCardProps {
   onOpenFriendsSearch: () => void;
 }
 
+interface StatProps {
+  value: string;
+  label: string;
+}
+
+const Stat: React.FC<StatProps> = ({ value, label }) => (
+  <>
+    <AppText weight="bold">{value}</AppText>
+    <AppText variant="caption" color="secondary" weight="medium" style={styles.statLabel}>
+      {label}
+    </AppText>
+  </>
+);
+
 export const ProfileHeaderCard: React.FC<ProfileHeaderCardProps> = ({
   displayName,
   displayEmail,
+  avatarUrl,
   friendsCount,
   pendingRequestsCount,
   unlockedBadgesCount,
   totalBadgesCount,
   onOpenFriendsSearch,
 }) => {
-  const getInitials = (name: string, email: string) => {
-    if (name && name.trim().length > 0) {
-      const parts = name.trim().split(' ');
-      if (parts.length >= 2) {
-        return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-      }
-      return name.slice(0, 2).toUpperCase();
-    }
-    return email.slice(0, 2).toUpperCase();
-  };
+  const friendsLabel = `${friendsCount > 1 ? 'Amis' : 'Ami'}${
+    pendingRequestsCount > 0 ? ` (${pendingRequestsCount} 📩)` : ''
+  }`;
 
   return (
     <Card style={styles.card} testID="profile-header-card">
-      <View style={styles.avatarContainer}>
-        <View style={styles.avatarGlow}>
-          <Text style={styles.avatarText}>{getInitials(displayName, displayEmail)}</Text>
-        </View>
-        <View style={styles.onlineStatus} />
-      </View>
+      <Avatar
+        name={displayName}
+        fallback={displayEmail}
+        imageUrl={avatarUrl}
+        size="xl"
+        online
+        style={styles.avatar}
+      />
 
-      <Text style={styles.name}>{displayName}</Text>
-      <Text style={styles.email}>{displayEmail}</Text>
+      <AppText variant="h2" style={styles.name}>
+        {displayName}
+      </AppText>
+      <AppText variant="bodySmall" color="secondary" style={styles.email}>
+        {displayEmail}
+      </AppText>
 
       <View style={styles.statsRow}>
         <TouchableOpacity
           style={styles.statBox}
           onPress={onOpenFriendsSearch}
-          activeOpacity={0.7}
+          activeOpacity={opacity.pressed}
           accessibilityLabel="Ouvrir la liste et recherche d'amis"
           accessibilityRole="button"
           testID="stat-box-friends"
         >
-          <Text style={styles.statNumber}>{friendsCount}</Text>
-          <Text style={styles.statLabel}>
-            {friendsCount > 1 ? 'Amis' : 'Ami'}
-            {pendingRequestsCount > 0 ? ` (${pendingRequestsCount} 📩)` : ''}
-          </Text>
+          <Stat value={String(friendsCount)} label={friendsLabel} />
         </TouchableOpacity>
 
         <View style={styles.statDivider} />
 
         <View style={styles.statBox} testID="stat-box-badges">
-          <Text style={styles.statNumber}>
-            {unlockedBadgesCount}/{totalBadgesCount}
-          </Text>
-          <Text style={styles.statLabel}>Badges</Text>
+          <Stat value={`${unlockedBadgesCount}/${totalBadgesCount}`} label="Badges" />
         </View>
 
         <View style={styles.statDivider} />
 
         <View style={styles.statBox} testID="stat-box-level">
-          <Text style={styles.statNumber}>Niv. 4</Text>
-          <Text style={styles.statLabel}>Explorateur</Text>
+          <Stat value="Niv. 4" label="Explorateur" />
         </View>
       </View>
 
       <Button
-        title="🔍 Rechercher & Ajouter des Amis"
-        variant="primary"
+        title="Rechercher & Ajouter des Amis"
+        leftIcon="search"
         onPress={onOpenFriendsSearch}
+        fullWidth
         style={styles.searchFriendsButton}
         testID="btn-open-search-friends"
       />
@@ -91,61 +98,25 @@ export const ProfileHeaderCard: React.FC<ProfileHeaderCardProps> = ({
 };
 
 const styles = StyleSheet.create({
-  avatarContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-    position: 'relative',
-  },
-  avatarGlow: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryDark,
+  avatar: {
     borderColor: colors.primary,
-    borderRadius: 44,
     borderWidth: 2.5,
-    height: 88,
-    justifyContent: 'center',
-    width: 88,
-  },
-  avatarText: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.xxl,
-    fontWeight: typography.fontWeights.bold,
+    marginBottom: spacing.sm,
   },
   card: {
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 20,
-    borderWidth: 1,
+    borderRadius: radii.xl - 4,
     marginBottom: spacing.md,
     paddingVertical: spacing.lg,
   },
   email: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSizes.sm,
     marginBottom: spacing.md,
   },
   name: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.xl,
-    fontWeight: typography.fontWeights.bold,
     marginBottom: 2,
-  },
-  onlineStatus: {
-    backgroundColor: colors.success,
-    borderColor: colors.surface,
-    borderRadius: 8,
-    borderWidth: 2,
-    bottom: 2,
-    height: 16,
-    position: 'absolute',
-    right: 4,
-    width: 16,
   },
   searchFriendsButton: {
     marginTop: spacing.md,
-    width: '100%',
   },
   statBox: {
     alignItems: 'center',
@@ -157,23 +128,15 @@ const styles = StyleSheet.create({
     width: 1,
   },
   statLabel: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSizes.xs,
-    fontWeight: typography.fontWeights.medium,
     marginTop: 2,
-  },
-  statNumber: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.md,
-    fontWeight: typography.fontWeights.bold,
   },
   statsRow: {
     alignItems: 'center',
+    alignSelf: 'stretch',
     backgroundColor: colors.surfaceLight,
-    borderRadius: 14,
+    borderRadius: radii.md + 2,
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: spacing.sm,
-    width: '100%',
   },
 });
