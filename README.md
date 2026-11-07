@@ -26,9 +26,9 @@ Crazer/
 ├── app/                        # Écrans et routes (Expo Router)
 │   ├── (auth)/                 # Écrans d'authentification (login, register)
 │   ├── (tabs)/                 # Navigation principale par onglets
-│   │   ├── _layout.tsx         # Barre d'onglets (Sorties, Activités, Carte, Finances, Journal, Profil)
-│   │   ├── index.tsx           # Écran principal : Mes Sorties
-│   │   ├── activites.tsx       # Écran Découverte & Vote d'activités
+│   │   ├── _layout.tsx         # Barre d'onglets (Accueil, Sorties, Carte, Profil)
+│   │   ├── index.tsx           # Accueil : salutation, prochaine sortie, raccourcis
+│   │   ├── sorties.tsx         # Mes Sorties : liste, édition et étapes
 │   │   ├── carte.tsx           # Écran Carte interactive OpenStreetMap (MapLibre)
 │   │   ├── finances.tsx        # Écran Gestion des dépenses de groupe (Tricount)
 │   │   ├── journal.tsx         # Écran Journal d'aventure
@@ -38,7 +38,7 @@ Crazer/
 │   ├── features/               # Modules fonctionnels (Feature-First)
 │   │   ├── auth/               # Authentification & Inscription Supabase
 │   │   ├── sorties/            # Gestion des sorties, invitations, RSVPs
-│   │   ├── activites/          # Recherche d'activités, filtres, swipe & vote
+│   │   ├── home/               # Page d'accueil (prochaine sortie, raccourcis)
 │   │   ├── carte/              # Carte interactive MapLibre, POIs, thèmes OSM, filtres & recherche
 │   │   ├── itineraire/         # Planification d'itinéraires multi-activités
 │   │   ├── finances/           # Gestion financière de groupe (Tricount)
