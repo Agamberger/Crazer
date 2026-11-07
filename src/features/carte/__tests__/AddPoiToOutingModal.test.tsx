@@ -1,11 +1,11 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
-import { Alert } from 'react-native';
 import { AddPoiToOutingModal } from '../components/AddPoiToOutingModal';
 import { PoiItem } from '../types/carte';
 import { useOutingsStore } from '@/features/outings';
 import { ensurePlaceExists } from '../services/placeService';
 import { OutingRow, PlannedOutingRow } from '@/shared/types';
+import { useToastStore } from '@/shared/store/useToastStore';
 
 jest.mock('../services/placeService', () => ({
   ensurePlaceExists: jest.fn(),
@@ -85,10 +85,10 @@ const mockCancelledOuting: OutingRow = {
 describe('AddPoiToOutingModal', () => {
   const mockOnClose = jest.fn();
   const mockOnSuccess = jest.fn();
-  const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
   beforeEach(() => {
     jest.clearAllMocks();
+    useToastStore.getState().clear();
     useOutingsStore.setState({
       outings: [mockActiveOuting, mockDoneOuting, mockCancelledOuting],
       plannedOutings: [],
@@ -253,9 +253,12 @@ describe('AddPoiToOutingModal', () => {
           status: 'confirmed',
         })
       );
-      expect(alertSpy).toHaveBeenCalledWith(
-        'Étape ajoutée !',
-        expect.stringContaining('Café de Flore')
+      expect(useToastStore.getState().queue).toContainEqual(
+        expect.objectContaining({
+          tone: 'success',
+          title: 'Étape ajoutée !',
+          message: expect.stringContaining('Café de Flore'),
+        })
       );
       expect(mockOnSuccess).toHaveBeenCalledWith(mockActiveOuting, createdPlanned);
       expect(mockOnClose).toHaveBeenCalled();

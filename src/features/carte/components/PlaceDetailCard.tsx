@@ -1,19 +1,20 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Image,
-  ScrollView,
-  PanResponder,
-  Linking,
   Animated,
-  Dimensions,
+  Image,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { colors, spacing, typography } from '@/shared/constants/theme';
-import { PlaceItem } from '../types/carte';
+import { AppText, Badge, Button, Chip, IconButton } from '@/shared/components';
+import { colors, radii, spacing } from '@/shared/constants/theme';
+import { getPlaceCategoryLabel } from '../constants';
+import { usePlaceSheetGesture } from '../hooks/usePlaceSheetGesture';
 import { useMapStore } from '../store/useMapStore';
+import { PlaceItem } from '../types/carte';
+import { PlaceOpeningHours } from './PlaceOpeningHours';
 
 export interface PlaceDetailCardProps {
   place: PlaceItem;
@@ -25,21 +26,9 @@ export interface PlaceDetailCardProps {
   targetOutingTitle?: string;
 }
 
-const OPEN_BADGE_BG = 'rgba(34, 197, 94, 0.15)';
-const CLOSED_BADGE_BG = 'rgba(239, 68, 68, 0.15)';
-
-const CATEGORY_LABELS: Record<string, { name: string; badgeColor: string }> = {
-  resto: { name: 'Restaurant', badgeColor: colors.secondary },
-  bar: { name: 'Bar & Lounge', badgeColor: colors.accent },
-  activite: { name: 'Activité', badgeColor: colors.primary },
-  nature: { name: 'Outdoor', badgeColor: colors.success },
-  culture: { name: 'Culture', badgeColor: colors.warning },
-  all: { name: 'Lieu', badgeColor: colors.primary },
+const openUrl = (url: string) => {
+  Linking.openURL(url).catch(() => {});
 };
-
-const SCREEN_HEIGHT = Dimensions.get('window').height;
-const COLLAPSED_HEIGHT = 270;
-const EXPANDED_HEIGHT = Math.max(300, SCREEN_HEIGHT - 280);
 
 export const PlaceDetailCard: React.FC<PlaceDetailCardProps> = ({
   place,
@@ -52,145 +41,31 @@ export const PlaceDetailCard: React.FC<PlaceDetailCardProps> = ({
   const savedWaypoints = useMapStore((state) => state.savedWaypoints);
   const toggleSavedWaypoint = useMapStore((state) => state.toggleSavedWaypoint);
   const targetOutingId = useMapStore((state) => state.targetOutingId);
+  const { animatedHeight, isExpanded, toggleExpand, panHandlers } = usePlaceSheetGesture(
+    place.id,
+    expandAnim,
+  );
+  const [showHours, setShowHours] = useState(false);
 
   const isTargetMode = propHasTargetOuting ?? !!targetOutingId;
-
-  const [showHours, setShowHours] = useState<boolean>(false);
-  const [isExpanded, setIsExpanded] = useState<boolean>(false);
-
-  const isExpandedRef = useRef<boolean>(false);
-  isExpandedRef.current = isExpanded;
-
-  const animatedHeight = useRef(new Animated.Value(COLLAPSED_HEIGHT)).current;
-  const startHeightRef = useRef<number>(COLLAPSED_HEIGHT);
-
   const isSaved = savedWaypoints.some((item) => item.id === place.id);
-  const catInfo = CATEGORY_LABELS[place.category] || CATEGORY_LABELS.all;
-
-  // Réinitialiser la hauteur lors du changement de lieu
-  useEffect(() => {
-    setIsExpanded(false);
-    animatedHeight.setValue(COLLAPSED_HEIGHT);
-    if (expandAnim) expandAnim.setValue(0);
-  }, [place.id, animatedHeight, expandAnim]);
-
-  const updateExpandProgress = (height: number) => {
-    if (expandAnim) {
-      const progress = (height - COLLAPSED_HEIGHT) / (EXPANDED_HEIGHT - COLLAPSED_HEIGHT);
-      const clampedProgress = Math.min(Math.max(progress, 0), 1);
-      expandAnim.setValue(clampedProgress);
-    }
-  };
-
-  const animateToHeight = (targetHeight: number, callback?: () => void) => {
-    const targetProgress = targetHeight === EXPANDED_HEIGHT ? 1 : 0;
-    if (expandAnim) {
-      Animated.parallel([
-        Animated.spring(animatedHeight, {
-          toValue: targetHeight,
-          useNativeDriver: false,
-          bounciness: 4,
-        }),
-        Animated.spring(expandAnim, {
-          toValue: targetProgress,
-          useNativeDriver: false,
-          bounciness: 4,
-        }),
-      ]).start(callback);
-    } else {
-      Animated.spring(animatedHeight, {
-        toValue: targetHeight,
-        useNativeDriver: false,
-        bounciness: 4,
-      }).start(callback);
-    }
-  };
-
-  const toggleExpand = () => {
-    const nextState = !isExpanded;
-    setIsExpanded(nextState);
-    animateToHeight(nextState ? EXPANDED_HEIGHT : COLLAPSED_HEIGHT);
-  };
-
-  // PanResponder capturant le glissement vertical progressif sur toute la carte
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return (
-          Math.abs(gestureState.dy) > 6 &&
-          Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
-        );
-      },
-      onPanResponderGrant: () => {
-        startHeightRef.current = isExpandedRef.current
-          ? EXPANDED_HEIGHT
-          : COLLAPSED_HEIGHT;
-      },
-      onPanResponderMove: (_, gestureState) => {
-        const newHeight = startHeightRef.current - gestureState.dy;
-        const clampedHeight = Math.min(
-          Math.max(newHeight, COLLAPSED_HEIGHT),
-          EXPANDED_HEIGHT
-        );
-        animatedHeight.setValue(clampedHeight);
-        updateExpandProgress(clampedHeight);
-
-        const midPoint = (COLLAPSED_HEIGHT + EXPANDED_HEIGHT) / 2;
-        if (clampedHeight > midPoint && !isExpandedRef.current) {
-          setIsExpanded(true);
-        } else if (clampedHeight <= midPoint && isExpandedRef.current) {
-          setIsExpanded(false);
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        const finalHeight = startHeightRef.current - gestureState.dy;
-        const midPoint = (COLLAPSED_HEIGHT + EXPANDED_HEIGHT) / 2;
-
-        const shouldExpand =
-          gestureState.vy < -0.3 ||
-          (gestureState.vy <= 0.3 && finalHeight > midPoint);
-
-        const targetHeight = shouldExpand ? EXPANDED_HEIGHT : COLLAPSED_HEIGHT;
-        setIsExpanded(shouldExpand);
-        animateToHeight(targetHeight);
-      },
-    })
-  ).current;
-
-  const photos =
-    place.images && place.images.length > 0
-      ? place.images
-      : place.imageUrl
-      ? [place.imageUrl]
-      : [];
-
-  const handleOpenLink = (url: string) => {
-    Linking.openURL(url).catch(() => {});
-  };
-
-  const handleCallPhone = (phone: string) => {
-    Linking.openURL(`tel:${phone}`).catch(() => {});
-  };
+  const catInfo = getPlaceCategoryLabel(place.category);
+  const photos = place.images?.length ? place.images : place.imageUrl ? [place.imageUrl] : [];
+  const hasHours = Boolean(place.openingHours && place.openingHours.length > 0);
+  const showDescription =
+    Boolean(place.description) && place.description?.trim() !== place.address.trim();
 
   return (
     <Animated.View
-      {...panResponder.panHandlers}
-      style={[
-        styles.card,
-        { height: animatedHeight },
-        isExpanded && styles.expandedCard,
-      ]}
+      {...panHandlers}
+      style={[styles.card, { height: animatedHeight }, isExpanded && styles.expandedCard]}
       testID="place-detail-card"
     >
-      {/* Poignée tactile de drag */}
       <View style={styles.dragHandleContainer} testID="drag-handle-zone">
         <TouchableOpacity
           onPress={toggleExpand}
           style={styles.dragHandleTouch}
-          accessibilityLabel={
-            isExpanded ? 'Réduire la fiche' : 'Agrandir la fiche'
-          }
+          accessibilityLabel={isExpanded ? 'Réduire la fiche' : 'Agrandir la fiche'}
           accessibilityRole="button"
           testID="expand-toggle-button"
         >
@@ -204,64 +79,51 @@ export const PlaceDetailCard: React.FC<PlaceDetailCardProps> = ({
         nestedScrollEnabled
       >
         <View style={styles.header}>
-          <View style={styles.badgeContainer}>
-            <View style={[styles.badge, { backgroundColor: catInfo.badgeColor }]}>
-              <Text style={styles.badgeText}>{catInfo.name}</Text>
-            </View>
-            <Text style={styles.priceTag}>{place.priceRange}</Text>
-            {place.isOpenNow !== undefined && (
-              <View
-                style={[
-                  styles.openStatusBadge,
-                  place.isOpenNow ? styles.openBadge : styles.closedBadge,
-                ]}
-              >
-                <Text style={styles.openStatusText}>
-                  {place.isOpenNow ? '🟢 Ouvert' : '🔴 Fermé'}
-                </Text>
-              </View>
-            )}
+          <View style={styles.row}>
+            <Badge label={catInfo.name} style={{ backgroundColor: catInfo.badgeColor }} />
+            <AppText variant="caption" color="muted" weight="semibold" style={styles.price}>
+              {place.priceRange}
+            </AppText>
+            {place.isOpenNow !== undefined ? (
+              <Badge
+                label={place.isOpenNow ? '🟢 Ouvert' : '🔴 Fermé'}
+                tone="neutral"
+                style={place.isOpenNow ? styles.openBadge : styles.closedBadge}
+              />
+            ) : null}
           </View>
 
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.iconButton}
+          <View style={styles.row}>
+            <IconButton
+              icon={isExpanded ? 'chevron-down' : 'chevron-up'}
+              size="sm"
               onPress={toggleExpand}
               accessibilityLabel={isExpanded ? 'Réduire' : 'Plein écran'}
-              accessibilityRole="button"
               testID="expand-button"
-            >
-              <Text style={styles.iconText}>{isExpanded ? '▼' : '▲'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.iconButton}
+            />
+            <IconButton
+              icon={isSaved ? 'star' : 'star-outline'}
+              size="sm"
+              color={isSaved ? colors.warning : undefined}
               onPress={() => toggleSavedWaypoint(place)}
-              accessibilityLabel={
-                isSaved ? 'Retirer des enregistrés' : 'Enregistrer le lieu'
-              }
-              accessibilityRole="button"
+              accessibilityLabel={isSaved ? 'Retirer des enregistrés' : 'Enregistrer le lieu'}
               testID="bookmark-button"
-            >
-              <Text style={styles.iconText}>{isSaved ? '★' : '☆'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.iconButton}
+            />
+            <IconButton
+              icon="close"
+              size="sm"
               onPress={onClose}
               accessibilityLabel="Fermer la fiche d'information"
-              accessibilityRole="button"
               testID="close-button"
-            >
-              <Text style={styles.iconText}>✕</Text>
-            </TouchableOpacity>
+            />
           </View>
         </View>
 
-        {/* Galerie de photos */}
-        {photos.length > 0 && (
+        {photos.length > 0 ? (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={[styles.photosContainer, isExpanded && styles.expandedPhotosContainer]}
+            style={[styles.photos, isExpanded && styles.photosExpanded]}
             contentContainerStyle={styles.photosContent}
             testID="place-photos-gallery"
           >
@@ -269,108 +131,90 @@ export const PlaceDetailCard: React.FC<PlaceDetailCardProps> = ({
               <Image
                 key={`${url}-${idx}`}
                 source={{ uri: url }}
-                style={[styles.photoThumb, isExpanded && styles.expandedPhotoThumb]}
+                style={[styles.photo, isExpanded && styles.photoExpanded]}
                 resizeMode="cover"
                 accessibilityLabel={`Photo ${idx + 1} de ${place.title}`}
               />
             ))}
           </ScrollView>
-        )}
+        ) : null}
 
-        <Text style={styles.title}>{place.title}</Text>
-        <Text style={styles.address}>📍 {place.address}</Text>
+        <AppText variant="h3" weight="bold" style={styles.title}>
+          {place.title}
+        </AppText>
+        <AppText variant="bodySmall" color="secondary" style={styles.address}>
+          📍 {place.address}
+        </AppText>
 
-        <View style={styles.ratingRow}>
-          <Text style={styles.starIcon}>⭐</Text>
-          <Text style={styles.ratingValue}>{place.rating.toFixed(1)}</Text>
-          <Text style={styles.reviewsCount}>({place.reviewsCount} avis)</Text>
+        <View style={[styles.row, styles.rating]}>
+          <AppText variant="bodySmall">⭐</AppText>
+          <AppText variant="bodySmall" weight="bold">
+            {place.rating.toFixed(1)}
+          </AppText>
+          <AppText variant="caption" color="muted">
+            ({place.reviewsCount} avis)
+          </AppText>
         </View>
 
-        {/* Boutons de contact rapides en mode étendu */}
-        {isExpanded && (place.phone || place.website) && (
+        {isExpanded && (place.phone || place.website) ? (
           <View style={styles.contactRow} testID="contact-buttons-row">
-            {place.phone && (
-              <TouchableOpacity
-                style={styles.contactChip}
-                onPress={() => handleCallPhone(place.phone!)}
+            {place.phone ? (
+              <Chip
+                label={place.phone}
+                emoji="📞"
+                onPress={() => openUrl(`tel:${place.phone}`)}
                 accessibilityLabel="Appeler l'établissement"
-                accessibilityRole="button"
-              >
-                <Text style={styles.contactChipText}>📞 {place.phone}</Text>
-              </TouchableOpacity>
-            )}
-            {place.website && (
-              <TouchableOpacity
-                style={styles.contactChip}
-                onPress={() => handleOpenLink(place.website!)}
+              />
+            ) : null}
+            {place.website ? (
+              <Chip
+                label="Site Web"
+                emoji="🌐"
+                onPress={() => place.website && openUrl(place.website)}
                 accessibilityLabel="Visiter le site internet"
-                accessibilityRole="button"
-              >
-                <Text style={styles.contactChipText}>🌐 Site Web</Text>
-              </TouchableOpacity>
-            )}
+              />
+            ) : null}
           </View>
-        )}
+        ) : null}
 
-        {/* Section Horaires d'ouverture */}
-        {place.openingHours && place.openingHours.length > 0 && (
-          <View style={styles.hoursContainer} testID="opening-hours-section">
-            <TouchableOpacity
-              style={styles.hoursHeader}
-              onPress={() => setShowHours(!showHours)}
-              accessibilityLabel="Afficher ou masquer les horaires d'ouverture"
-              accessibilityRole="button"
-            >
-              <Text style={styles.hoursTitle}>{"🕒 Horaires d'ouverture"}</Text>
-              <Text style={styles.hoursChevron}>
-                {showHours || isExpanded ? '▲' : '▼'}
-              </Text>
-            </TouchableOpacity>
+        {hasHours ? (
+          <PlaceOpeningHours
+            hours={place.openingHours ?? []}
+            expanded={showHours || isExpanded}
+            onToggle={() => setShowHours(!showHours)}
+          />
+        ) : null}
 
-            {(showHours || isExpanded) && (
-              <View style={styles.hoursList} testID="opening-hours-list">
-                {place.openingHours.map((dayText, idx) => (
-                  <Text key={idx} style={styles.hourItemText}>
-                    {dayText}
-                  </Text>
-                ))}
-              </View>
-            )}
-          </View>
-        )}
-
-        {place.description && place.description.trim() !== place.address.trim() ? (
-          <Text
-            style={styles.description}
+        {showDescription ? (
+          <AppText
+            variant="bodySmall"
+            color="secondary"
             numberOfLines={isExpanded ? undefined : 2}
+            style={styles.description}
           >
             {place.description}
-          </Text>
+          </AppText>
         ) : null}
 
         <View style={styles.actionsRow}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.secondaryButton]}
-            onPress={() => onGetDirections && onGetDirections(place)}
+          <Button
+            title="🗺️ Itinéraire"
+            variant="outline"
+            size="sm"
+            onPress={() => onGetDirections?.(place)}
             accessibilityLabel="Lancer l'itinéraire"
-            accessibilityRole="button"
-          >
-            <Text style={styles.secondaryButtonText}>🗺️ Itinéraire</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionButton, styles.primaryButton]}
-            onPress={() => onAddToOuting && onAddToOuting(place)}
+            style={styles.actionButton}
+          />
+          <Button
+            title={isTargetMode ? '+ Ajouter à la sortie' : '+ Ajouter à une sortie'}
+            size="sm"
+            onPress={() => onAddToOuting?.(place)}
             accessibilityLabel={
               isTargetMode ? 'Ajouter ce lieu à la sortie' : 'Ajouter ce lieu à une sortie'
             }
-            accessibilityRole="button"
+            style={styles.actionButton}
             testID="add-to-outing-button"
-          >
-            <Text style={styles.primaryButtonText}>
-              {isTargetMode ? '+ Ajouter à la sortie' : '+ Ajouter à une sortie'}
-            </Text>
-          </TouchableOpacity>
+          />
         </View>
       </ScrollView>
     </Animated.View>
@@ -379,11 +223,7 @@ export const PlaceDetailCard: React.FC<PlaceDetailCardProps> = ({
 
 const styles = StyleSheet.create({
   actionButton: {
-    alignItems: 'center',
-    borderRadius: 14,
     flex: 1,
-    justifyContent: 'center',
-    paddingVertical: spacing.sm + 2,
   },
   actionsRow: {
     flexDirection: 'row',
@@ -392,30 +232,13 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xs,
   },
   address: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSizes.sm,
     lineHeight: 18,
     marginBottom: spacing.xs,
-  },
-  badge: {
-    borderRadius: 12,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-  },
-  badgeContainer: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.xs,
-  },
-  badgeText: {
-    color: colors.white,
-    fontSize: typography.fontSizes.xs,
-    fontWeight: typography.fontWeights.bold,
   },
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 24,
+    borderRadius: radii.xl,
     borderWidth: 1,
     elevation: 8,
     marginBottom: spacing.xs,
@@ -430,20 +253,7 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
   },
   closedBadge: {
-    backgroundColor: CLOSED_BADGE_BG,
-  },
-  contactChip: {
-    backgroundColor: colors.surfaceLight,
-    borderColor: colors.border,
-    borderRadius: 20,
-    borderWidth: 1,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  contactChipText: {
-    color: colors.primary,
-    fontSize: typography.fontSizes.xs,
-    fontWeight: typography.fontWeights.medium,
+    backgroundColor: colors.errorBackground,
   },
   contactRow: {
     flexDirection: 'row',
@@ -452,8 +262,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   description: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSizes.sm,
     lineHeight: 20,
     marginBottom: spacing.sm,
   },
@@ -478,152 +286,50 @@ const styles = StyleSheet.create({
     marginBottom: 0,
     marginHorizontal: 0,
   },
-  expandedPhotoThumb: {
-    height: 110,
-    width: 150,
-  },
-  expandedPhotosContainer: {
-    marginBottom: spacing.md,
-  },
   header: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: spacing.xs,
   },
-  headerActions: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.xs,
-  },
-  hourItemText: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSizes.xs,
-    lineHeight: 18,
-  },
-  hoursChevron: {
-    color: colors.textMuted,
-    fontSize: typography.fontSizes.xs,
-  },
-  hoursContainer: {
-    backgroundColor: colors.surfaceLight,
-    borderColor: colors.border,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: spacing.sm,
-    overflow: 'hidden',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  hoursHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 2,
-  },
-  hoursList: {
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
-    marginTop: spacing.xs,
-    paddingTop: spacing.xs,
-  },
-  hoursTitle: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.xs,
-    fontWeight: typography.fontWeights.semibold,
-  },
-  iconButton: {
-    alignItems: 'center',
-    backgroundColor: colors.surfaceLight,
-    borderRadius: 16,
-    height: 32,
-    justifyContent: 'center',
-    width: 32,
-  },
-  iconText: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.sm,
-    fontWeight: typography.fontWeights.bold,
-  },
   openBadge: {
-    backgroundColor: OPEN_BADGE_BG,
+    backgroundColor: colors.successBackground,
   },
-  openStatusBadge: {
-    borderRadius: 12,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-  },
-  openStatusText: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.xs,
-    fontWeight: typography.fontWeights.semibold,
-  },
-  photoThumb: {
+  photo: {
     backgroundColor: colors.surfaceLight,
-    borderRadius: 10,
+    borderRadius: radii.sm + 2,
     height: 72,
     width: 96,
   },
-  photosContainer: {
+  photoExpanded: {
+    height: 110,
+    width: 150,
+  },
+  photos: {
     marginBottom: spacing.sm,
   },
   photosContent: {
     gap: spacing.xs,
   },
-  priceTag: {
-    color: colors.textMuted,
-    fontSize: typography.fontSizes.xs,
-    fontWeight: typography.fontWeights.semibold,
+  photosExpanded: {
+    marginBottom: spacing.md,
+  },
+  price: {
     marginLeft: spacing.xs,
   },
-  primaryButton: {
-    backgroundColor: colors.primary,
-    elevation: 4,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  primaryButtonText: {
-    color: colors.white,
-    fontSize: typography.fontSizes.sm,
-    fontWeight: typography.fontWeights.bold,
-  },
-  ratingRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
+  rating: {
     gap: 4,
     marginBottom: spacing.xs,
   },
-  ratingValue: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.sm,
-    fontWeight: typography.fontWeights.bold,
-  },
-  reviewsCount: {
-    color: colors.textMuted,
-    fontSize: typography.fontSizes.xs,
+  row: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.xs,
   },
   scrollContent: {
     paddingBottom: spacing.xl,
   },
-  secondaryButton: {
-    backgroundColor: colors.surfaceLight,
-    borderColor: colors.border,
-    borderWidth: 1,
-  },
-  secondaryButtonText: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.sm,
-    fontWeight: typography.fontWeights.semibold,
-  },
-  starIcon: {
-    fontSize: 14,
-  },
   title: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.lg,
-    fontWeight: typography.fontWeights.bold,
     lineHeight: 24,
     marginBottom: 2,
   },

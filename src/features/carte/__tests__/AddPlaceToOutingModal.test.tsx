@@ -1,12 +1,12 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
-import { Alert } from 'react-native';
 import { AddPlaceToOutingModal } from '../components/AddPlaceToOutingModal';
 import { PlaceItem } from '../types/carte';
 import { useOutingsStore } from '@/features/outings';
 import { ensurePlaceExists } from '../services/placeService';
 import { OutingRow, PlannedOutingRow } from '@/shared/types';
 import { useMapStore } from '../store/useMapStore';
+import { useToastStore } from '@/shared/store/useToastStore';
 
 jest.mock('../services/placeService', () => ({
   ensurePlaceExists: jest.fn(),
@@ -86,10 +86,10 @@ const mockCancelledOuting: OutingRow = {
 describe('AddPlaceToOutingModal', () => {
   const mockOnClose = jest.fn();
   const mockOnSuccess = jest.fn();
-  const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
   beforeEach(() => {
     jest.clearAllMocks();
+    useToastStore.getState().clear();
     useMapStore.setState({ targetOutingId: null });
     useOutingsStore.setState({
       outings: [mockActiveOuting, mockDoneOuting, mockCancelledOuting],
@@ -235,6 +235,24 @@ describe('AddPlaceToOutingModal', () => {
     expect(getByText("Le nom de l'étape est obligatoire.")).toBeTruthy();
   });
 
+  test("affiche l'erreur de création de sortie dans la modale (un toast serait masqué par la modale)", async () => {
+    useOutingsStore.setState({ outings: [] });
+    jest
+      .spyOn(useOutingsStore.getState(), 'createOuting')
+      .mockRejectedValueOnce(new Error('network'));
+
+    const { getByTestId, getByText } = render(
+      <AddPlaceToOutingModal visible={true} place={mockPlace} onClose={mockOnClose} />
+    );
+
+    fireEvent.press(getByTestId('btn-create-outing-empty'));
+
+    await waitFor(() => {
+      expect(getByTestId('error-create-outing')).toBeTruthy();
+    });
+    expect(getByText("Impossible de créer la sortie d'accueil.")).toBeTruthy();
+  });
+
   test("enregistre le lieu et crée l'étape planifiée avec succès", async () => {
     (ensurePlaceExists as jest.Mock).mockResolvedValueOnce('created-place-uuid-123');
 
@@ -287,9 +305,12 @@ describe('AddPlaceToOutingModal', () => {
           status: 'confirmed',
         })
       );
-      expect(alertSpy).toHaveBeenCalledWith(
-        'Étape ajoutée !',
-        expect.stringContaining('Café de Flore')
+      expect(useToastStore.getState().queue).toContainEqual(
+        expect.objectContaining({
+          tone: 'success',
+          title: 'Étape ajoutée !',
+          message: expect.stringContaining('Café de Flore'),
+        })
       );
       expect(mockOnSuccess).toHaveBeenCalledWith(mockActiveOuting, createdPlanned);
       expect(mockOnClose).toHaveBeenCalled();
