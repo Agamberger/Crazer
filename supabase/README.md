@@ -7,22 +7,26 @@ Ce dossier contient la configuration Supabase locale, le schéma de base de donn
 ## 🚀 Prise en main rapide
 
 ### 1. Démarrer les services Supabase en local
+Prérequis : Docker démarré.
 ```bash
-npx supabase start
+npm run db:start        # = npx supabase start
+npm run env:local       # app Expo → base locale (.env.local) ; -- --android pour l'émulateur
 ```
 *Le Studio Supabase sera accessible à l'adresse : [http://127.0.0.1:54323](http://127.0.0.1:54323)*
 
 ### 2. Réinitialiser la DB locale & appliquer les Seeds
 Pour repartir d'une base propre (exécute l'ensemble des migrations et peuple les données depuis `supabase/seeds/*.sql`) :
 ```bash
-npx supabase db reset
+npm run db:reset        # = npx supabase db reset
 ```
 
 ### 3. Régénérer les types TypeScript
 Après toute modification de schéma ou création de migration, régénérez les types TypeScript pour l'application :
 ```bash
-npx supabase gen types typescript --local > src/shared/types/database.types.ts
+npm run db:types:local  # = npx supabase gen types typescript --local > src/shared/types/database.types.ts
 ```
+
+Guide complet (Android, appareil physique, retour au distant, dépannage) : [docs/SUPABASE.md](../docs/SUPABASE.md#-supabase-en-local).
 
 ---
 

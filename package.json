@@ -18,7 +18,14 @@
     "db:types": "supabase gen types typescript --project-id pqczmkchxhfufaufljxr > src/shared/types/database.types.ts",
     "db:migration": "supabase migration new",
     "db:diff": "supabase db diff",
-    "db:lint": "supabase db lint"
+    "db:lint": "supabase db lint",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:status": "supabase status",
+    "db:reset": "supabase db reset",
+    "db:types:local": "supabase gen types typescript --local > src/shared/types/database.types.ts",
+    "env:local": "node scripts/supabase-local-env.js",
+    "env:remote": "node scripts/supabase-local-env.js --reset"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
