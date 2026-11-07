@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { registerUserScopedStore } from '@/shared/store/sessionReset';
 import { supabase } from '@/shared/lib/supabase';
 import {
   OutingRow,
@@ -186,7 +187,7 @@ export const useOutingsStore = create<OutingsState>((set, get) => ({
   ) => {
     set({ isLoadingPlannedOutings: true, error: null });
     try {
-      const opts = typeof options === 'string' ? { userId: options } : (options ?? {});
+      const opts = options ?? {};
       const currentSteps = get().plannedOutings;
       const parentOuting = get().outings.find((o) => o.id === outingId);
 
@@ -305,3 +306,6 @@ export const useOutingsStore = create<OutingsState>((set, get) => ({
     get().setSelectedPlannedOutingId(id);
   },
 }));
+
+// Données propres au compte connecté : remises à zéro à la déconnexion.
+registerUserScopedStore(useOutingsStore);

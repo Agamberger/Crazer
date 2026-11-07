@@ -98,4 +98,24 @@ describe('useFriendsStore', () => {
     expect(useFriendsStore.getState().isSearching).toBe(false);
     expect(useFriendsStore.getState().error).toBeNull();
   });
+  it("ignore une réponse de recherche arrivée après une recherche plus récente", async () => {
+    const stale = [
+      { id: 'u-old', email: null, fullName: 'Ancien', avatarUrl: null, friendshipStatus: 'none' },
+    ];
+    const fresh = [
+      { id: 'u-new', email: null, fullName: 'Récent', avatarUrl: null, friendshipStatus: 'none' },
+    ];
+    let resolveStale: (value: typeof stale) => void = () => undefined;
+    (friendsService.searchUsers as jest.Mock)
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveStale = resolve; }))
+      .mockResolvedValueOnce(fresh);
+
+    const first = useFriendsStore.getState().searchUsers('an', 'user-1');
+    await useFriendsStore.getState().searchUsers('ré', 'user-1');
+    resolveStale(stale);
+    await first;
+
+    expect(useFriendsStore.getState().searchResults).toEqual(fresh);
+    expect(useFriendsStore.getState().isSearching).toBe(false);
+  });
 });

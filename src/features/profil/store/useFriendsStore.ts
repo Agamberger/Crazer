@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { registerUserScopedStore } from '@/shared/store/sessionReset';
 import { friendsService } from '../services/friendsService';
 import { UserSearchResult } from '../types';
 
@@ -41,10 +42,14 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
     }
 
     set({ isSearching: true, error: null });
+    // Une réponse lente ne doit pas écraser les résultats d'une saisie plus récente.
+    const isStale = () => get().searchQuery !== query;
     try {
       const results = await friendsService.searchUsers(trimmed, currentUserId);
+      if (isStale()) return;
       set({ searchResults: results, isSearching: false });
     } catch (err: unknown) {
+      if (isStale()) return;
       const message = err instanceof Error ? err.message : 'Erreur de recherche';
       set({ searchResults: [], isSearching: false, error: message });
     }
@@ -145,3 +150,6 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
   resetSearch: () => set({ searchResults: [], searchQuery: '', isSearching: false, error: null }),
 }));
+
+// Données propres au compte connecté : remises à zéro à la déconnexion.
+registerUserScopedStore(useFriendsStore);

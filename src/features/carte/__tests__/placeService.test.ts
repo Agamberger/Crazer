@@ -225,6 +225,7 @@ describe('placeService.upsertPlace', () => {
   });
 
   test('insère un nouveau lieu si aucun doublon n’est trouvé', async () => {
+    mockRpc.mockResolvedValue({ data: [], error: null });
     mockFrom.mockImplementation((table: string) => {
       if (table === 'places') {
         return {
@@ -309,6 +310,7 @@ describe('placeService.ensurePlaceExists', () => {
   });
 
   test('crée un lieu si c’est un POI externe (ex: osm-12345)', async () => {
+    mockRpc.mockResolvedValue({ data: [], error: null });
     mockFrom.mockReturnValue({
       select: jest.fn().mockReturnValue({
         eq: jest.fn().mockReturnValue({
@@ -340,5 +342,130 @@ describe('placeService.ensurePlaceExists', () => {
 
     const id = await ensurePlaceExists(place, 'user-1');
     expect(id).toBe('created-from-osm-uuid');
+  });
+});
+
+// ── Régressions upsertPlace (review sécurité / fiabilité) ────────────────────
+describe('placeService.upsertPlace — rapprochement et validation', () => {
+  const baseDto = {
+    name: 'Le Burger Gourmet',
+    category: 'resto' as const,
+    latitude: 48.8698,
+    longitude: 2.3308,
+    address: '15 Rue de la Paix',
+    street: null,
+    city: 'Paris',
+    postcode: null,
+    country_code: 'FR',
+    source: 'custom' as const,
+    source_id: null,
+    source_url: null,
+    description: null,
+    phone: null,
+    website: null,
+    opening_hours: null,
+    price_range: null,
+    rating: null,
+    images: [],
+    tags: [],
+    metadata: {},
+    created_by: 'user-1',
+    is_public: true,
+  };
+
+  const buildPlacesTable = (options: {
+    bySource?: { data: { id: string } | null; error: { message: string } | null };
+    insertId?: string;
+  }) => {
+    const update = jest.fn();
+    const ilike = jest.fn();
+    const insert = jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        single: jest
+          .fn()
+          .mockResolvedValue({ data: { id: options.insertId ?? 'inserted-uuid' }, error: null }),
+      }),
+    });
+    const table = {
+      select: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            maybeSingle: jest
+              .fn()
+              .mockResolvedValue(options.bySource ?? { data: null, error: null }),
+          }),
+        }),
+        ilike,
+      }),
+      update,
+      insert,
+    };
+    mockFrom.mockReturnValue(table);
+    return { update, ilike, insert };
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test("ne rattache pas un homonyme éloigné : la recherche est limitée autour du lieu", async () => {
+    mockRpc.mockResolvedValue({ data: [], error: null });
+    const { ilike, insert } = buildPlacesTable({ insertId: 'new-lyon-uuid' });
+
+    const id = await upsertPlace({ ...baseDto, latitude: 45.764, longitude: 4.8357 });
+
+    expect(id).toBe('new-lyon-uuid');
+    expect(ilike).not.toHaveBeenCalled();
+    expect(mockRpc).toHaveBeenCalledWith(
+      'search_places',
+      expect.objectContaining({ lat: 45.764, lng: 4.8357, radius_m: 75 }),
+    );
+    expect(insert).toHaveBeenCalled();
+  });
+
+  test('réutilise un lieu proche portant le même nom (casse et accents ignorés)', async () => {
+    mockRpc.mockResolvedValue({
+      data: [{ ...mockPlaceResult, id: 'nearby-uuid', name: 'LE BÜRGER GOURMET' }],
+      error: null,
+    });
+    const { insert } = buildPlacesTable({});
+
+    const id = await upsertPlace({ ...baseDto, name: 'le burger gourmet' });
+
+    expect(id).toBe('nearby-uuid');
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  test('ne réécrit pas un lieu externe déjà importé', async () => {
+    const { update, insert } = buildPlacesTable({
+      bySource: { data: { id: 'google-existing' }, error: null },
+    });
+
+    const id = await upsertPlace({ ...baseDto, source: 'google', source_id: 'ChIJ123' });
+
+    expect(id).toBe('google-existing');
+    expect(update).not.toHaveBeenCalled();
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  test('propage une erreur de lecture au lieu de créer un doublon', async () => {
+    const { insert } = buildPlacesTable({
+      bySource: { data: null, error: { message: 'réseau indisponible' } },
+    });
+
+    await expect(
+      upsertPlace({ ...baseDto, source: 'osm', source_id: 'node/1' }),
+    ).rejects.toThrow('réseau indisponible');
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  test('refuse un lieu sans coordonnées valides (plus de POINT(0 0))', async () => {
+    mockRpc.mockResolvedValue({ data: [], error: null });
+    const { insert } = buildPlacesTable({});
+
+    await expect(
+      upsertPlace({ ...baseDto, latitude: Number.NaN, longitude: Number.NaN }),
+    ).rejects.toThrow('Coordonnées du lieu invalides');
+    expect(insert).not.toHaveBeenCalled();
   });
 });

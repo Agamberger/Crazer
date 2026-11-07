@@ -10,6 +10,11 @@ on:
     paths:
       - 'supabase/**'
 
+# Version de la CLI testée en local (npx supabase --version). Ne pas utiliser `latest` :
+# une montée de version majeure a déjà cassé ce workflow (renommage [inbucket]).
+env:
+  SUPABASE_CLI_VERSION: 2.111.0
+
 jobs:
   lint-migrations:
     name: Lint & Verify Migrations (PR)
@@ -21,7 +26,7 @@ jobs:
       - name: ⚡ Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: ${{ env.SUPABASE_CLI_VERSION }}
 
       - name: 🚀 Start local Supabase stack
         run: supabase start
@@ -37,6 +42,12 @@ jobs:
     needs: lint-migrations
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    # Environnement GitHub « production » : y configurer les secrets et, idéalement,
+    # des reviewers obligatoires pour valider chaque déploiement de schéma.
+    environment: production
+    concurrency:
+      group: supabase-production
+      cancel-in-progress: false
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
@@ -44,12 +55,27 @@ jobs:
       - name: ⚡ Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+
+      - name: 🔑 Check deployment secrets
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          missing=""
+          [ -n "$SUPABASE_ACCESS_TOKEN" ] || missing="$missing SUPABASE_ACCESS_TOKEN"
+          [ -n "$SUPABASE_DB_PASSWORD" ] || missing="$missing SUPABASE_DB_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::error::Secrets manquants pour l'environnement 'production' :$missing. Les migrations ne sont PAS déployées. Voir docs/SUPABASE.md (Déploiement)."
+            exit 1
+          fi
 
       - name: 🚀 Push Migrations to Supabase Project
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
-          supabase link --project-ref pqczmkchxhfufaufljxr
-          supabase db push
+          supabase link --project-ref pqczmkchxhfufaufljxr --password "$SUPABASE_DB_PASSWORD"
+          echo "Migrations qui vont être appliquées :"
+          supabase db push --dry-run --password "$SUPABASE_DB_PASSWORD"
+          supabase db push --password "$SUPABASE_DB_PASSWORD"

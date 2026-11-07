@@ -6,12 +6,11 @@
  */
 
 import { PlaceCategoryFilter, PlaceItem } from '../types/carte';
-
-const BASE_URL = 'https://maps.googleapis.com/maps/api/place';
-
-function getApiKey(): string {
-  return process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '';
-}
+import {
+  GOOGLE_PLACES_BASE_URL as BASE_URL,
+  buildGooglePhotoUrl,
+  getGooglePlacesApiKey as getApiKey,
+} from '../utils/googlePhotos';
 
 export interface GoogleAutocompletePrediction {
   place_id: string;
@@ -68,6 +67,22 @@ interface RawGooglePhoto {
 }
 
 /**
+ * Jeton de session Google Places (UUID v4) : regroupe les requêtes d'autocomplétion
+ * et la requête de détail qui la conclut en une seule session facturée.
+ * À renouveler après chaque sélection de lieu.
+ */
+export function createPlacesSessionToken(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+    const random = Math.floor(Math.random() * 16);
+    const value = char === 'x' ? random : (random % 4) + 8;
+    return value.toString(16);
+  });
+}
+
+const sessionTokenParam = (sessionToken?: string): string =>
+  sessionToken ? `&sessiontoken=${encodeURIComponent(sessionToken)}` : '';
+
+/**
  * Mappe les types Google Places vers nos catégories de base (resto, bar, activite, etc.)
  */
 export function mapGoogleTypesToCategory(types?: string[]): PlaceCategoryFilter {
@@ -122,11 +137,7 @@ export function googlePlaceDetailsToPlaceItem(
   const address =
     details.formatted_address || details.vicinity || 'Adresse non spécifiée';
 
-  const apiKey = getApiKey();
-  const photos =
-    details.photos?.map((photo) =>
-      `${BASE_URL}/photo?maxwidth=800&photo_reference=${photo.photo_reference}&key=${apiKey}`
-    ) || [];
+  const photos = details.photos?.map((photo) => buildGooglePhotoUrl(photo.photo_reference)) || [];
 
   return {
     id: `google-${details.place_id}`,
@@ -135,7 +146,7 @@ export function googlePlaceDetailsToPlaceItem(
     latitude: details.geometry.location.lat,
     longitude: details.geometry.location.lng,
     address,
-    rating: details.rating ?? 4.0,
+    rating: details.rating ?? 0,
     reviewsCount: details.user_ratings_total ?? 0,
     description: '',
     priceRange: details.price_level ? '€'.repeat(details.price_level) : '',
@@ -157,7 +168,8 @@ export const googlePlaceDetailsToPoiItem = googlePlaceDetailsToPlaceItem;
  * Recherche des prédictions d'adresses ou de lieux via Google Places Autocomplete.
  */
 export async function fetchGooglePlaceAutocomplete(
-  input: string
+  input: string,
+  sessionToken?: string,
 ): Promise<GoogleAutocompletePrediction[]> {
   const apiKey = getApiKey();
   if (!input || input.trim().length < 2) return [];
@@ -169,7 +181,7 @@ export async function fetchGooglePlaceAutocomplete(
 
   const url = `${BASE_URL}/autocomplete/json?input=${encodeURIComponent(
     input
-  )}&components=country:fr&language=fr&key=${apiKey}`;
+  )}&components=country:fr&language=fr&key=${apiKey}${sessionTokenParam(sessionToken)}`;
 
   try {
     const response = await fetch(url);
@@ -199,7 +211,8 @@ export async function fetchGooglePlaceAutocomplete(
  * Récupère les détails d'un lieu via son place_id Google.
  */
 export async function fetchGooglePlaceDetails(
-  placeId: string
+  placeId: string,
+  sessionToken?: string,
 ): Promise<GooglePlaceDetailsResult | null> {
   const apiKey = getApiKey();
   if (!placeId) return null;
@@ -227,7 +240,7 @@ export async function fetchGooglePlaceDetails(
 
   const url = `${BASE_URL}/details/json?place_id=${encodeURIComponent(
     placeId
-  )}&fields=${fields}&key=${apiKey}&language=fr`;
+  )}&fields=${fields}&key=${apiKey}&language=fr${sessionTokenParam(sessionToken)}`;
 
   try {
     const response = await fetch(url);

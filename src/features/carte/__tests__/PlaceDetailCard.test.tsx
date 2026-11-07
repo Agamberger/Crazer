@@ -39,6 +39,15 @@ describe('PlaceDetailCard', () => {
     expect(getByText('Bar & Lounge')).toBeTruthy();
   });
 
+  test("n'affiche pas de note quand le lieu n'en a pas (rating = 0)", () => {
+    const { queryByTestId, queryByText } = render(
+      <PlaceDetailCard place={{ ...mockPlace, rating: 0, reviewsCount: 0 }} onClose={jest.fn()} />
+    );
+
+    expect(queryByTestId('place-rating')).toBeNull();
+    expect(queryByText('0.0')).toBeNull();
+  });
+
   test('doit déclencher onClose lors du clic sur le bouton de fermeture', () => {
     const handleClose = jest.fn();
     const { getByTestId } = render(

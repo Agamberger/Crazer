@@ -10,6 +10,7 @@ const mockGoogleService = googlePlacesService as jest.Mocked<typeof googlePlaces
 describe('MapHeaderSearch', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGoogleService.createPlacesSessionToken.mockReturnValue('session-tok');
   });
 
   test('rend la barre de recherche et les catégories', () => {
@@ -92,7 +93,12 @@ describe('MapHeaderSearch', () => {
     });
 
     await waitFor(() => {
-      expect(mockGoogleService.fetchGooglePlaceDetails).toHaveBeenCalledWith('place_1');
+      // Même jeton de session pour l'autocomplétion et le détail (facturation groupée)
+      expect(mockGoogleService.fetchGooglePlaceAutocomplete).toHaveBeenCalledWith(
+        expect.any(String),
+        'session-tok',
+      );
+      expect(mockGoogleService.fetchGooglePlaceDetails).toHaveBeenCalledWith('place_1', 'session-tok');
       expect(mockOnSelectGooglePlace).toHaveBeenCalledWith(
         expect.objectContaining({
           id: 'google-place_1',
