@@ -39,3 +39,5 @@ Thumbs.db
 
 expo-env.d.ts
 # @end expo-cli
+# Claude Code (réglages personnels)
+.claude/settings.local.json

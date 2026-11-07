@@ -25,6 +25,44 @@ Des raccourcis npm ont été configurés dans `package.json` pour simplifier tou
 | `npm run db:migration <nom>` | `supabase migration new` | Crée un nouveau fichier SQL de migration horodaté dans `supabase/migrations/` |
 | `npm run db:diff <nom>` | `supabase db diff` | Génère un fichier de migration basé sur les différences observées |
 | `npm run db:lint` | `supabase db lint` | Vérifie la syntaxe et la sécurité du schéma SQL local |
+| `npm run db:start` | `supabase start` | Démarre la stack Supabase locale (Docker) |
+| `npm run db:stop` | `supabase stop` | Arrête la stack locale (données conservées) |
+| `npm run db:status` | `supabase status` | Affiche les URLs et clés de la stack locale |
+| `npm run db:reset` | `supabase db reset` | Recrée la base locale : migrations + seeds |
+| `npm run db:types:local` | `supabase gen types typescript --local` | Régénère les types TypeScript depuis la base **locale** |
+| `npm run env:local` | `node scripts/supabase-local-env.js` | Écrit l'URL + la clé anon locales dans `.env.local` (`-- --android`, `-- --host <ip>`) |
+| `npm run env:remote` | `node scripts/supabase-local-env.js --reset` | Retire les clés locales de `.env.local` → retour au projet distant (`.env`) |
+
+---
+
+## 🐳 Supabase en Local
+
+Toute la stack (Postgres + PostGIS, Auth, REST, Storage, Studio, Mailpit) tourne en local via Docker. C'est l'environnement par défaut pour développer et valider les migrations avant tout `db:push`.
+
+### Installation (une fois)
+1. Installer et démarrer **Docker**.
+2. `npm install` (fournit le CLI `supabase`).
+3. `npm run db:start` — le premier lancement télécharge les images ; migrations et seeds sont appliqués.
+4. `npm run env:local` — fait pointer l'app vers la base locale via `.env.local` (prioritaire sur `.env`).
+5. `npx expo start --clear` — `--clear` est nécessaire car les variables `EXPO_PUBLIC_*` sont figées dans le bundle.
+
+### Accès selon la plateforme
+| Cible | Commande |
+| :--- | :--- |
+| Web / simulateur iOS | `npm run env:local` (`127.0.0.1`) |
+| Émulateur Android | `npm run env:local -- --android` (`10.0.2.2`) |
+| Appareil physique | `npm run env:local -- --host <IP-LAN-du-PC>` |
+
+Pour revenir au projet distant : `npm run env:remote` puis relancer Expo avec `--clear`.
+
+### URLs locales
+- API : `http://127.0.0.1:54321`
+- Studio : `http://127.0.0.1:54323`
+- Mailpit (emails Auth) : `http://127.0.0.1:54324`
+- Postgres : `postgresql://postgres:postgres@127.0.0.1:54322/postgres`
+
+### Comptes de test
+`alice@crazer.app`, `bob@crazer.app`, `charlie@crazer.app` — mot de passe `Password` (voir [supabase/README.md](../supabase/README.md)).
 
 ---
 
@@ -35,9 +73,10 @@ Des raccourcis npm ont été configurés dans `package.json` pour simplifier tou
 - **Workflow recommandé** :
   1. Créez une migration : `npx supabase migration new <nom_explicite_feature>`
   2. Rédigez les requêtes DDL SQL dans le fichier généré sous `supabase/migrations/<timestamp>_<nom>.sql`.
-  3. Appliquez les migrations à la base distante : `npm run db:push`
-  4. Régénérez les types TypeScript : `npm run db:types`
+  3. Testez-la en local depuis une base propre : `npm run db:reset`
+  4. Régénérez les types TypeScript : `npm run db:types:local`
   5. Vérifiez la qualité du code : `npm run typecheck` & `npm test`
+  6. Appliquez les migrations à la base distante (après revue) : `npm run db:push`
 
 ### 2. 🔐 Sécurité & Row Level Security (RLS)
 - **RLS Obligatoire** : Toute nouvelle table créée **DOIT** avoir le Row Level Security activé :

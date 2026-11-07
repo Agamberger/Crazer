@@ -116,6 +116,17 @@ npm run db:push      # Applique les migrations SQL locales à la base distante
 npm run db:migration <nom> # Crée une nouvelle migration SQL
 ```
 
+#### Supabase en local (Docker)
+```bash
+npm run db:start     # Démarre la stack locale (migrations + seeds appliqués)
+npm run env:local    # Fait pointer l'app vers le local via .env.local (-- --android pour l'émulateur)
+npx expo start --clear
+npm run db:reset     # Recrée la base locale depuis les migrations + seeds
+npm run env:remote   # Revient au projet Supabase distant
+npm run db:stop      # Arrête la stack locale
+```
+Studio local : http://127.0.0.1:54323 · Comptes de test : `alice@crazer.app` / `Password`. Détails dans [docs/SUPABASE.md](docs/SUPABASE.md#-supabase-en-local).
+
 ### 7. Assets de l'application (icône, splash, favicon)
 Les images référencées par `app.json` (`assets/icon.png`, `adaptive-icon.png`, `splash.png`, `favicon.png`) sont générées par un script Node sans dépendance. Il produit un logo provisoire aux couleurs du thème :
 ```bash
