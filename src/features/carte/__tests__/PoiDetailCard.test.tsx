@@ -94,16 +94,16 @@ describe('PoiDetailCard', () => {
   });
 
   test('doit permettre de basculer en mode plein écran (expanded)', () => {
-    const { getByTestId, getByText } = render(
+    const { getByTestId } = render(
       <PoiDetailCard poi={mockPoi} onClose={jest.fn()} />
     );
 
-    expect(getByTestId('expand-button')).toBeTruthy();
+    expect(getByTestId('expand-button').props.accessibilityLabel).toBe('Plein écran');
     fireEvent.press(getByTestId('expand-button'));
-    expect(getByText('▼')).toBeTruthy();
+    expect(getByTestId('expand-button').props.accessibilityLabel).toBe('Réduire');
 
     // Replier
     fireEvent.press(getByTestId('expand-button'));
-    expect(getByText('▲')).toBeTruthy();
+    expect(getByTestId('expand-button').props.accessibilityLabel).toBe('Plein écran');
   });
 });

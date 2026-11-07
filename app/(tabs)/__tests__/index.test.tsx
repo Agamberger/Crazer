@@ -356,8 +356,11 @@ describe('OutingsScreen (Outings Tab)', () => {
 
       const { getByTestId } = render(<OutingsScreen />);
 
-      // Directly call delete action via deletePlannedOuting in screen
       fireEvent.press(getByTestId('btn-delete-planned-edit'));
+      fireEvent.press(getByTestId('confirm-delete-planned-confirm'));
+
+      await waitFor(() => expect(mockDeletePlannedOuting).toHaveBeenCalledWith('po-1'));
+      await waitFor(() => expect(useOutingsStore.getState().selectedPlannedOutingId).toBeNull());
     });
 
     it('displays planned loading state if planned outing is loading', () => {

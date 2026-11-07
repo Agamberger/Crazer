@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
-import { UserSearchInput } from '../components/UserSearchInput';
 import { UserListItem } from '../components/UserListItem';
 import { UserSearchModal } from '../components/UserSearchModal';
 import { UserProfileDetailModal } from '../components/UserProfileDetailModal';
@@ -26,31 +25,6 @@ describe('Composants UI - Recherche d utilisateurs et Amis', () => {
       isSearching: false,
       isLoading: false,
       error: null,
-    });
-  });
-
-  describe('UserSearchInput', () => {
-    it('doit afficher la valeur et déclencher onChangeText et onClear', () => {
-      const onChangeTextMock = jest.fn();
-      const onClearMock = jest.fn();
-
-      const { getByTestId } = render(
-        <UserSearchInput
-          value="Alexandre"
-          onChangeText={onChangeTextMock}
-          onClear={onClearMock}
-        />
-      );
-
-      const input = getByTestId('input-user-search');
-      expect(input.props.value).toBe('Alexandre');
-
-      fireEvent.changeText(input, 'Alex');
-      expect(onChangeTextMock).toHaveBeenCalledWith('Alex');
-
-      const clearBtn = getByTestId('btn-clear-search');
-      fireEvent.press(clearBtn);
-      expect(onClearMock).toHaveBeenCalled();
     });
   });
 

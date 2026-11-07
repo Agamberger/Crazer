@@ -9,16 +9,20 @@ Module de gestion des sorties entre amis pour l'application **Crazer**, connect�
 ```
 src/features/outings/
 ├── components/
-│   ├── OutingCard.tsx             # Carte d'affichage d'une sortie
+│   ├── DurationField.tsx          # Durée d'une étape : presets (ChipGroup) + saisie libre
+│   ├── OutingCard.tsx             # Carte d'affichage d'une sortie (Card cliquable + Badge)
 │   ├── OutingEditForm.tsx         # Formulaire d'édition d'une sortie avec timeline intégrée
 │   ├── PlannedOutingCard.tsx      # Carte d'affichage d'une étape planifiée (Planned Outing)
-│   ├── PlannedOutingsTimeline.tsx  # Timeline chronologique visuelle des étapes
-│   └── PlannedOutingEditForm.tsx  # Formulaire complet d'édition/suppression d'une étape
+│   ├── PlannedOutingsTimeline.tsx  # Timeline chronologique + choix du type d'étape (AppModal sheet)
+│   ├── PlannedOutingEditForm.tsx  # Formulaire d'édition d'une étape, suppression via ConfirmDialog
+│   └── TimelineStep.tsx           # Une étape de la timeline (nœud, segments, carte)
+├── constants.ts                   # DURATION_PRESETS, PLANNED_STATUS_OPTIONS (partagés avec carte)
 ├── services/
 │   └── outingService.ts           # Requêtes Supabase (outings & planned_outings CRUD)
 ├── store/
 │   └── useOutingsStore.ts         # Store Zustand réactif gérant l'état des sorties et étapes
 ├── __tests__/                     # Tests unitaires et composants
+│   ├── DurationField.test.tsx
 │   ├── OutingCard.test.tsx
 │   ├── OutingEditForm.test.tsx
 │   ├── PlannedOutingCard.test.tsx
@@ -103,3 +107,12 @@ Exécuter la suite de tests dédiée au module :
 ```bash
 npm test -- --testPathPattern="outings"
 ```
+
+---
+
+## 🧩 Composants UI partagés
+
+Les formulaires utilisent le kit `@/shared/components` : `TextField` (variante `title` et
+`multiline`), `DateTimeField`, `ChipGroup`, `InlineAlert`, `ConfirmDialog`, `AppModal`.
+La suppression d'une étape demande une confirmation via `ConfirmDialog`
+(`testID` : `confirm-delete-planned`) au lieu de `Alert.alert`.

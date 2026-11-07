@@ -1,127 +1,81 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { Card } from '@/shared/components/Card';
-import { colors, spacing, typography } from '@/shared/constants/theme';
+import { StyleSheet, View } from 'react-native';
+import { AppText, Badge as StatusBadge, Card, SectionHeader } from '@/shared/components';
+import { colors, opacity, radii, spacing } from '@/shared/constants/theme';
 import { Badge } from '@/shared/types';
 
 export interface BadgesSectionProps {
   badges: Badge[];
 }
 
-export const BadgesSection: React.FC<BadgesSectionProps> = ({ badges }) => {
-  return (
-    <View style={styles.container} testID="badges-section">
-      <Text style={styles.sectionTitle}>🏆 Badges & Accomplissements</Text>
-      {badges.map((badge) => {
-        const isUnlocked = Boolean(badge.unlockedAt);
-        return (
-          <Card
-            key={badge.id}
-            style={[styles.badgeCard, !isUnlocked && styles.lockedCard]}
-            testID={`badge-card-${badge.id}`}
-          >
-            <View style={styles.badgeHeader}>
-              <View style={[styles.iconContainer, isUnlocked && styles.unlockedIconContainer]}>
-                <Text style={styles.badgeIcon}>{isUnlocked ? '🏆' : '🔒'}</Text>
-              </View>
-              <View style={styles.badgeInfo}>
-                <Text style={[styles.badgeTitle, !isUnlocked && styles.lockedText]}>
-                  {badge.title}
-                </Text>
-                <Text style={styles.badgeDescription}>{badge.description}</Text>
-              </View>
-
-              <View style={[styles.statusChip, isUnlocked ? styles.unlockedChip : styles.lockedChip]}>
-                <Text style={[styles.chipText, isUnlocked ? styles.unlockedChipText : styles.lockedChipText]}>
-                  {isUnlocked ? 'Débloqué' : 'Verrouillé'}
-                </Text>
-              </View>
-            </View>
-          </Card>
-        );
-      })}
-    </View>
-  );
-};
+export const BadgesSection: React.FC<BadgesSectionProps> = ({ badges }) => (
+  <View style={styles.container} testID="badges-section">
+    <SectionHeader title="🏆 Badges & Accomplissements" style={styles.header} />
+    {badges.map((badge) => {
+      const isUnlocked = Boolean(badge.unlockedAt);
+      return (
+        <Card
+          key={badge.id}
+          style={[styles.badgeCard, !isUnlocked && styles.lockedCard]}
+          testID={`badge-card-${badge.id}`}
+        >
+          <View style={[styles.iconContainer, isUnlocked && styles.unlockedIconContainer]}>
+            <AppText>{isUnlocked ? '🏆' : '🔒'}</AppText>
+          </View>
+          <View style={styles.badgeInfo}>
+            <AppText
+              variant="bodySmall"
+              weight="bold"
+              color={isUnlocked ? 'primary' : 'secondary'}
+              style={styles.badgeTitle}
+            >
+              {badge.title}
+            </AppText>
+            <AppText variant="caption" color="secondary">
+              {badge.description}
+            </AppText>
+          </View>
+          <StatusBadge
+            label={isUnlocked ? 'Débloqué' : 'Verrouillé'}
+            tone={isUnlocked ? 'success' : 'neutral'}
+          />
+        </Card>
+      );
+    })}
+  </View>
+);
 
 const styles = StyleSheet.create({
   badgeCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 16,
-    borderWidth: 1,
-    marginBottom: spacing.xs,
-    padding: spacing.sm,
-  },
-  badgeDescription: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSizes.xs,
-    lineHeight: 16,
-  },
-  badgeHeader: {
     alignItems: 'center',
     flexDirection: 'row',
-  },
-  badgeIcon: {
-    fontSize: typography.fontSizes.md,
+    marginBottom: spacing.xs,
+    padding: spacing.sm,
   },
   badgeInfo: {
     flex: 1,
     paddingRight: spacing.xs,
   },
   badgeTitle: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.sm,
-    fontWeight: typography.fontWeights.bold,
     marginBottom: 2,
-  },
-  chipText: {
-    fontSize: 10,
-    fontWeight: typography.fontWeights.bold,
   },
   container: {
     marginBottom: spacing.md,
   },
+  header: {
+    marginTop: spacing.sm,
+  },
   iconContainer: {
     alignItems: 'center',
     backgroundColor: colors.surfaceLight,
-    borderRadius: 20,
+    borderRadius: radii.full,
     height: 40,
     justifyContent: 'center',
     marginRight: spacing.sm,
     width: 40,
   },
   lockedCard: {
-    opacity: 0.7,
-  },
-  lockedChip: {
-    backgroundColor: colors.surfaceLight,
-  },
-  lockedChipText: {
-    color: colors.textMuted,
-  },
-  lockedText: {
-    color: colors.textSecondary,
-  },
-  sectionTitle: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.md,
-    fontWeight: typography.fontWeights.bold,
-    marginBottom: spacing.xs,
-    marginTop: spacing.sm,
-  },
-  statusChip: {
-    borderRadius: 12,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-  },
-  unlockedChip: {
-    backgroundColor: colors.surfaceLight,
-    borderColor: colors.success,
-    borderWidth: 1,
-  },
-  unlockedChipText: {
-    color: colors.success,
+    opacity: opacity.disabled + 0.2,
   },
   unlockedIconContainer: {
     backgroundColor: colors.primaryDark,

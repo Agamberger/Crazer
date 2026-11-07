@@ -1,14 +1,7 @@
 import React, { useState } from 'react';
-import {
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { Button } from '@/shared/components/Button';
-import { Card } from '@/shared/components/Card';
-import { colors, spacing, typography } from '@/shared/constants/theme';
+import { StyleSheet, View } from 'react-native';
+import { AppText, Button, Card, InlineAlert, TextField } from '@/shared/components';
+import { spacing } from '@/shared/constants/theme';
 import { useAuth } from '../hooks/useAuth';
 
 export interface SignInFormProps {
@@ -16,10 +9,7 @@ export interface SignInFormProps {
   onSuccess?: () => void;
 }
 
-export const SignInForm: React.FC<SignInFormProps> = ({
-  onNavigateToRegister,
-  onSuccess,
-}) => {
+export const SignInForm: React.FC<SignInFormProps> = ({ onNavigateToRegister, onSuccess }) => {
   const { login, isLoading, error, clearError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -41,67 +31,57 @@ export const SignInForm: React.FC<SignInFormProps> = ({
 
     try {
       await login({ email: email.trim(), password });
-      if (onSuccess) {
-        onSuccess();
-      }
+      onSuccess?.();
     } catch {
       // L'erreur globale est gérée par Zustand.
     }
+  };
+
+  const handleChange = (setter: (value: string) => void) => (text: string) => {
+    setter(text);
+    if (validationError) setValidationError(null);
   };
 
   const displayError = validationError || error;
 
   return (
     <Card style={styles.card}>
-      <Text style={styles.title}>Connexion</Text>
-      <Text style={styles.subtitle}>Ravis de vous revoir sur Crazer 👋</Text>
+      <AppText variant="h1" align="center" style={styles.title}>
+        Connexion
+      </AppText>
+      <AppText variant="bodySmall" color="secondary" align="center" style={styles.subtitle}>
+        Ravis de vous revoir sur Crazer 👋
+      </AppText>
 
-      {displayError ? (
-        <View style={styles.errorContainer} testID="error-container">
-          <Text style={styles.errorText}>{displayError}</Text>
-        </View>
-      ) : null}
+      {displayError ? <InlineAlert message={displayError} testID="error-container" /> : null}
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Adresse Email</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="votre.email@exemple.com"
-          placeholderTextColor={colors.textMuted}
-          value={email}
-          onChangeText={(text) => {
-            setEmail(text);
-            if (validationError) setValidationError(null);
-          }}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-          accessibilityLabel="Adresse email"
-          testID="input-email"
-        />
-      </View>
+      <TextField
+        label="Adresse Email"
+        placeholder="votre.email@exemple.com"
+        value={email}
+        onChangeText={handleChange(setEmail)}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoCorrect={false}
+        leftIcon="mail-outline"
+        accessibilityLabel="Adresse email"
+        testID="input-email"
+      />
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Mot de passe</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="••••••••"
-          placeholderTextColor={colors.textMuted}
-          value={password}
-          onChangeText={(text) => {
-            setPassword(text);
-            if (validationError) setValidationError(null);
-          }}
-          secureTextEntry
-          autoCapitalize="none"
-          accessibilityLabel="Mot de passe"
-          testID="input-password"
-        />
-      </View>
+      <TextField
+        label="Mot de passe"
+        placeholder="••••••••"
+        value={password}
+        onChangeText={handleChange(setPassword)}
+        isPassword
+        autoCapitalize="none"
+        leftIcon="lock-closed-outline"
+        accessibilityLabel="Mot de passe"
+        testID="input-password"
+      />
 
       <Button
         title="Se connecter"
-        variant="primary"
         loading={isLoading}
         onPress={handleSignIn}
         style={styles.submitButton}
@@ -110,10 +90,16 @@ export const SignInForm: React.FC<SignInFormProps> = ({
 
       {onNavigateToRegister ? (
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Pas encore de compte ? </Text>
-          <TouchableOpacity onPress={onNavigateToRegister} testID="btn-go-to-register">
-            <Text style={styles.footerLink}>{"S'inscrire"}</Text>
-          </TouchableOpacity>
+          <AppText variant="bodySmall" color="secondary">
+            Pas encore de compte ?
+          </AppText>
+          <Button
+            title="S'inscrire"
+            variant="ghost"
+            size="sm"
+            onPress={onNavigateToRegister}
+            testID="btn-go-to-register"
+          />
         </View>
       ) : null}
     </Card>
@@ -125,66 +111,19 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     width: '100%',
   },
-  errorContainer: {
-    backgroundColor: colors.errorBackground,
-    borderColor: colors.error,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginBottom: spacing.md,
-    padding: spacing.sm,
-  },
-  errorText: {
-    color: colors.error,
-    fontSize: typography.fontSizes.xs,
-    textAlign: 'center',
-  },
   footer: {
+    alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: spacing.md,
-  },
-  footerLink: {
-    color: colors.primary,
-    fontSize: typography.fontSizes.sm,
-    fontWeight: typography.fontWeights.bold,
-  },
-  footerText: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSizes.sm,
-  },
-  input: {
-    backgroundColor: colors.surfaceLight,
-    borderColor: colors.border,
-    borderRadius: 10,
-    borderWidth: 1,
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  inputGroup: {
-    marginBottom: spacing.md,
-  },
-  label: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSizes.xs,
-    fontWeight: typography.fontWeights.medium,
-    marginBottom: spacing.xs,
+    marginTop: spacing.sm,
   },
   submitButton: {
     marginTop: spacing.sm,
   },
   subtitle: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSizes.sm,
     marginBottom: spacing.lg,
-    textAlign: 'center',
   },
   title: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.xxl,
-    fontWeight: typography.fontWeights.bold,
     marginBottom: spacing.xs,
-    textAlign: 'center',
   },
 });

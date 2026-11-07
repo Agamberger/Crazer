@@ -1,9 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Alert, Animated, Text, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '@/shared/constants/theme';
+import { AppText, IconButton } from '@/shared/components';
 import {
   MapViewComponent,
   MapHeaderSearch,
@@ -14,6 +13,8 @@ import {
   PlaceItem,
 } from '@/features/carte';
 import { useOutingsStore } from '@/features/outings';
+import { colors, radii, spacing } from '@/shared/constants/theme';
+import { toast } from '@/shared/store/useToastStore';
 
 export default function CarteScreen() {
   const router = useRouter();
@@ -76,10 +77,7 @@ export default function CarteScreen() {
   };
 
   const handleGetDirections = (place: PlaceItem) => {
-    Alert.alert(
-      'Itinéraire',
-      `Calcul de l'itinéraire vers ${place.address}...`
-    );
+    toast.info(`Calcul de l'itinéraire vers ${place.address}...`, { title: 'Itinéraire' });
   };
 
   const headerTranslateY = expandAnim.interpolate({
@@ -112,19 +110,21 @@ export default function CarteScreen() {
         {targetOuting && (
           <View style={styles.targetBanner} testID="target-outing-banner">
             <View style={styles.targetBannerContent}>
-              <Text style={styles.targetBannerLabel}>🎯 Ajout à la sortie</Text>
-              <Text style={styles.targetBannerTitle} numberOfLines={1}>
+              <AppText variant="caption" color="accent" weight="bold">
+                🎯 Ajout à la sortie
+              </AppText>
+              <AppText variant="bodySmall" weight="semibold" numberOfLines={1}>
                 {targetOuting.title}
-              </Text>
+              </AppText>
             </View>
-            <TouchableOpacity
+            <IconButton
+              icon="close"
+              size="sm"
+              color={colors.textPrimary}
               onPress={() => setTargetOutingId(null)}
-              style={styles.targetBannerClose}
-              testID="btn-clear-target-outing"
               accessibilityLabel="Quitter le mode ajout"
-            >
-              <Ionicons name="close" size={18} color={colors.textPrimary} />
-            </TouchableOpacity>
+              testID="btn-clear-target-outing"
+            />
           </View>
         )}
       </Animated.View>
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.surface,
     borderColor: colors.primary,
-    borderRadius: 12,
+    borderRadius: radii.md,
     borderWidth: 1.5,
     elevation: 4,
     flexDirection: 'row',
@@ -195,23 +195,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
   },
-  targetBannerClose: {
-    backgroundColor: colors.surfaceLight,
-    borderRadius: 12,
-    padding: 3,
-  },
   targetBannerContent: {
     flex: 1,
     marginRight: spacing.sm,
-  },
-  targetBannerLabel: {
-    color: colors.primary,
-    fontSize: typography.fontSizes.xs,
-    fontWeight: typography.fontWeights.bold,
-  },
-  targetBannerTitle: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.sm,
-    fontWeight: typography.fontWeights.semibold,
   },
 });

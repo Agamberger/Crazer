@@ -1,15 +1,16 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Card } from '@/shared/components/Card';
-import { colors, spacing, typography } from '@/shared/constants/theme';
+import { StyleSheet, View } from 'react-native';
+import { AppText, Badge, Card } from '@/shared/components';
+import { spacing } from '@/shared/constants/theme';
 import { OutingRow, OUTING_STATUS_CONFIG } from '@/shared/types';
 
 interface OutingCardProps {
   outing: OutingRow;
   onPress?: () => void;
+  testID?: string;
 }
 
-export const OutingCard: React.FC<OutingCardProps> = ({ outing, onPress }) => {
+export const OutingCard: React.FC<OutingCardProps> = ({ outing, onPress, testID }) => {
   const formattedDate = outing.start_date
     ? new Date(outing.start_date).toLocaleDateString('fr-FR', {
         weekday: 'short',
@@ -23,62 +24,51 @@ export const OutingCard: React.FC<OutingCardProps> = ({ outing, onPress }) => {
   const statusConfig = OUTING_STATUS_CONFIG[outing.status];
   const statusText = statusConfig ? `${statusConfig.emoji} ${statusConfig.label}` : outing.status;
 
-  const content = (
-    <Card style={styles.container}>
+  return (
+    <Card
+      style={styles.container}
+      onPress={onPress}
+      accessibilityLabel={onPress ? `Ouvrir la sortie ${outing.title}` : undefined}
+      testID={testID}
+    >
       <View style={styles.header}>
-        <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
+        <AppText
+          variant="h3"
+          weight="bold"
+          numberOfLines={1}
+          ellipsizeMode="tail"
+          style={styles.title}
+        >
           {outing.title}
-        </Text>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{statusText}</Text>
-        </View>
+        </AppText>
+        <Badge label={statusText} />
       </View>
       {outing.description ? (
-        <Text style={styles.description} numberOfLines={2} ellipsizeMode="tail">
+        <AppText
+          variant="bodySmall"
+          color="secondary"
+          numberOfLines={2}
+          ellipsizeMode="tail"
+          style={styles.description}
+        >
           {outing.description}
-        </Text>
+        </AppText>
       ) : null}
-      <View style={styles.footer}>
-        {formattedDate ? <Text style={styles.footerText}>📅 {formattedDate}</Text> : null}
-      </View>
+      {formattedDate ? (
+        <AppText variant="caption" color="muted">
+          📅 {formattedDate}
+        </AppText>
+      ) : null}
     </Card>
   );
-
-  if (onPress) {
-    return <TouchableOpacity onPress={onPress} activeOpacity={0.8}>{content}</TouchableOpacity>;
-  }
-
-  return content;
 };
 
 const styles = StyleSheet.create({
-  badge: {
-    backgroundColor: colors.primaryDark,
-    borderRadius: 8,
-    flexShrink: 0,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  badgeText: {
-    color: colors.textPrimary,
-    fontSize: typography.fontSizes.xs,
-    fontWeight: typography.fontWeights.bold,
-  },
   container: {
     marginBottom: spacing.md,
   },
   description: {
-    color: colors.textSecondary,
-    fontSize: typography.fontSizes.sm,
     marginBottom: spacing.md,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  footerText: {
-    color: colors.textMuted,
-    fontSize: typography.fontSizes.xs,
   },
   header: {
     alignItems: 'center',
@@ -88,9 +78,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   title: {
-    color: colors.textPrimary,
     flex: 1,
-    fontSize: typography.fontSizes.lg,
-    fontWeight: typography.fontWeights.bold,
   },
 });

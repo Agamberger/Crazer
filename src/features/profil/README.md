@@ -9,10 +9,13 @@ Le module `src/features/profil` gère le profil utilisateur, les préférences d
 ```
 src/features/profil/
 ├── components/                  # Composants UI
-│   ├── UserListItem.tsx               # Élément utilisateur cliquable avec bouton d'action
-│   ├── UserProfileDetailModal.tsx     # Modal d'affichage détaillé du profil recherché
-│   ├── UserSearchInput.tsx            # Saisie de recherche réactive
-│   └── UserSearchModal.tsx            # Modal de recherche d'utilisateurs & requêtes
+│   ├── BadgesSection.tsx              # Liste des badges (Card + Badge)
+│   ├── InterestsSection.tsx           # Centres d'intérêt (Chip)
+│   ├── PendingFriendRequestsBanner.tsx # Carrousel des demandes d'ami reçues
+│   ├── ProfileHeaderCard.tsx          # En-tête du profil (Avatar, statistiques)
+│   ├── UserListItem.tsx               # Ligne utilisateur (ListItem + Avatar + bouton d'action)
+│   ├── UserProfileDetailModal.tsx     # Profil détaillé (AppModal plein écran)
+│   └── UserSearchModal.tsx            # Recherche d'amis (AppModal plein écran + SearchBar)
 ├── hooks/                       # Custom hook
 │   └── useFriends.ts                  # Encapsulation des sélecteurs et actions amitié
 ├── services/                    # Service Supabase
@@ -61,3 +64,12 @@ Exécuter les tests unitaires et de composants pour la feature profil :
 ```bash
 npm test -- src/features/profil
 ```
+
+---
+
+## 🧩 Composants UI partagés
+
+Les composants de cette feature sont construits avec le kit `@/shared/components`
+(`AppModal` en variante `fullScreen`, `SearchBar`, `ListItem`, `Avatar`, `Badge`, `Chip`,
+`SectionHeader`, `EmptyState`, `InlineAlert`). L'ancien `UserSearchInput` a été supprimé au
+profit de `SearchBar` (le `testID` `input-user-search` est conservé).
