@@ -31,7 +31,7 @@ export default function CarteScreen() {
   const [modalPlace, setModalPlace] = useState<PlaceItem | null>(null);
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
 
-  const { requestLocation, loadNearby } = usePlaces();
+  const { requestLocation, loadNearby, loadVisibleArea } = usePlaces();
   const isInitialized = React.useRef(false);
 
   const expandAnim = useRef(new Animated.Value(0)).current;
@@ -91,6 +91,7 @@ export default function CarteScreen() {
       <MapViewComponent
         places={filteredPlaces}
         onSelectPlace={handleSelectPlace}
+        onRegionChange={loadVisibleArea}
       />
 
       {/* Header Search & Category Filter Overlay positioned taking safe area into account */}

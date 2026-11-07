@@ -28,6 +28,8 @@ interface MapState {
   selectedPoiId: string | null;
   targetOutingId: string | null;
   centerRegion: MapRegion;
+  /** Incrémenté à chaque `setCenterRegion` : la carte ne se recentre que sur une nouvelle demande. */
+  centerVersion: number;
   userLocation: { latitude: number; longitude: number } | null;
   isLoading: boolean;
   error: string | null;
@@ -60,6 +62,7 @@ export const useMapStore = create<MapState>((set, get) => ({
   selectedPoiId: null,
   targetOutingId: null,
   centerRegion: INITIAL_REGION,
+  centerVersion: 0,
   userLocation: null,
   isLoading: false,
   error: null,
@@ -94,6 +97,7 @@ export const useMapStore = create<MapState>((set, get) => ({
   setCenterRegion: (region: Partial<MapRegion>) =>
     set((state) => ({
       centerRegion: { ...state.centerRegion, ...region },
+      centerVersion: state.centerVersion + 1,
     })),
 
   setUserLocation: (location: { latitude: number; longitude: number } | null) =>

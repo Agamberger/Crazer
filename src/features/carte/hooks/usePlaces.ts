@@ -5,6 +5,7 @@
  * Gère :
  *  - La géolocalisation de l'utilisateur (expo-location)
  *  - Le chargement des places Supabase autour de la position
+ *  - Le chargement des places de la zone visible de la carte (déplacement / zoom)
  *  - La recherche full-text avec debounce
  *  - Les états isLoading / isLocating / error
  */
@@ -14,7 +15,8 @@ import * as Location from 'expo-location';
 import { fetchNearbyPlaces, searchPlaces } from '../services/placeService';
 import { placeToPlaceItem } from '../types/carte';
 import { useMapStore } from '../store/useMapStore';
-import { PlaceCategory, SearchPlacesParams } from '@/shared/types/place';
+import { MapVisibleArea } from '../utils/leafletMap';
+import { PlaceCategory, PlaceSearchResult, SearchPlacesParams } from '@/shared/types/place';
 
 // Rayon de recherche par défaut (2km)
 const DEFAULT_RADIUS_M = 2000;
@@ -22,6 +24,31 @@ const DEFAULT_RADIUS_M = 2000;
 const SEARCH_DEBOUNCE_MS = 300;
 // Position de repli si la géolocalisation échoue ou est refusée (France centre)
 const FALLBACK_LOCATION = { latitude: 46.603354, longitude: 1.888334 };
+// Délai avant de charger la zone visible : on attend la fin des déplacements successifs (ms)
+const AREA_DEBOUNCE_MS = 400;
+// Bornes du rayon de la zone visible (m) : au moins le rayon par défaut, au plus ~la France
+const MIN_AREA_RADIUS_M = DEFAULT_RADIUS_M;
+const MAX_AREA_RADIUS_M = 1_000_000;
+// Nombre maximal de lieux chargés pour une zone visible
+const AREA_MAX_RESULTS = 100;
+// Une « dernière position connue » plus vieille que ça n'est pas utilisée pour centrer la carte (ms)
+const LAST_KNOWN_MAX_AGE_MS = 2 * 60 * 1000;
+// Délai maximal pour obtenir une position (ms)
+const LOCATION_TIMEOUT_MS = 15_000;
+
+/**
+ * Options de position. `maximumAge` et `timeout` ne sont lus que sur le web (navigator.geolocation) :
+ * sans `maximumAge: 0`, expo-location web accepte une position en cache de n'importe quel âge,
+ * éventuellement prise ailleurs.
+ */
+const getCurrentPositionOptions = (): Location.LocationOptions & {
+  maximumAge: number;
+  timeout: number;
+} => ({
+  accuracy: Location.Accuracy.Balanced,
+  maximumAge: 0,
+  timeout: LOCATION_TIMEOUT_MS,
+});
 
 export interface UsePlacesReturn {
   /** Places chargées (format PlaceItem pour les composants UI) */
@@ -34,6 +61,8 @@ export interface UsePlacesReturn {
   userCoords: { latitude: number; longitude: number } | null;
   /** Charge les places autour d'une position (ou de la position actuelle) */
   loadNearby: (lat?: number, lng?: number, category?: PlaceCategory) => Promise<void>;
+  /** Charge (après un court délai) les places de la zone visible de la carte */
+  loadVisibleArea: (area: MapVisibleArea) => void;
   /** Recherche full-text avec debounce intégré */
   searchByQuery: (query: string, category?: PlaceCategory) => void;
   /** Demande la permission et récupère la position actuelle */
@@ -52,6 +81,9 @@ export function usePlaces(): UsePlacesReturn {
   } | null>(null);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const areaDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Numéro du dernier chargement lancé : une réponse plus ancienne arrivée après est ignorée.
+  const requestIdRef = useRef(0);
 
   const setPlaces = useMapStore((state) => state.setPlaces);
   const setCenterRegion = useMapStore((state) => state.setCenterRegion);
@@ -77,7 +109,9 @@ export function usePlaces(): UsePlacesReturn {
 
       // Essayer d'abord la dernière position connue pour un centrage instantané
       try {
-        const lastKnown = await Location.getLastKnownPositionAsync({});
+        const lastKnown = await Location.getLastKnownPositionAsync({
+          maxAge: LAST_KNOWN_MAX_AGE_MS,
+        });
         if (lastKnown) {
           const coords = {
             latitude: lastKnown.coords.latitude,
@@ -92,9 +126,7 @@ export function usePlaces(): UsePlacesReturn {
       }
 
       // Obtenir la position GPS exacte
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
+      const position = await Location.getCurrentPositionAsync(getCurrentPositionOptions());
       const coords = {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
@@ -122,32 +154,65 @@ export function usePlaces(): UsePlacesReturn {
    * Charge les places Supabase dans un rayon autour d'une position.
    * Si lat/lng sont omis, utilise la position de l'utilisateur ou Paris en repli.
    */
-  const loadNearby = useCallback(
-    async (lat?: number, lng?: number, category?: PlaceCategory): Promise<void> => {
+  /** Exécute un chargement de lieux ; seul le plus récent met à jour la carte. */
+  const runPlacesRequest = useCallback(
+    async (request: () => Promise<PlaceSearchResult[]>, fallbackError: string): Promise<void> => {
+      const requestId = ++requestIdRef.current;
       setIsLoading(true);
       setError(null);
       try {
-        const currentUserCoords = userCoords || useMapStore.getState().userLocation;
-        const targetLat = lat ?? currentUserCoords?.latitude ?? FALLBACK_LOCATION.latitude;
-        const targetLng = lng ?? currentUserCoords?.longitude ?? FALLBACK_LOCATION.longitude;
-
-        const results = await fetchNearbyPlaces(
-          targetLat,
-          targetLng,
-          DEFAULT_RADIUS_M,
-          category,
-        );
-
-        const places = results.map(placeToPlaceItem);
-        setPlaces(places);
+        const results = await request();
+        if (requestId !== requestIdRef.current) return;
+        setPlaces(results.map(placeToPlaceItem));
       } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Erreur de chargement des lieux';
-        setError(msg);
+        if (requestId !== requestIdRef.current) return;
+        setError(err instanceof Error ? err.message : fallbackError);
       } finally {
-        setIsLoading(false);
+        if (requestId === requestIdRef.current) setIsLoading(false);
       }
     },
-    [userCoords, setPlaces],
+    [setPlaces],
+  );
+
+  const loadNearby = useCallback(
+    async (lat?: number, lng?: number, category?: PlaceCategory): Promise<void> => {
+      const currentUserCoords = userCoords || useMapStore.getState().userLocation;
+      const targetLat = lat ?? currentUserCoords?.latitude ?? FALLBACK_LOCATION.latitude;
+      const targetLng = lng ?? currentUserCoords?.longitude ?? FALLBACK_LOCATION.longitude;
+
+      await runPlacesRequest(
+        () => fetchNearbyPlaces(targetLat, targetLng, DEFAULT_RADIUS_M, category),
+        'Erreur de chargement des lieux',
+      );
+    },
+    [userCoords, runPlacesRequest],
+  );
+
+  // ─── Chargement de la zone visible ──────────────────────────────────────────
+
+  /**
+   * Charge les places de la zone affichée par la carte, une fois les déplacements terminés.
+   * Sans cela, seuls les lieux à 2 km de la position initiale étaient affichés : rien du tout
+   * si la géolocalisation est refusée (centre de la France), et rien de nouveau en se déplaçant.
+   */
+  const loadVisibleArea = useCallback(
+    (area: MapVisibleArea): void => {
+      if (areaDebounceRef.current) {
+        clearTimeout(areaDebounceRef.current);
+      }
+      const radius = Math.round(
+        Math.min(MAX_AREA_RADIUS_M, Math.max(MIN_AREA_RADIUS_M, area.radiusM)),
+      );
+      areaDebounceRef.current = setTimeout(() => {
+        areaDebounceRef.current = null;
+        runPlacesRequest(
+          () =>
+            fetchNearbyPlaces(area.latitude, area.longitude, radius, undefined, AREA_MAX_RESULTS),
+          'Erreur de chargement des lieux',
+        );
+      }, AREA_DEBOUNCE_MS);
+    },
+    [runPlacesRequest],
   );
 
   // ─── Recherche full-text avec debounce ──────────────────────────────────────
@@ -168,29 +233,18 @@ export function usePlaces(): UsePlacesReturn {
         return;
       }
 
-      debounceRef.current = setTimeout(async () => {
-        setIsLoading(true);
-        setError(null);
-        try {
-          const params: SearchPlacesParams = {
-            query,
-            lat: userCoords?.latitude,
-            lng: userCoords?.longitude,
-            filter_cat: category,
-            max_results: 30,
-          };
-          const results = await searchPlaces(params);
-          const places = results.map(placeToPlaceItem);
-          setPlaces(places);
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : 'Erreur de recherche';
-          setError(msg);
-        } finally {
-          setIsLoading(false);
-        }
+      debounceRef.current = setTimeout(() => {
+        const params: SearchPlacesParams = {
+          query,
+          lat: userCoords?.latitude,
+          lng: userCoords?.longitude,
+          filter_cat: category,
+          max_results: 30,
+        };
+        runPlacesRequest(() => searchPlaces(params), 'Erreur de recherche');
       }, SEARCH_DEBOUNCE_MS);
     },
-    [userCoords, loadNearby, setPlaces],
+    [userCoords, loadNearby, runPlacesRequest],
   );
 
   // ─── Nettoyage du debounce au démontage ──────────────────────────────────────
@@ -199,6 +253,9 @@ export function usePlaces(): UsePlacesReturn {
     return () => {
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
+      }
+      if (areaDebounceRef.current) {
+        clearTimeout(areaDebounceRef.current);
       }
     };
   }, []);
@@ -211,6 +268,7 @@ export function usePlaces(): UsePlacesReturn {
     error,
     userCoords,
     loadNearby,
+    loadVisibleArea,
     searchByQuery,
     requestLocation,
     clearError,
