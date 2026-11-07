@@ -1,9 +1,9 @@
 import React from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Screen } from '@/shared/components';
 import { SignInForm } from '@/features/auth';
-import { colors, spacing } from '@/shared/constants/theme';
+import { spacing } from '@/shared/constants/theme';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -17,43 +17,27 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-      >
-        <ScrollView
-          contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.formContainer}>
-            <SignInForm
-              onNavigateToRegister={handleNavigateToRegister}
-              onSuccess={handleSuccess}
-            />
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+    <Screen
+      scrollable
+      avoidKeyboard
+      edges={['top', 'bottom', 'left', 'right']}
+      contentStyle={styles.container}
+    >
+      <View style={styles.formContainer}>
+        <SignInForm onNavigateToRegister={handleNavigateToRegister} onSuccess={handleSuccess} />
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    flexGrow: 1,
     justifyContent: 'center',
-    padding: spacing.md,
+    paddingVertical: spacing.md,
   },
   formContainer: {
     maxWidth: 400,
     width: '100%',
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  safeArea: {
-    backgroundColor: colors.background,
-    flex: 1,
   },
 });
