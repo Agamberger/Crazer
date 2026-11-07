@@ -1,6 +1,6 @@
 import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
-import OutingsScreen from '../index';
+import OutingsScreen from '../sorties';
 import { useOutingsStore } from '@/features/outings';
 import { OutingRow, PlannedOutingRow } from '@/shared/types';
 import { useNavigation } from 'expo-router';

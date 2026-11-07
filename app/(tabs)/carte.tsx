@@ -72,7 +72,7 @@ export default function CarteScreen() {
   const handleAddSuccess = () => {
     if (targetOutingId) {
       setTargetOutingId(null);
-      router.push('/(tabs)');
+      router.push('/(tabs)/sorties');
     }
   };
 

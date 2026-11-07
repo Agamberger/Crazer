@@ -19,6 +19,15 @@ export default function TabLayout() {
     >
       <Tabs.Screen
         name="index"
+        options={{
+          title: 'Accueil',
+          tabBarIcon: ({ color, focused, size }) => (
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={String(color)} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="sorties"
         listeners={{
           tabPress: () => {
             useOutingsStore.getState().selectPlannedOuting(null);
@@ -29,15 +38,6 @@ export default function TabLayout() {
           title: 'Sorties',
           tabBarIcon: ({ color, focused, size }) => (
             <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={size} color={String(color)} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="activites"
-        options={{
-          title: 'Activités',
-          tabBarIcon: ({ color, focused, size }) => (
-            <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} size={size} color={String(color)} />
           ),
         }}
       />

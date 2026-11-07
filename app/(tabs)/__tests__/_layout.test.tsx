@@ -4,7 +4,7 @@ import TabLayout from '../_layout';
 import { useOutingsStore } from '@/features/outings';
 
 describe('TabLayout Navbar Icons', () => {
-  const tabs = ['index', 'activites', 'carte', 'profil'];
+  const tabs = ['index', 'sorties', 'carte', 'profil'];
 
   tabs.forEach((tabName) => {
     test(`doit définir un icon de navbar (tabBarIcon) pour la tab ${tabName}`, () => {
@@ -17,12 +17,12 @@ describe('TabLayout Navbar Icons', () => {
     });
   });
 
-  test('doit réinitialiser la sélection de sortie au clic sur la tab index', () => {
+  test('doit réinitialiser la sélection de sortie au clic sur la tab sorties', () => {
     useOutingsStore.setState({ selectedOutingId: 'out-123' });
 
     const { getByTestId } = render(<TabLayout />);
-    const indexScreen = getByTestId('tab-screen-index');
-    const listeners = indexScreen.props.listeners;
+    const sortiesScreen = getByTestId('tab-screen-sorties');
+    const listeners = sortiesScreen.props.listeners;
 
     expect(listeners).toBeDefined();
     expect(typeof listeners.tabPress).toBe('function');
@@ -30,4 +30,19 @@ describe('TabLayout Navbar Icons', () => {
     listeners.tabPress();
     expect(useOutingsStore.getState().selectedOutingId).toBeNull();
   });
+
+  test("affiche l'accueil en premier, sans onglet Activités", () => {
+    const { UNSAFE_root, queryByTestId } = render(<TabLayout />);
+    const names = UNSAFE_root.findAll((node) => String(node.type) === 'Tabs.Screen').map(
+      (node) => node.props.name
+    );
+
+    expect(names).toEqual(['index', 'sorties', 'carte', 'profil']);
+    expect(getTitle(UNSAFE_root, 'index')).toBe('Accueil');
+    expect(queryByTestId('tab-screen-activites')).toBeNull();
+  });
 });
+
+const getTitle = (root: ReturnType<typeof render>['UNSAFE_root'], name: string): string =>
+  root.findAll((node) => String(node.type) === 'Tabs.Screen' && node.props.name === name)[0].props.options
+    .title;
