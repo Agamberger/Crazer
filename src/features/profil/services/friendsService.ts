@@ -1,23 +1,25 @@
 import { supabase } from '@/shared/lib/supabase';
 import { FriendStatus, UserSearchResult } from '../types';
 
+/** Longueur minimale d'une recherche (alignée sur la RPC `search_profiles`). */
+export const MIN_SEARCH_LENGTH = 2;
+
 export const friendsService = {
   /**
-   * Rechercher des utilisateurs par nom ou email et déterminer leur statut d'amitié par rapport à l'utilisateur courant.
+   * Rechercher des utilisateurs par nom (sous-chaîne) ou email exact, via la RPC `search_profiles`,
+   * et déterminer leur statut d'amitié par rapport à l'utilisateur courant.
+   * L'email n'est renvoyé que s'il a été saisi exactement ou si la relation le permet (ami, demande reçue).
    */
   async searchUsers(query: string, currentUserId: string): Promise<UserSearchResult[]> {
     const trimmedQuery = query.trim();
-    if (!trimmedQuery) {
+    if (trimmedQuery.length < MIN_SEARCH_LENGTH) {
       return [];
     }
 
-    // 1. Récupération des profils correspondant à la recherche (hors utilisateur courant)
-    const { data: profilesData, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id, email, full_name, avatar_url')
-      .neq('id', currentUserId)
-      .or(`full_name.ilike.%${trimmedQuery}%,email.ilike.%${trimmedQuery}%`)
-      .limit(20);
+    // 1. Profils correspondant à la recherche (l'utilisateur courant est exclu côté serveur)
+    const { data: profilesData, error: profilesError } = await supabase.rpc('search_profiles', {
+      p_query: trimmedQuery,
+    });
 
     if (profilesError) {
       throw new Error(`Erreur lors de la recherche des utilisateurs : ${profilesError.message}`);
@@ -152,10 +154,9 @@ export const friendsService = {
 
     const otherUserIds = data.map((f) => (f.user_id === currentUserId ? f.friend_id : f.user_id));
 
-    const { data: profilesData, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id, email, full_name, avatar_url')
-      .in('id', otherUserIds);
+    const { data: profilesData, error: profilesError } = await supabase.rpc('get_profiles', {
+      p_ids: otherUserIds,
+    });
 
     if (profilesError) {
       throw new Error(`Erreur lors du chargement des profils d'amis : ${profilesError.message}`);

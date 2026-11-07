@@ -543,6 +543,7 @@ export type Database = {
             }
             Returns: string
           }
+      can_view_profile_email: { Args: { p_target: string }; Returns: boolean }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
         | {
@@ -675,6 +676,15 @@ export type Database = {
       }
       geomfromewkt: { Args: { "": string }; Returns: unknown }
       gettransactionid: { Args: never; Returns: unknown }
+      get_profiles: {
+        Args: { p_ids: string[] }
+        Returns: {
+          avatar_url: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+        }[]
+      }
       is_outing_member: { Args: { p_outing_id: string }; Returns: boolean }
       is_outing_organizer: {
         Args: { p_outing_id: string; p_user_id: string }
@@ -749,6 +759,15 @@ export type Database = {
           reviews_count: number
           source: Database["public"]["Enums"]["place_source"]
           tags: string[]
+        }[]
+      }
+      search_profiles: {
+        Args: { p_query: string }
+        Returns: {
+          avatar_url: string | null
+          email: string | null
+          full_name: string | null
+          id: string
         }[]
       }
       st_3dclosestpoint: {

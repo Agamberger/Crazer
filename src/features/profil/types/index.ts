@@ -2,7 +2,8 @@ export type FriendStatus = 'none' | 'pending_sent' | 'pending_received' | 'accep
 
 export interface UserSearchResult {
   id: string;
-  email: string;
+  /** Masqué (`null`) sauf pour un ami, l'auteur d'une demande reçue, ou un email saisi exactement. */
+  email: string | null;
   fullName: string | null;
   avatarUrl: string | null;
   friendshipStatus: FriendStatus;

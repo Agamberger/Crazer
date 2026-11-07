@@ -25,6 +25,7 @@ Des raccourcis npm ont été configurés dans `package.json` pour simplifier tou
 | `npm run db:migration <nom>` | `supabase migration new` | Crée un nouveau fichier SQL de migration horodaté dans `supabase/migrations/` |
 | `npm run db:diff <nom>` | `supabase db diff` | Génère un fichier de migration basé sur les différences observées |
 | `npm run db:lint` | `supabase db lint` | Vérifie la syntaxe et la sécurité du schéma SQL local |
+| `npm run db:test` | `supabase test db` | Lance les tests pgTAP de `supabase/tests/` (RLS, privilèges) sur la base locale |
 | `npm run db:start` | `supabase start` | Démarre la stack Supabase locale (Docker) |
 | `npm run db:stop` | `supabase stop` | Arrête la stack locale (données conservées) |
 | `npm run db:status` | `supabase status` | Affiche les URLs et clés de la stack locale |
@@ -84,6 +85,10 @@ Pour revenir au projet distant : `npm run env:remote` puis relancer Expo avec `-
   ALTER TABLE public.outings ENABLE ROW LEVEL SECURITY;
   ```
 - **Politiques (Policies) explicites** : Définissez toujours des politiques strictes basées sur `auth.uid()` pour restreindre la lecture/écriture aux utilisateurs autorisés.
+- **Privilèges explicites (GRANT)** : les stacks Supabase récentes n'accordent plus `SELECT/INSERT/UPDATE/DELETE` par défaut aux rôles `anon` / `authenticated`. Chaque migration qui crée une table ou une fonction RPC doit déclarer ses `GRANT` (et rien pour `anon` si la donnée est privée).
+- **Colonnes figées** : une politique `UPDATE` sans `WITH CHECK` ne protège pas les colonnes d'identité (`outing_id`, `user_id`…). Restreindre les colonnes modifiables avec `GRANT UPDATE (col1, col2)` et toujours écrire le `WITH CHECK`.
+- **Données personnelles** : `profiles.email` n'est pas lisible directement. Passer par les RPC `search_profiles(p_query)` (nom ou email exact) et `get_profiles(p_ids)`, qui ne renvoient l'email qu'à soi-même, à un ami accepté ou à l'auteur d'une demande reçue.
+- **Tests RLS** : chaque correctif ou nouvelle politique est couvert par un test pgTAP dans `supabase/tests/database/` (`npm run db:test`). Exemple : `rls_security.test.sql`.
 - **Sécurité des clés API** : Seule la clé publique anonyme `EXPO_PUBLIC_SUPABASE_ANON_KEY` doit être exposée dans l'application mobile. Ne jamais stocker ni utiliser la clé `service_role` dans le code source React Native.
 
 ### 3. 🏷️ Synchronisation des Types TypeScript
