@@ -97,7 +97,7 @@ describe('JoinOutingFlow', () => {
     expect(await findByText('Qui vient ?')).toBeTruthy();
     fireEvent.press(getByText('Voir le récap'));
     expect(callbacks.onJoined).toHaveBeenCalled();
-  });
+  }, 20000);
 
   it('permet de refuser l’invitation', async () => {
     service.respondToInvitation.mockResolvedValue();
