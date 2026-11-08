@@ -15,8 +15,13 @@ src/features/outings/
 │   ├── PlannedOutingCard.tsx      # Carte d'affichage d'une étape planifiée (Planned Outing)
 │   ├── PlannedOutingsTimeline.tsx  # Timeline chronologique + choix du type d'étape (AppModal sheet)
 │   ├── PlannedOutingEditForm.tsx  # Formulaire d'édition d'une étape, suppression via ConfirmDialog
+│   ├── PlannedOutingFormActions.tsx # Boutons Annuler / Enregistrer / Supprimer d'une étape
 │   └── TimelineStep.tsx           # Une étape de la timeline (nœud, segments, carte)
-├── constants.ts                   # DURATION_PRESETS, PLANNED_STATUS_OPTIONS (partagés avec carte)
+├── constants.ts                   # DURATION_PRESETS, PLANNED_STATUS_OPTIONS (partagés avec carte), OUTING_STATUS_OPTIONS
+├── hooks/
+│   ├── useOutings.ts              # Chargement / création / mise à jour des sorties
+│   ├── useOutingPlannedOutings.ts # Étapes d'une sortie éditée (store ou props du parent, ajout depuis la carte)
+│   └── usePlannedOutingEditForm.ts # Champs, validation, enregistrement et suppression d'une étape
 ├── services/
 │   └── outingService.ts           # Requêtes Supabase (outings & planned_outings CRUD)
 ├── store/
@@ -28,6 +33,10 @@ src/features/outings/
 │   ├── PlannedOutingCard.test.tsx
 │   ├── PlannedOutingsTimeline.test.tsx
 │   ├── PlannedOutingEditForm.test.tsx
+│   ├── PlannedOutingFormActions.test.tsx
+│   ├── useOutingPlannedOutings.test.ts
+│   ├── usePlannedOutingEditForm.test.ts
+│   ├── constants.test.ts
 │   ├── outingService.test.ts
 │   └── useOutingsStore.test.ts
 └── index.ts                       # Point d'entrée du module (barrel export)

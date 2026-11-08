@@ -6,13 +6,12 @@ import {
   Pressable,
   StyleProp,
   StyleSheet,
-  Text,
   View,
   ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, radii, spacing, typography } from '@/shared/constants/theme';
-import { IconButton } from './IconButton';
+import { colors, radii, spacing } from '@/shared/constants/theme';
+import { AppModalHeader } from './AppModalHeader';
 import { IconName } from './types';
 
 export type AppModalVariant = 'center' | 'sheet' | 'fullScreen';
@@ -58,32 +57,16 @@ export const AppModal: React.FC<AppModalProps> = ({
   const isSheet = variant === 'sheet';
   const isFullScreen = variant === 'fullScreen';
 
-  const closeButton = (
-    <IconButton
-      icon={closeIcon}
-      size="sm"
-      variant={isFullScreen ? 'ghost' : 'surface'}
-      accessibilityLabel={closeAccessibilityLabel}
-      onPress={onClose}
-      testID={closeButtonTestID ?? `${testID}-close`}
+  const header = (
+    <AppModalHeader
+      title={title}
+      isFullScreen={isFullScreen}
+      onClose={onClose}
+      closeIcon={closeIcon}
+      closeAccessibilityLabel={closeAccessibilityLabel}
+      closeButtonTestID={closeButtonTestID ?? `${testID}-close`}
     />
   );
-
-  // En plein écran le bouton de fermeture est toujours affiché (à gauche, comme une navigation).
-  const header =
-    isFullScreen || title ? (
-      <View style={styles.header}>
-        {isFullScreen ? closeButton : null}
-        <Text
-          style={[styles.title, isFullScreen && styles.titleFullScreen]}
-          accessibilityRole="header"
-          numberOfLines={2}
-        >
-          {title ?? ''}
-        </Text>
-        {isFullScreen ? <View style={styles.headerSpacer} /> : closeButton}
-      </View>
-    ) : null;
 
   const footerNode = footer ? <View style={styles.footer}>{footer}</View> : null;
 
@@ -184,16 +167,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     width: 40,
   },
-  header: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-    paddingTop: spacing.sm,
-  },
-  headerSpacer: {
-    width: 32,
-  },
   overlay: {
     backgroundColor: colors.overlay,
     flex: 1,
@@ -211,16 +184,5 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radii.xl,
     borderTopRightRadius: radii.xl,
     maxHeight: '90%',
-  },
-  title: {
-    color: colors.textPrimary,
-    flex: 1,
-    fontSize: typography.fontSizes.lg,
-    fontWeight: typography.fontWeights.bold,
-    marginRight: spacing.sm,
-  },
-  titleFullScreen: {
-    marginHorizontal: spacing.sm,
-    textAlign: 'center',
   },
 });

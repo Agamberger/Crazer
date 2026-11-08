@@ -162,3 +162,8 @@ Les tests sont dans `src/shared/components/__tests__/` (un fichier par famille :
 `Button`, `FormControls`, `SelectionControls`, `DisplayComponents`, `ListComponents`,
 `OverlayComponents`, `Toast`) ; le store des toasts est testé dans `src/shared/store/__tests__/`.
 Tout nouveau composant partagé doit être ajouté à `index.ts`, à ce README et aux tests.
+
+Sous-composants internes (non exportés par `index.ts`, chacun avec son test) :
+`TextFieldTrailingIcon` (œil du mot de passe ou icône d'action de `TextField`),
+`TextFieldFooter` (erreur / aide / compteur sous `TextField`) et `AppModalHeader`
+(barre de titre et bouton de fermeture de `AppModal`).

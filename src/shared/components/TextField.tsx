@@ -6,11 +6,12 @@ import {
   Text,
   TextInput,
   TextInputProps,
-  TouchableOpacity,
   View,
   ViewStyle,
 } from 'react-native';
 import { colors, iconSizes, radii, spacing, typography } from '@/shared/constants/theme';
+import { TextFieldFooter } from './TextFieldFooter';
+import { TextFieldTrailingIcon } from './TextFieldTrailingIcon';
 import { IconName } from './types';
 
 /** `default` : champ encadré ; `title` : grand titre éditable, simplement souligné. */
@@ -68,14 +69,6 @@ export const TextField = forwardRef<React.ComponentRef<typeof TextInput>, TextFi
 
     const isTitle = variant === 'title';
     const borderColor = error ? colors.error : isFocused ? colors.primary : colors.border;
-    const trailingIcon: IconName | undefined = isPassword
-      ? isSecureVisible
-        ? 'eye-off-outline'
-        : 'eye-outline'
-      : rightIcon;
-    const handleTrailingPress = isPassword
-      ? () => setIsSecureVisible((visible) => !visible)
-      : onPressRightIcon;
 
     return (
       <View style={[styles.container, containerStyle]}>
@@ -126,41 +119,22 @@ export const TextField = forwardRef<React.ComponentRef<typeof TextInput>, TextFi
             }}
             {...props}
           />
-          {trailingIcon ? (
-            handleTrailingPress ? (
-              <TouchableOpacity
-                onPress={handleTrailingPress}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  isPassword
-                    ? isSecureVisible
-                      ? 'Masquer le mot de passe'
-                      : 'Afficher le mot de passe'
-                    : 'Action du champ'
-                }
-                hitSlop={8}
-                testID={testID ? `${testID}-right-icon` : undefined}
-              >
-                <Ionicons name={trailingIcon} size={iconSizes.md} color={colors.textMuted} />
-              </TouchableOpacity>
-            ) : (
-              <Ionicons name={trailingIcon} size={iconSizes.md} color={colors.textMuted} />
-            )
-          ) : null}
+          <TextFieldTrailingIcon
+            icon={rightIcon}
+            onPress={onPressRightIcon}
+            isPassword={isPassword}
+            isSecureVisible={isSecureVisible}
+            onToggleSecure={() => setIsSecureVisible((visible) => !visible)}
+            testID={testID}
+          />
         </View>
-        {error || helperText || (showCounter && maxLength) ? (
-          <View style={styles.footer}>
-            <Text
-              style={[styles.helper, error ? styles.errorText : null]}
-              accessibilityLiveRegion="polite"
-            >
-              {error || helperText || ''}
-            </Text>
-            {showCounter && maxLength ? (
-              <Text style={styles.helper}>{`${value?.length ?? 0}/${maxLength}`}</Text>
-            ) : null}
-          </View>
-        ) : null}
+        <TextFieldFooter
+          error={error}
+          helperText={helperText}
+          showCounter={showCounter}
+          maxLength={maxLength}
+          length={value?.length ?? 0}
+        />
       </View>
     );
   },
@@ -174,19 +148,6 @@ const styles = StyleSheet.create({
   },
   disabled: {
     opacity: 0.5,
-  },
-  errorText: {
-    color: colors.error,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: spacing.xs,
-  },
-  helper: {
-    color: colors.textMuted,
-    flexShrink: 1,
-    fontSize: typography.fontSizes.xs,
   },
   input: {
     color: colors.textPrimary,
