@@ -131,6 +131,17 @@ export const outingSchedulingService = {
     }));
   },
 
+  /** Outings the user is linked to without attending (invitation pending or declined). */
+  fetchMyNonAttendingOutingIds: async (userId: string): Promise<string[]> => {
+    const { data, error } = await supabase
+      .from('outing_participants')
+      .select('outing_id')
+      .eq('user_id', userId)
+      .in('status', ['invited', 'declined']);
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((row) => row.outing_id);
+  },
+
   /** Live updates of participants and availabilities. Returns the unsubscribe function. */
   subscribeToOutingScheduling: (outingId: string, onChange: () => void): (() => void) => {
     const filter = `outing_id=eq.${outingId}`;

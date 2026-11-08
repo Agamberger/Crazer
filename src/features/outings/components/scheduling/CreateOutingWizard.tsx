@@ -1,6 +1,6 @@
 import React from 'react';
-import { Button, Screen } from '@/shared/components';
-import { useCreateOutingWizard } from '../../hooks/useCreateOutingWizard';
+import { Button, InlineAlert, Screen } from '@/shared/components';
+import { useCreateOutingWizard, WizardPlace } from '../../hooks/useCreateOutingWizard';
 import { CREATION_STEPS } from '../../store/useOutingCreationStore';
 import { AvailabilityStep } from './AvailabilityStep';
 import { InviteFriendsStep } from './InviteFriendsStep';
@@ -11,11 +11,17 @@ import { WizardHeader } from './WizardHeader';
 export interface CreateOutingWizardProps {
   onCreated: (outingId: string) => void;
   onClose: () => void;
+  /** Place the outing is created around: added as its first step. */
+  place?: WizardPlace | null;
 }
 
 /** Step 1 of the outing journey: name, days, my availability, invitees. */
-export const CreateOutingWizard: React.FC<CreateOutingWizardProps> = ({ onCreated, onClose }) => {
-  const wizard = useCreateOutingWizard(onCreated);
+export const CreateOutingWizard: React.FC<CreateOutingWizardProps> = ({
+  onCreated,
+  onClose,
+  place = null,
+}) => {
+  const wizard = useCreateOutingWizard(onCreated, place);
   const { draft, step } = wizard;
 
   const footer = (
@@ -45,6 +51,13 @@ export const CreateOutingWizard: React.FC<CreateOutingWizardProps> = ({ onCreate
       footer={footer}
       testID="create-outing-wizard"
     >
+      {place ? (
+        <InlineAlert
+          tone="info"
+          message={`📍 ${place.name} sera ajouté comme première étape.`}
+          testID="wizard-place-banner"
+        />
+      ) : null}
       {step === 'name' ? (
         <OutingNameStep title={draft.title} onChangeTitle={draft.setTitle} />
       ) : null}

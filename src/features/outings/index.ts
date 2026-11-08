@@ -20,3 +20,7 @@ export * from './components/scheduling/CreateOutingWizard';
 export * from './components/scheduling/JoinOutingFlow';
 export * from './components/scheduling/AvailabilityRecap';
 export * from './components/scheduling/PendingInvitationsSection';
+export * from './hooks/useVisibleOutings';
+export * from './hooks/useOutingMembers';
+export * from './components/scheduling/ParticipantAvatars';
+export type { WizardPlace } from './hooks/useCreateOutingWizard';

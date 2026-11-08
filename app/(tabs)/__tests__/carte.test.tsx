@@ -1,9 +1,16 @@
 import React from 'react';
 import { render, waitFor, fireEvent } from '@testing-library/react-native';
+import { useRouter } from 'expo-router';
 import CarteScreen from '../carte';
-import { useMapStore } from '@/features/carte';
+import { PlaceItem, useMapStore } from '@/features/carte';
+import { ensurePlaceExists } from '@/features/carte/services/placeService';
 import { useOutingsStore } from '@/features/outings';
 import { OutingRow } from '@/shared/types';
+
+jest.mock('@/features/carte/services/placeService', () => ({
+  ...jest.requireActual('@/features/carte/services/placeService'),
+  ensurePlaceExists: jest.fn(),
+}));
 
 jest.mock('expo-location', () => ({
   requestForegroundPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
@@ -60,5 +67,51 @@ describe('CarteScreen', () => {
     fireEvent.press(getByTestId('btn-clear-target-outing'));
     expect(useMapStore.getState().targetOutingId).toBeNull();
     expect(queryByTestId('target-outing-banner')).toBeNull();
+  });
+
+  describe('« Nouvelle sortie » depuis la fiche d’un lieu', () => {
+    const place: PlaceItem = {
+      id: 'osm-1',
+      title: 'Burger Gourmet',
+      category: 'resto',
+      latitude: 48.85,
+      longitude: 2.35,
+      address: '1 rue de Paris',
+      rating: 4.5,
+      reviewsCount: 10,
+    };
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      useOutingsStore.setState({ outings: [], fetchOutings: jest.fn() });
+      useMapStore.setState({ places: [place], selectedPlaceId: place.id, targetOutingId: null });
+    });
+
+    test('enregistre le lieu puis ouvre l’assistant de création autour de lui', async () => {
+      (ensurePlaceExists as jest.Mock).mockResolvedValueOnce('place-uuid-1');
+      const { getByTestId } = render(<CarteScreen />);
+
+      fireEvent.press(getByTestId('add-to-outing-button'));
+      fireEvent.press(getByTestId('btn-create-outing-empty'));
+
+      await waitFor(() => {
+        expect(useRouter().push).toHaveBeenCalledWith({
+          pathname: '/outing/create',
+          params: { placeId: 'place-uuid-1', placeName: 'Burger Gourmet' },
+        });
+      });
+      expect(ensurePlaceExists).toHaveBeenCalledWith(place, undefined);
+    });
+
+    test('reste sur la carte et affiche l’erreur si le lieu ne peut pas être enregistré', async () => {
+      (ensurePlaceExists as jest.Mock).mockRejectedValueOnce(new Error('RLS'));
+      const { getByTestId } = render(<CarteScreen />);
+
+      fireEvent.press(getByTestId('add-to-outing-button'));
+      fireEvent.press(getByTestId('btn-create-outing-empty'));
+
+      await waitFor(() => expect(getByTestId('error-create-outing')).toBeTruthy());
+      expect(useRouter().push).not.toHaveBeenCalled();
+    });
   });
 });

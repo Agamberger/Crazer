@@ -11,13 +11,16 @@ import {
   useMapStore,
   usePlaces,
   PlaceItem,
+  ensurePlaceExists,
 } from '@/features/carte';
+import { useAuth } from '@/features/auth';
 import { useOutingsStore } from '@/features/outings';
 import { spacing } from '@/shared/constants/theme';
 import { toast } from '@/shared/store/useToastStore';
 
 export default function CarteScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const selectedPlaceId = useMapStore((state) => state.selectedPlaceId);
   const places = useMapStore((state) => state.places);
@@ -67,6 +70,12 @@ export default function CarteScreen() {
   const handleAddToOuting = (place: PlaceItem) => {
     setModalPlace(place);
     setIsAddModalVisible(true);
+  };
+
+  /** « Nouvelle sortie » : le lieu est enregistré, puis l'assistant s'ouvre autour de lui. */
+  const handleCreateOutingWithPlace = async (place: PlaceItem) => {
+    const placeId = await ensurePlaceExists(place, user?.id);
+    router.push({ pathname: '/outing/create', params: { placeId, placeName: place.title } });
   };
 
   const handleAddSuccess = () => {
@@ -142,6 +151,7 @@ export default function CarteScreen() {
           setModalPlace(null);
         }}
         onSuccess={handleAddSuccess}
+        onCreateNewOuting={handleCreateOutingWithPlace}
       />
     </View>
   );

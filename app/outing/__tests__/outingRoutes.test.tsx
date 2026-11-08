@@ -11,25 +11,30 @@ const mockSelectOuting = jest.fn();
 jest.mock('@/features/outings', () => {
   const { createElement, Fragment } = jest.requireActual('react');
   const { Text: MockText } = jest.requireActual('react-native');
-  const screen = (prefix: string) => (props: Record<string, unknown>) =>
-    createElement(
-      Fragment,
-      null,
-      createElement(MockText, null, `${prefix}:${String(props.outingId)}`),
-      ...Object.entries(props)
-        .filter(([, value]) => typeof value === 'function')
-        .map(([name, fn]) =>
-          createElement(
-            MockText,
-            { key: name, onPress: () => Reflect.apply(fn as never, undefined, ['new-outing']) },
-            name,
+  const screen =
+    (prefix: string, describe: (props: Record<string, unknown>) => string) =>
+    (props: Record<string, unknown>) =>
+      createElement(
+        Fragment,
+        null,
+        createElement(MockText, null, `${prefix}:${describe(props)}`),
+        ...Object.entries(props)
+          .filter(([, value]) => typeof value === 'function')
+          .map(([name, fn]) =>
+            createElement(
+              MockText,
+              { key: name, onPress: () => Reflect.apply(fn as never, undefined, ['new-outing']) },
+              name,
+            ),
           ),
-        ),
-    );
+      );
   return {
-    CreateOutingWizard: screen('create'),
-    JoinOutingFlow: screen('join'),
-    AvailabilityRecap: screen('recap'),
+    CreateOutingWizard: screen('create', (props) => {
+      const place = props.place as { id: string; name: string } | null;
+      return place ? `${place.id}|${place.name}` : 'no-place';
+    }),
+    JoinOutingFlow: screen('join', (props) => String(props.outingId)),
+    AvailabilityRecap: screen('recap', (props) => String(props.outingId)),
     useOutingsStore: (selector: (state: { selectOuting: jest.Mock }) => unknown) =>
       selector({ selectOuting: mockSelectOuting }),
   };
@@ -41,6 +46,21 @@ describe('outing routes', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useLocalSearchParams as jest.Mock).mockReturnValue({ id: 'o1' });
+  });
+
+  it('create : sans paramètre, aucun lieu n’est passé à l’assistant', () => {
+    (useLocalSearchParams as jest.Mock).mockReturnValue({});
+    const { getByText } = render(<CreateOutingRoute />);
+    expect(getByText('create:no-place')).toBeTruthy();
+  });
+
+  it('create : placeId et placeName deviennent le lieu de l’assistant', () => {
+    (useLocalSearchParams as jest.Mock).mockReturnValue({
+      placeId: 'place-uuid-1',
+      placeName: 'Burger Gourmet',
+    });
+    const { getByText } = render(<CreateOutingRoute />);
+    expect(getByText('create:place-uuid-1|Burger Gourmet')).toBeTruthy();
   });
 
   it('create : ouvre le récap de la sortie créée, ou revient en arrière', () => {

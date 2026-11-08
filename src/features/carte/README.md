@@ -18,9 +18,10 @@ Ce module gère l'affichage de la carte interactive, des lieux (Places) et des s
 - **`PlaceDetailCard`** : Fiche d'affichage des détails d'un lieu sélectionné (note, avis, prix, horaires, photos, boutons d'action). Le glisser / agrandir est géré par le hook **`usePlaceSheetGesture`**, les horaires par **`PlaceOpeningHours`**.
 - **`AddPlaceToOutingModal`** : Modal plein écran (`AppModal`) pour ajouter un lieu à une sortie active, composée de :
   - **`PlaceSummaryBanner`** : rappel du lieu ;
-  - **`OutingPickerStep`** : choix de la sortie (réutilise `OutingCard`) ;
+  - **`OutingPickerStep`** : choix d'une sortie existante (réutilise `OutingCard`) ; les sorties dont l'utilisateur est seulement invité ou qu'il a refusées ne sont pas proposées (`useVisibleOutings`) ;
   - **`PlannedStepForm`** : détails de l'étape, préremplis par `buildPlannedStepValues()`.
-  Le succès et les erreurs de création de sortie sont signalés par un **toast** (`@/shared/store/useToastStore`).
+  Le succès est signalé par un **toast** (`@/shared/store/useToastStore`).
+  - **« + Créer une nouvelle sortie »** appelle la prop obligatoire `onCreateNewOuting(place)`. `app/(tabs)/carte.tsx` enregistre alors le lieu (`ensurePlaceExists`) puis ouvre l'assistant `/outing/create?placeId=…&placeName=…` : le titre est prérempli et le lieu devient la première étape de la sortie. En cas d'erreur, le message reste dans la modale (un toast serait masqué par la `Modal` plein écran) ; en cas de succès, la modale se ferme.
 - **`constants.ts`** : `PLACE_CATEGORY_LABELS` / `getPlaceCategoryLabel()` (libellés et couleurs des catégories).
 - **`StyleSelector`** : Widget de sélection du style de carte (Dark, Light, Outdoor).
 - **`useMapStore`** : Store Zustand pour l'état de la carte (Places, filtres, mode de style, centrage).

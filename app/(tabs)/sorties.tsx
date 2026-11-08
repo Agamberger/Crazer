@@ -13,6 +13,7 @@ import {
   useOutingEditing,
   useOutingSchedulingStore,
   useOutingsStore,
+  useVisibleOutings,
 } from '@/features/outings';
 import { OUTINGS_SCREEN_EDGES } from '@/features/outings/constants';
 import { useFriends, PendingFriendRequestsBanner } from '@/features/profil';
@@ -35,6 +36,7 @@ export default function SortiesScreen() {
 
   // Outings store state
   const outings = useOutingsStore((state) => state.outings);
+  const visibleOutings = useVisibleOutings();
   const isLoading = useOutingsStore((state) => state.isLoading);
   const error = useOutingsStore((state) => state.error);
   const fetchOutings = useOutingsStore((state) => state.fetchOutings);
@@ -170,7 +172,7 @@ export default function SortiesScreen() {
       </View>
 
       <List
-        data={outings}
+        data={visibleOutings}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <OutingCard outing={item} onPress={() => handleSelectOuting(item.id)} />

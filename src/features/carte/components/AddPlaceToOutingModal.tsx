@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AppModal } from '@/shared/components';
 import { useAuth } from '@/features/auth';
 import { useOutingsStore } from '@/features/outings/store/useOutingsStore';
+import { useVisibleOutings } from '@/features/outings/hooks/useVisibleOutings';
 import { toast } from '@/shared/store/useToastStore';
 import { OutingRow, PlannedOutingInsert, PlannedOutingRow } from '@/shared/types';
 import { ensurePlaceExists } from '../services/placeService';
@@ -19,6 +20,11 @@ export interface AddPlaceToOutingModalProps {
   onSuccess?: (outing: OutingRow, plannedOuting: PlannedOutingRow) => void;
   initialOuting?: OutingRow | null;
   targetOutingId?: string | null;
+  /**
+   * « Nouvelle sortie » : ouvre l'assistant de création autour de ce lieu.
+   * Une erreur levée est affichée dans la modale ; en cas de succès, la modale se ferme.
+   */
+  onCreateNewOuting: (place: PlaceItem) => Promise<void> | void;
 }
 
 const isActiveOuting = (outing: OutingRow) =>
@@ -31,11 +37,11 @@ export const AddPlaceToOutingModal: React.FC<AddPlaceToOutingModalProps> = ({
   onSuccess,
   initialOuting,
   targetOutingId: propTargetOutingId,
+  onCreateNewOuting,
 }) => {
   const { user } = useAuth();
-  const outings = useOutingsStore((state) => state.outings);
+  const outings = useVisibleOutings();
   const fetchOutings = useOutingsStore((state) => state.fetchOutings);
-  const createOuting = useOutingsStore((state) => state.createOuting);
   const addPlannedOuting = useOutingsStore((state) => state.addPlannedOuting);
   const storeTargetOutingId = useMapStore((state) => state.targetOutingId);
   const effectiveTargetId = propTargetOutingId ?? storeTargetOutingId;
@@ -75,17 +81,14 @@ export const AddPlaceToOutingModal: React.FC<AddPlaceToOutingModalProps> = ({
   };
 
   const handleCreateNewOuting = async () => {
-    if (!user) {
-      setCreateError('Vous devez être connecté pour créer une sortie.');
-      return;
-    }
+    if (!place) return;
     setCreateError(null);
     setIsCreatingOuting(true);
     try {
-      const newOuting = await createOuting(user.id);
-      if (newOuting) selectOuting(newOuting);
+      await onCreateNewOuting(place);
+      handleClose();
     } catch {
-      setCreateError("Impossible de créer la sortie d'accueil.");
+      setCreateError("Impossible de préparer la nouvelle sortie. Réessaie dans un instant.");
     } finally {
       setIsCreatingOuting(false);
     }

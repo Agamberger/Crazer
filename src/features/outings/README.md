@@ -26,7 +26,8 @@ src/features/outings/
 │       ├── JoinOutingFlow.tsx     # Invitee: Rejoindre ? → Quel jour ? → Dispos → Qui vient ?
 │       ├── AvailabilityRecap.tsx  # Live recap: common slot per day, pending answers, « Choisir ce jour »
 │       ├── DayRecapRow.tsx, MembersList.tsx
-│       └── InvitationCard.tsx, PendingInvitationsSection.tsx
+│       ├── InvitationCard.tsx, PendingInvitationsSection.tsx
+│       └── ParticipantAvatars.tsx # Avatars + « n participants · m en attente »
 ├── constants.ts                   # DURATION_PRESETS, PLANNED_STATUS_OPTIONS (partagés avec carte), OUTING_STATUS_OPTIONS, OUTINGS_SCREEN_EDGES
 ├── hooks/
 │   ├── useOutings.ts              # Chargement / création / mise à jour des sorties
@@ -36,7 +37,9 @@ src/features/outings/
 │   ├── useOutingScheduling.ts     # Days + availabilities + members of an outing, kept live (realtime)
 │   ├── useCreateOutingWizard.ts   # Wizard validation and submission
 │   ├── useJoinOutingFlow.ts       # Invitee flow (accept / decline, days, slots)
-│   └── useAvailabilityRecap.ts    # Recap + organizer's day choice (« continuer sans tout le monde ? »)
+│   ├── useAvailabilityRecap.ts    # Recap + organizer's day choice (« continuer sans tout le monde ? »)
+│   ├── useVisibleOutings.ts       # My outings minus pending invitations and declined outings
+│   └── useOutingMembers.ts        # Participants of one outing (loaded once)
 ├── services/
 │   ├── outingService.ts           # Requêtes Supabase (outings & planned_outings CRUD)
 │   └── outingSchedulingService.ts # Scheduling RPCs, days, availabilities, members, invitations, realtime
@@ -150,7 +153,10 @@ Implements steps 1 to 3 of the « Parcours complet d'une sortie » note. Routes 
 - Dates are never voted: the app computes the intersection of the slots of `accepted` / `maybe` members per day. Invitees who have not answered are counted as pending, and the organizer can « continuer sans tout le monde ».
 - `useOutingScheduling(outingId)` subscribes to `outing_participants` and `outing_availabilities` changes and refetches, so the recap updates live.
 - `createOutingWithInvites` and `respondToInvitation` throw on failure (screens show a toast and keep the draft); fetch actions store the message in `error`.
-- The legacy one-tap `createOuting` is still used by the map's « + Créer une nouvelle sortie » (reworked in the explore/home entry points lot).
+- **From a place** (map « + sortie » → « + Créer une nouvelle sortie »): `/outing/create?placeId=…&placeName=…` opens the wizard with the title prefilled and the place announced as the first step. After the outing is created, the place is added as a `pending` 60 min step at the start of the organizer's first slot (`getDraftStartDate`). If that step cannot be added, the outing is still created and a warning toast says so. The place must already be saved (`ensurePlaceExists`, done by the map).
+- **Outings the user does not attend**: `useOutingSchedulingStore.nonAttendingOutingIds` lists the outings where the user's participation is `invited` or `declined` (loaded with the invitations, updated by `respondToInvitation`). `useVisibleOutings()` removes them from every « my outings » list (home, Sorties tab, map outing picker), so a pending invitation only appears in the invitations section.
+- `useOutingMembers(outing)` loads an outing's participants once (home « Prochaine sortie »), and `ParticipantAvatars` shows who is coming (« 3 participants · 1 en attente »).
+- The legacy one-tap `createOuting` store action is no longer used by any screen.
 
 ## 🧪 Tests
 

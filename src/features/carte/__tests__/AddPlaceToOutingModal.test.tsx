@@ -2,7 +2,7 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { AddPlaceToOutingModal } from '../components/AddPlaceToOutingModal';
 import { PlaceItem } from '../types/carte';
-import { useOutingsStore } from '@/features/outings';
+import { useOutingSchedulingStore, useOutingsStore } from '@/features/outings';
 import { ensurePlaceExists } from '../services/placeService';
 import { OutingRow, PlannedOutingRow } from '@/shared/types';
 import { useMapStore } from '../store/useMapStore';
@@ -85,6 +85,7 @@ const mockCancelledOuting: OutingRow = {
 
 describe('AddPlaceToOutingModal', () => {
   const mockOnClose = jest.fn();
+  const mockOnCreateNewOuting = jest.fn();
   const mockOnSuccess = jest.fn();
 
   beforeEach(() => {
@@ -105,7 +106,7 @@ describe('AddPlaceToOutingModal', () => {
       <AddPlaceToOutingModal
         visible={true}
         place={null}
-        onClose={mockOnClose}
+        onClose={mockOnClose} onCreateNewOuting={mockOnCreateNewOuting}
       />
     );
     expect(queryByTestId('modal-add-poi-to-outing')).toBeNull();
@@ -116,7 +117,7 @@ describe('AddPlaceToOutingModal', () => {
       <AddPlaceToOutingModal
         visible={true}
         place={mockPlace}
-        onClose={mockOnClose}
+        onClose={mockOnClose} onCreateNewOuting={mockOnCreateNewOuting}
       />
     );
 
@@ -136,7 +137,7 @@ describe('AddPlaceToOutingModal', () => {
       <AddPlaceToOutingModal
         visible={true}
         place={mockPlace}
-        onClose={mockOnClose}
+        onClose={mockOnClose} onCreateNewOuting={mockOnCreateNewOuting}
       />
     );
 
@@ -149,7 +150,7 @@ describe('AddPlaceToOutingModal', () => {
       <AddPlaceToOutingModal
         visible={true}
         place={mockPlace}
-        onClose={mockOnClose}
+        onClose={mockOnClose} onCreateNewOuting={mockOnCreateNewOuting}
       />
     );
 
@@ -171,7 +172,7 @@ describe('AddPlaceToOutingModal', () => {
         visible={true}
         place={mockPlace}
         initialOuting={mockActiveOuting}
-        onClose={mockOnClose}
+        onClose={mockOnClose} onCreateNewOuting={mockOnCreateNewOuting}
       />
     );
 
@@ -188,7 +189,7 @@ describe('AddPlaceToOutingModal', () => {
       <AddPlaceToOutingModal
         visible={true}
         place={mockPlace}
-        onClose={mockOnClose}
+        onClose={mockOnClose} onCreateNewOuting={mockOnCreateNewOuting}
       />
     );
 
@@ -202,7 +203,7 @@ describe('AddPlaceToOutingModal', () => {
       <AddPlaceToOutingModal
         visible={true}
         place={mockPlace}
-        onClose={mockOnClose}
+        onClose={mockOnClose} onCreateNewOuting={mockOnCreateNewOuting}
       />
     );
 
@@ -220,7 +221,7 @@ describe('AddPlaceToOutingModal', () => {
       <AddPlaceToOutingModal
         visible={true}
         place={mockPlace}
-        onClose={mockOnClose}
+        onClose={mockOnClose} onCreateNewOuting={mockOnCreateNewOuting}
       />
     );
 
@@ -235,14 +236,36 @@ describe('AddPlaceToOutingModal', () => {
     expect(getByText("Le nom de l'étape est obligatoire.")).toBeTruthy();
   });
 
-  test("affiche l'erreur de création de sortie dans la modale (un toast serait masqué par la modale)", async () => {
+  test('« Nouvelle sortie » délègue au parent la création autour du lieu, puis ferme la modale', async () => {
     useOutingsStore.setState({ outings: [] });
-    jest
-      .spyOn(useOutingsStore.getState(), 'createOuting')
-      .mockRejectedValueOnce(new Error('network'));
+    mockOnCreateNewOuting.mockResolvedValueOnce(undefined);
+
+    const { getByTestId } = render(
+      <AddPlaceToOutingModal
+        visible={true}
+        place={mockPlace}
+        onClose={mockOnClose}
+        onCreateNewOuting={mockOnCreateNewOuting}
+      />
+    );
+
+    fireEvent.press(getByTestId('btn-create-outing-empty'));
+
+    await waitFor(() => expect(mockOnClose).toHaveBeenCalled());
+    expect(mockOnCreateNewOuting).toHaveBeenCalledWith(mockPlace);
+  });
+
+  test("affiche l'erreur de préparation de la nouvelle sortie dans la modale (un toast serait masqué par la modale)", async () => {
+    useOutingsStore.setState({ outings: [] });
+    mockOnCreateNewOuting.mockRejectedValueOnce(new Error('network'));
 
     const { getByTestId, getByText } = render(
-      <AddPlaceToOutingModal visible={true} place={mockPlace} onClose={mockOnClose} />
+      <AddPlaceToOutingModal
+        visible={true}
+        place={mockPlace}
+        onClose={mockOnClose}
+        onCreateNewOuting={mockOnCreateNewOuting}
+      />
     );
 
     fireEvent.press(getByTestId('btn-create-outing-empty'));
@@ -250,7 +273,26 @@ describe('AddPlaceToOutingModal', () => {
     await waitFor(() => {
       expect(getByTestId('error-create-outing')).toBeTruthy();
     });
-    expect(getByText("Impossible de créer la sortie d'accueil.")).toBeTruthy();
+    expect(
+      getByText('Impossible de préparer la nouvelle sortie. Réessaie dans un instant.')
+    ).toBeTruthy();
+    expect(mockOnClose).not.toHaveBeenCalled();
+  });
+
+  test("ne propose pas les sorties dont l'utilisateur est seulement invité ou qu'il a refusées", () => {
+    useOutingSchedulingStore.setState({ nonAttendingOutingIds: [mockActiveOuting.id] });
+
+    const { queryByTestId } = render(
+      <AddPlaceToOutingModal
+        visible={true}
+        place={mockPlace}
+        onClose={mockOnClose}
+        onCreateNewOuting={mockOnCreateNewOuting}
+      />
+    );
+
+    expect(queryByTestId(`btn-select-outing-${mockActiveOuting.id}`)).toBeNull();
+    useOutingSchedulingStore.setState({ nonAttendingOutingIds: [] });
   });
 
   test("enregistre le lieu et crée l'étape planifiée avec succès", async () => {
@@ -279,7 +321,7 @@ describe('AddPlaceToOutingModal', () => {
       <AddPlaceToOutingModal
         visible={true}
         place={mockPlace}
-        onClose={mockOnClose}
+        onClose={mockOnClose} onCreateNewOuting={mockOnCreateNewOuting}
         onSuccess={mockOnSuccess}
       />
     );

@@ -45,6 +45,15 @@ export const buildStartDate = (day: DayKey, time: string): string => {
   return date.toISOString();
 };
 
+/** Start of the outing being created: first selected day at the start of its slot. */
+export const getDraftStartDate = (
+  days: ReadonlyArray<DayKey>,
+  slots: Record<DayKey, TimeRange>,
+): string => {
+  const firstDay = [...days].sort()[0];
+  return buildStartDate(firstDay, slots[firstDay]?.start ?? '00:00');
+};
+
 /** Intersection of several time ranges, `null` when empty. */
 export const intersectTimeRanges = (ranges: ReadonlyArray<TimeRange>): TimeRange | null => {
   if (ranges.length === 0) return null;
