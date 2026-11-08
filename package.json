@@ -2,6 +2,9 @@
   "name": "crazer",
   "version": "1.0.0",
   "main": "expo-router/entry",
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",

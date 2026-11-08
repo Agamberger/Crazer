@@ -3,20 +3,14 @@
   "configurations": [
     {
       "name": "expo-web-local",
-      "runtimeExecutable": "bash",
-      "runtimeArgs": [
-        "scripts/expo-web-local.sh",
-        "ci"
-      ],
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["CI=1", "npx", "expo", "start", "--web", "--port", "8081", "--clear"],
       "port": 8081
     },
     {
       "name": "expo-web-local-watch",
-      "runtimeExecutable": "bash",
-      "runtimeArgs": [
-        "scripts/expo-web-local.sh",
-        "watch"
-      ],
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["expo", "start", "--web", "--port", "8081"],
       "port": 8081
     }
   ]
