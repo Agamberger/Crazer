@@ -14,6 +14,7 @@ jest.mock('../services/outingSchedulingService', () => ({
     fetchAvailabilities: jest.fn(),
     fetchMembers: jest.fn(),
     fetchMyInvitations: jest.fn(),
+    fetchMyNonAttendingOutingIds: jest.fn(),
   },
 }));
 
@@ -112,10 +113,13 @@ describe('useOutingSchedulingStore', () => {
       invitedAt: '2026-11-01',
     };
     service.fetchMyInvitations.mockResolvedValueOnce([invitation]);
+    service.fetchMyNonAttendingOutingIds.mockResolvedValueOnce(['o1', 'o-declined']);
     await useOutingSchedulingStore.getState().fetchInvitations('bob');
     expect(useOutingSchedulingStore.getState().invitations).toEqual([invitation]);
+    expect(useOutingSchedulingStore.getState().nonAttendingOutingIds).toEqual(['o1', 'o-declined']);
 
     service.fetchMyInvitations.mockRejectedValueOnce(new Error('offline'));
+    service.fetchMyNonAttendingOutingIds.mockResolvedValueOnce([]);
     await expect(useOutingSchedulingStore.getState().fetchInvitations('bob')).resolves.toEqual([]);
     expect(useOutingSchedulingStore.getState().error).toBe('offline');
   });
@@ -134,10 +138,23 @@ describe('useOutingSchedulingStore', () => {
     expect(fetchOutingById).toHaveBeenCalledWith('o1');
   });
 
-  it('refuser ne recharge pas la sortie', async () => {
+  it('refuser ne recharge pas la sortie et la range parmi celles non suivies', async () => {
     service.respondToInvitation.mockResolvedValue();
+    useOutingSchedulingStore.setState({ nonAttendingOutingIds: ['o1'] });
+
     await useOutingSchedulingStore.getState().respondToInvitation('o1', 'declined', []);
+
     expect(fetchOutingById).not.toHaveBeenCalled();
+    expect(useOutingSchedulingStore.getState().nonAttendingOutingIds).toEqual(['o1']);
+  });
+
+  it('accepter retire la sortie des sorties non suivies', async () => {
+    service.respondToInvitation.mockResolvedValue();
+    useOutingSchedulingStore.setState({ nonAttendingOutingIds: ['o1', 'o2'] });
+
+    await useOutingSchedulingStore.getState().respondToInvitation('o1', 'accepted', []);
+
+    expect(useOutingSchedulingStore.getState().nonAttendingOutingIds).toEqual(['o2']);
   });
 
   it('charge la planification d’une sortie', async () => {

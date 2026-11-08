@@ -84,6 +84,7 @@ const mockCancelledOuting: OutingRow = {
 
 describe('AddPoiToOutingModal', () => {
   const mockOnClose = jest.fn();
+  const mockOnCreateNewOuting = jest.fn();
   const mockOnSuccess = jest.fn();
 
   beforeEach(() => {
@@ -103,7 +104,7 @@ describe('AddPoiToOutingModal', () => {
       <AddPoiToOutingModal
         visible={true}
         poi={null}
-        onClose={mockOnClose}
+        onClose={mockOnClose} onCreateNewOuting={mockOnCreateNewOuting}
       />
     );
     expect(queryByTestId('modal-add-poi-to-outing')).toBeNull();
@@ -114,7 +115,7 @@ describe('AddPoiToOutingModal', () => {
       <AddPoiToOutingModal
         visible={true}
         poi={mockPoi}
-        onClose={mockOnClose}
+        onClose={mockOnClose} onCreateNewOuting={mockOnCreateNewOuting}
       />
     );
 
@@ -134,7 +135,7 @@ describe('AddPoiToOutingModal', () => {
       <AddPoiToOutingModal
         visible={true}
         poi={mockPoi}
-        onClose={mockOnClose}
+        onClose={mockOnClose} onCreateNewOuting={mockOnCreateNewOuting}
       />
     );
 
@@ -147,7 +148,7 @@ describe('AddPoiToOutingModal', () => {
       <AddPoiToOutingModal
         visible={true}
         poi={mockPoi}
-        onClose={mockOnClose}
+        onClose={mockOnClose} onCreateNewOuting={mockOnCreateNewOuting}
       />
     );
 
@@ -168,7 +169,7 @@ describe('AddPoiToOutingModal', () => {
       <AddPoiToOutingModal
         visible={true}
         poi={mockPoi}
-        onClose={mockOnClose}
+        onClose={mockOnClose} onCreateNewOuting={mockOnCreateNewOuting}
       />
     );
 
@@ -186,7 +187,7 @@ describe('AddPoiToOutingModal', () => {
       <AddPoiToOutingModal
         visible={true}
         poi={mockPoi}
-        onClose={mockOnClose}
+        onClose={mockOnClose} onCreateNewOuting={mockOnCreateNewOuting}
       />
     );
 
@@ -227,7 +228,7 @@ describe('AddPoiToOutingModal', () => {
       <AddPoiToOutingModal
         visible={true}
         poi={mockPoi}
-        onClose={mockOnClose}
+        onClose={mockOnClose} onCreateNewOuting={mockOnCreateNewOuting}
         onSuccess={mockOnSuccess}
       />
     );

@@ -41,6 +41,7 @@ describe('HomeScreen (Accueil)', () => {
   const mockFetchOutings = jest.fn();
   const mockCreateOuting = jest.fn();
   const mockFetchInvitations = jest.fn();
+  const mockFetchScheduling = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -55,7 +56,13 @@ describe('HomeScreen (Accueil)', () => {
       fetchOutings: mockFetchOutings,
       createOuting: mockCreateOuting,
     });
-    useOutingSchedulingStore.setState({ invitations: [], fetchInvitations: mockFetchInvitations });
+    useOutingSchedulingStore.setState({
+      invitations: [],
+      nonAttendingOutingIds: [],
+      schedulingByOutingId: {},
+      fetchInvitations: mockFetchInvitations,
+      fetchScheduling: mockFetchScheduling,
+    });
   });
 
   test("salue l'utilisateur par son prénom et charge les sorties", () => {
@@ -76,7 +83,9 @@ describe('HomeScreen (Accueil)', () => {
     const { getByTestId, getByText, queryByText } = render(<HomeScreen />);
 
     expect(getByText('Bowling')).toBeTruthy();
-    expect(queryByText('Ciné')).toBeNull();
+    // The other upcoming outing moves to « À venir », the finished one is not listed.
+    expect(within(getByTestId('home-upcoming-outings')).getByText('Ciné')).toBeTruthy();
+    expect(queryByText('Terminée')).toBeNull();
 
     fireEvent.press(getByTestId('home-next-outing-card'));
 
@@ -135,6 +144,73 @@ describe('HomeScreen (Accueil)', () => {
       pathname: '/outing/[id]/join',
       params: { id: 'invited-outing' },
     });
+  });
+
+  test('liste les prochaines sorties dans « À venir » et ouvre celle choisie', () => {
+    useOutingsStore.setState({
+      outings: [
+        makeOuting({ id: 'next', title: 'Bowling', start_date: inDays(1) }),
+        makeOuting({ id: 'later', title: 'Ciné', start_date: inDays(10) }),
+      ],
+    });
+    const { getByTestId } = render(<HomeScreen />);
+
+    fireEvent.press(getByTestId('home-upcoming-later'));
+
+    expect(useOutingsStore.getState().selectedOutingId).toBe('later');
+    expect(router.push).toHaveBeenCalledWith('/(tabs)/sorties');
+  });
+
+  test('« + Sortie » ouvre l’assistant de création', () => {
+    useOutingsStore.setState({
+      outings: [
+        makeOuting({ id: 'next', start_date: inDays(1) }),
+        makeOuting({ id: 'later', start_date: inDays(10) }),
+      ],
+    });
+    const { getByText } = render(<HomeScreen />);
+
+    fireEvent.press(getByText('+ Sortie'));
+
+    expect(router.push).toHaveBeenCalledWith('/outing/create');
+  });
+
+  test('affiche les participants du prochain RDV et charge ses membres', () => {
+    useOutingsStore.setState({ outings: [makeOuting({ id: 'next', title: 'Bowling' })] });
+    useOutingSchedulingStore.setState({
+      schedulingByOutingId: {
+        next: {
+          days: [],
+          availabilities: [],
+          members: [
+            { userId: 'user-1', displayName: 'Alice', avatarUrl: null, status: 'accepted', isOrganizer: true },
+            { userId: 'bob', displayName: 'Bob', avatarUrl: null, status: 'accepted', isOrganizer: false },
+            { userId: 'lili', displayName: 'Lili', avatarUrl: null, status: 'invited', isOrganizer: false },
+          ],
+        },
+      },
+    });
+    const { getByTestId, getByText } = render(<HomeScreen />);
+
+    expect(mockFetchScheduling).toHaveBeenCalledWith({ id: 'next', created_by: 'user-1' });
+    expect(getByTestId('home-next-outing-participants')).toBeTruthy();
+    expect(getByText('2 participants · 1 en attente')).toBeTruthy();
+  });
+
+  test('masque les sorties dont on est seulement invité ou qu’on a refusées', () => {
+    useOutingsStore.setState({
+      outings: [
+        makeOuting({ id: 'invited', title: 'Glouglou', start_date: inDays(1) }),
+        makeOuting({ id: 'declined', title: 'Refusée', start_date: inDays(2) }),
+        makeOuting({ id: 'mine', title: 'Bowling', start_date: inDays(3) }),
+      ],
+    });
+    useOutingSchedulingStore.setState({ nonAttendingOutingIds: ['invited', 'declined'] });
+    const { getByText, queryByText } = render(<HomeScreen />);
+
+    expect(getByText('Bowling')).toBeTruthy();
+    expect(queryByText('Glouglou')).toBeNull();
+    expect(queryByText('Refusée')).toBeNull();
   });
 
   test('les raccourcis mènent à la carte et au profil, avec le nombre de demandes en attente', () => {

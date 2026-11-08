@@ -7,12 +7,17 @@ Premier onglet de l'app (`app/(tabs)/index.tsx`, route `/`). Elle donne un point
 | Bloc | Composant | Rôle |
 | :--- | :--- | :--- |
 | En-tête | `HomeHeader` | « Bonjour / Bonsoir, {prénom} 👋 » et l'avatar de l'utilisateur. |
-| Prochaine sortie | `NextOutingSection` | La sortie à mettre en avant (voir `getNextOuting`). Un appui ouvre son détail dans l'onglet **Sorties** ; « Voir tout » ouvre la liste. Sans sortie active : état vide avec « Organiser une sortie ». |
-| Raccourcis | `QuickActions` | Organiser une sortie (création puis ouverture dans **Sorties**), Explorer la carte, Mes amis (avec le nombre de demandes d'ami en attente). |
+| Invitations | `PendingInvitationsSection` (feature `outings`) | Invitations reçues et pas encore traitées ; un appui ouvre le parcours « Rejoindre » (`/outing/[id]/join`). |
+| Prochaine sortie | `NextOutingSection` | La sortie à mettre en avant (voir `getNextOuting`), avec l'heure et les participants (`ParticipantAvatars`, « 3 participants · 1 en attente »). Un appui ouvre son détail dans l'onglet **Sorties** ; « Voir tout » ouvre la liste. Sans sortie active : état vide avec « Organiser une sortie ». |
+| À venir | `UpcomingOutingsSection` | Les 5 prochaines sorties après la première (date et heure, voir `getUpcomingOutings`) et le bouton **« + Sortie »**. Masqué quand il n'y en a pas. |
+| Raccourcis | `QuickActions` | Organiser une sortie (ouvre l'assistant `/outing/create`), Explorer la carte, Mes amis (avec le nombre de demandes d'ami en attente). |
+
+Les sorties où l'utilisateur est seulement invité ou qu'il a refusées sont exclues (`useVisibleOutings`) : elles n'apparaissent que dans les invitations.
 
 ## Logique (`utils/homeUtils.ts`)
 
 - `getNextOuting(outings, now)` : parmi les sorties actives (ni `done` ni `cancelled`), la plus proche à venir ; sinon une sortie `ongoing` ; sinon la plus récente passée, pour ne jamais masquer un brouillon.
+- `getUpcomingOutings(outings, now, excludeId, limit)` : sorties actives à venir, la plus proche d'abord, sans celle déjà mise en avant, limitées à `UPCOMING_OUTINGS_LIMIT` (5). `formatUpcomingDate(iso)` : « mer. 11 nov. · 18:00 ».
 - `getGreeting(date)` : « Bonjour » de 5 h à 18 h, « Bonsoir » sinon.
 - `getFirstName(fullName, email)` : premier mot du nom complet, sinon la partie locale de l'email.
 
@@ -22,5 +27,6 @@ L'écran Sorties (`app/(tabs)/sorties.tsx`) affiche le détail de la sortie sél
 
 ## Tests
 
-- `src/features/home/__tests__/homeUtils.test.ts` : choix de la prochaine sortie, salutation, prénom.
-- `app/(tabs)/__tests__/home.test.tsx` : rendu de l'écran, navigation, création de sortie, erreur et raccourcis.
+- `src/features/home/__tests__/homeUtils.test.ts` : choix de la prochaine sortie, sorties à venir, formatage, salutation, prénom.
+- `src/features/home/__tests__/UpcomingOutingsSection.test.tsx` : liste « À venir » et « + Sortie ».
+- `app/(tabs)/__tests__/home.test.tsx` : rendu de l'écran, navigation, assistant de création, invitations, participants, sorties masquées et raccourcis.

@@ -3,13 +3,15 @@ import { bindSetToSession, registerUserScopedStore } from '@/shared/store/sessio
 import { OutingRow, ParticipantStatus } from '@/shared/types';
 import { outingSchedulingService } from '../services/outingSchedulingService';
 import { AvailabilitySlot, OutingDraft, OutingInvitation, OutingScheduling } from '../types/scheduling';
-import { buildStartDate, slotsToPayload } from '../utils/availabilityUtils';
+import { getDraftStartDate, slotsToPayload } from '../utils/availabilityUtils';
 import { useOutingsStore } from './useOutingsStore';
 
 export type InvitationResponse = Exclude<ParticipantStatus, 'invited'>;
 
 interface OutingSchedulingState {
   invitations: OutingInvitation[];
+  /** Outings the user is linked to without attending: pending invitation or declined. */
+  nonAttendingOutingIds: string[];
   isLoadingInvitations: boolean;
   schedulingByOutingId: Record<string, OutingScheduling>;
   isLoadingScheduling: boolean;
@@ -30,11 +32,14 @@ interface OutingSchedulingState {
   ) => Promise<void>;
 }
 
+const withoutId = (ids: string[], id: string): string[] => ids.filter((v) => v !== id);
+
 const errorMessage = (err: unknown, fallback: string): string =>
   err instanceof Error ? err.message : fallback;
 
 export const useOutingSchedulingStore = create<OutingSchedulingState>((set) => ({
   invitations: [],
+  nonAttendingOutingIds: [],
   isLoadingInvitations: false,
   schedulingByOutingId: {},
   isLoadingScheduling: false,
@@ -46,8 +51,11 @@ export const useOutingSchedulingStore = create<OutingSchedulingState>((set) => (
     const setLive = bindSetToSession(set);
     setLive({ isLoadingInvitations: true, error: null });
     try {
-      const invitations = await outingSchedulingService.fetchMyInvitations(userId);
-      setLive({ invitations, isLoadingInvitations: false });
+      const [invitations, nonAttendingOutingIds] = await Promise.all([
+        outingSchedulingService.fetchMyInvitations(userId),
+        outingSchedulingService.fetchMyNonAttendingOutingIds(userId),
+      ]);
+      setLive({ invitations, nonAttendingOutingIds, isLoadingInvitations: false });
       return invitations;
     } catch (err: unknown) {
       setLive({
@@ -87,10 +95,9 @@ export const useOutingSchedulingStore = create<OutingSchedulingState>((set) => (
     setLive({ isSubmitting: true, error: null });
     try {
       const slots = slotsToPayload(draft.days, draft.slots);
-      const firstDay = [...draft.days].sort()[0];
       const outingId = await outingSchedulingService.createOutingWithInvites({
         title: draft.title.trim(),
-        startDate: buildStartDate(firstDay, draft.slots[firstDay]?.start ?? '00:00'),
+        startDate: getDraftStartDate(draft.days, draft.slots),
         days: [...draft.days].sort(),
         slots,
         inviteeIds: draft.inviteeIds,
@@ -114,6 +121,10 @@ export const useOutingSchedulingStore = create<OutingSchedulingState>((set) => (
       await outingSchedulingService.respondToInvitation(outingId, response, slots);
       setLive((state) => ({
         invitations: state.invitations.filter((inv) => inv.outing.id !== outingId),
+        nonAttendingOutingIds:
+          response === 'declined'
+            ? [...withoutId(state.nonAttendingOutingIds, outingId), outingId]
+            : withoutId(state.nonAttendingOutingIds, outingId),
         isSubmitting: false,
       }));
       if (response !== 'declined') {

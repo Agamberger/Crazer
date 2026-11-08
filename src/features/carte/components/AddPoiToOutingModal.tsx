@@ -8,6 +8,7 @@ export interface AddPoiToOutingModalProps {
   poi: PlaceItem | null;
   onClose: () => void;
   onSuccess?: (outing: OutingRow, plannedOuting: PlannedOutingRow) => void;
+  onCreateNewOuting: (place: PlaceItem) => Promise<void> | void;
 }
 
 export const AddPoiToOutingModal: React.FC<AddPoiToOutingModalProps> = ({
@@ -15,6 +16,7 @@ export const AddPoiToOutingModal: React.FC<AddPoiToOutingModalProps> = ({
   poi,
   onClose,
   onSuccess,
+  onCreateNewOuting,
 }) => {
   return (
     <AddPlaceToOutingModal
@@ -22,6 +24,7 @@ export const AddPoiToOutingModal: React.FC<AddPoiToOutingModalProps> = ({
       place={poi}
       onClose={onClose}
       onSuccess={onSuccess}
+      onCreateNewOuting={onCreateNewOuting}
     />
   );
 };

@@ -6,6 +6,7 @@ import {
   dayKeyToDate,
   DEFAULT_TIME_RANGE,
   formatDayLabel,
+  getDraftStartDate,
   intersectTimeRanges,
   normalizeTime,
   slotsToPayload,
@@ -120,6 +121,16 @@ describe('availabilityUtils', () => {
       expect(recaps[1].availableMembers).toHaveLength(0);
       expect(recaps[1].commonSlot).toBeNull();
     });
+  });
+
+  it('la date de début d’une sortie est le premier jour au début de son créneau', () => {
+    const slots = {
+      '2026-11-11': { start: '18:00', end: '23:00' },
+      '2026-11-10': { start: '12:30', end: '21:00' },
+    };
+    expect(getDraftStartDate(['2026-11-11', '2026-11-10'], slots)).toBe(
+      buildStartDate('2026-11-10', '12:30'),
+    );
   });
 
   it('compte les réponses en attente', () => {

@@ -5,10 +5,23 @@ import { useFriendsStore } from '@/features/profil';
 import { toast } from '@/shared/store/useToastStore';
 import { CREATION_STEPS, CreationStep, useOutingCreationStore } from '../store/useOutingCreationStore';
 import { useOutingSchedulingStore } from '../store/useOutingSchedulingStore';
-import { areSlotsValid } from '../utils/availabilityUtils';
+import { useOutingsStore } from '../store/useOutingsStore';
+import { areSlotsValid, getDraftStartDate } from '../utils/availabilityUtils';
+
+/** A saved place the outing is created around (it becomes the first step). */
+export interface WizardPlace {
+  id: string;
+  name: string;
+}
+
+/** Default length of the first step created from a place. */
+const PLACE_STEP_DURATION_MIN = 60;
 
 /** State and actions of the creation wizard (steps 1 to 4 of « Créer la sortie »). */
-export const useCreateOutingWizard = (onCreated: (outingId: string) => void) => {
+export const useCreateOutingWizard = (
+  onCreated: (outingId: string) => void,
+  place: WizardPlace | null = null,
+) => {
   const { user } = useAuth();
   // The wizard renders every draft field, so it subscribes to the whole draft (shallow-compared).
   const draft = useOutingCreationStore(useShallow((state) => state));
@@ -18,12 +31,24 @@ export const useCreateOutingWizard = (onCreated: (outingId: string) => void) => 
   const createOutingWithInvites = useOutingSchedulingStore((s) => s.createOutingWithInvites);
   const isSubmitting = useOutingSchedulingStore((s) => s.isSubmitting);
 
+  const addPlannedOuting = useOutingsStore((state) => state.addPlannedOuting);
+  const placeId = place?.id;
+  const placeName = place?.name;
+
   const step: CreationStep = CREATION_STEPS[draft.stepIndex];
   const isLastStep = draft.stepIndex === CREATION_STEPS.length - 1;
 
   useEffect(() => {
     if (user?.id) void fetchFriendsList(user.id);
   }, [user?.id, fetchFriendsList]);
+
+  // Opened from a place: start a fresh draft named after the place.
+  useEffect(() => {
+    if (!placeId) return;
+    const { reset, setTitle } = useOutingCreationStore.getState();
+    reset();
+    setTitle(placeName ?? '');
+  }, [placeId, placeName]);
 
   const canContinue = (() => {
     switch (step) {
@@ -38,6 +63,25 @@ export const useCreateOutingWizard = (onCreated: (outingId: string) => void) => 
     }
   })();
 
+  /** The place becomes the first step; a failure must not hide that the outing was created. */
+  const addPlaceStep = async (outingId: string, target: WizardPlace, userId: string) => {
+    try {
+      await addPlannedOuting({
+        outing_id: outingId,
+        place_id: target.id,
+        title: target.name,
+        scheduled_for: getDraftStartDate(draft.days, draft.slots),
+        duration_min: PLACE_STEP_DURATION_MIN,
+        status: 'pending',
+        created_by: userId,
+      });
+    } catch {
+      toast.warning("La sortie est créée, mais le lieu n'a pas pu être ajouté comme étape.", {
+        title: target.name,
+      });
+    }
+  };
+
   const submit = async () => {
     try {
       const outingId = await createOutingWithInvites({
@@ -46,6 +90,9 @@ export const useCreateOutingWizard = (onCreated: (outingId: string) => void) => 
         slots: draft.slots,
         inviteeIds: draft.inviteeIds,
       });
+      if (place && user?.id) {
+        await addPlaceStep(outingId, place, user.id);
+      }
       const count = draft.inviteeIds.length;
       toast.success(
         count > 0

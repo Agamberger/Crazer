@@ -136,6 +136,22 @@ describe('outingSchedulingService', () => {
     ]);
   });
 
+  it('fetchMyNonAttendingOutingIds retourne les sorties invitées ou refusées', async () => {
+    const inFn = jest.fn().mockResolvedValue({
+      data: [{ outing_id: 'o1' }, { outing_id: 'o2' }],
+      error: null,
+    });
+    const eq = jest.fn(() => ({ in: inFn }));
+    mockFrom.mockReturnValue({ select: jest.fn(() => ({ eq })) });
+
+    await expect(outingSchedulingService.fetchMyNonAttendingOutingIds('bob')).resolves.toEqual([
+      'o1',
+      'o2',
+    ]);
+    expect(eq).toHaveBeenCalledWith('user_id', 'bob');
+    expect(inFn).toHaveBeenCalledWith('status', ['invited', 'declined']);
+  });
+
   it('subscribeToOutingScheduling écoute les deux tables et se désabonne', () => {
     const channel = { on: jest.fn(), subscribe: jest.fn() };
     channel.on.mockReturnValue(channel);

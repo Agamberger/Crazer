@@ -1,11 +1,12 @@
 import React from 'react';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { useFriendsStore } from '@/features/profil';
 import { useToastStore } from '@/shared/store/useToastStore';
 import { CreateOutingWizard } from '../components/scheduling/CreateOutingWizard';
 import { useOutingCreationStore } from '../store/useOutingCreationStore';
 import { useOutingSchedulingStore } from '../store/useOutingSchedulingStore';
-import { DEFAULT_TIME_RANGE, toDayKey } from '../utils/availabilityUtils';
+import { useOutingsStore } from '../store/useOutingsStore';
+import { DEFAULT_TIME_RANGE, buildStartDate, toDayKey } from '../utils/availabilityUtils';
 
 jest.mock('@/shared/lib/supabase', () => ({ supabase: {} }));
 jest.mock('@/features/auth', () => ({
@@ -122,5 +123,87 @@ describe('CreateOutingWizard', () => {
     );
     expect(onCreated).not.toHaveBeenCalled();
     expect(useOutingCreationStore.getState().title).toBe('Glouglou');
+  });
+
+  describe('autour d’un lieu', () => {
+    const place = { id: 'place-uuid-1', name: 'Burger Gourmet' };
+    const addPlannedOuting = jest.fn();
+    const renderWithPlace = () =>
+      render(<CreateOutingWizard onCreated={onCreated} onClose={onClose} place={place} />);
+    // The wizard resets the draft when it opens around a place: fill it once mounted.
+    const fillDraft = () =>
+      act(() => {
+        useOutingCreationStore.setState({
+          stepIndex: 3,
+          title: 'Burger Gourmet',
+          days: [today],
+          slots: { [today]: DEFAULT_TIME_RANGE },
+        });
+      });
+
+    beforeEach(() => {
+      addPlannedOuting.mockReset();
+      useOutingsStore.setState({ addPlannedOuting });
+    });
+
+    test('préremplit le titre avec le nom du lieu et annonce la première étape', () => {
+      useOutingCreationStore.setState({ title: 'Ancien brouillon', stepIndex: 2 });
+      const { getByTestId, getByText } = renderWithPlace();
+
+      expect(getByTestId('input-outing-name').props.value).toBe('Burger Gourmet');
+      expect(getByText('📍 Burger Gourmet sera ajouté comme première étape.')).toBeTruthy();
+      expect(useOutingCreationStore.getState().stepIndex).toBe(0);
+    });
+
+    test('ajoute le lieu comme première étape au début du créneau de l’organisateur', async () => {
+      createOutingWithInvites.mockResolvedValue('outing-1');
+      addPlannedOuting.mockResolvedValue({});
+      const { getByText } = renderWithPlace();
+      fillDraft();
+
+      fireEvent.press(getByText("Envoyer l'invitation"));
+
+      await waitFor(() => expect(onCreated).toHaveBeenCalledWith('outing-1'));
+      expect(addPlannedOuting).toHaveBeenCalledWith({
+        outing_id: 'outing-1',
+        place_id: 'place-uuid-1',
+        title: 'Burger Gourmet',
+        scheduled_for: buildStartDate(today, DEFAULT_TIME_RANGE.start),
+        duration_min: 60,
+        status: 'pending',
+        created_by: 'alice',
+      });
+    });
+
+    test('la sortie reste créée avec un avertissement si l’étape ne peut pas être ajoutée', async () => {
+      createOutingWithInvites.mockResolvedValue('outing-1');
+      addPlannedOuting.mockRejectedValue(new Error('RLS'));
+      const { getByText } = renderWithPlace();
+      fillDraft();
+
+      fireEvent.press(getByText("Envoyer l'invitation"));
+
+      await waitFor(() => expect(onCreated).toHaveBeenCalledWith('outing-1'));
+      expect(useToastStore.getState().queue).toContainEqual(
+        expect.objectContaining({ tone: 'warning', title: 'Burger Gourmet' }),
+      );
+    });
+
+    test('sans lieu, aucune étape n’est ajoutée', async () => {
+      createOutingWithInvites.mockResolvedValue('outing-1');
+      useOutingCreationStore.setState({
+        stepIndex: 3,
+        title: 'Glouglou',
+        days: [today],
+        slots: { [today]: DEFAULT_TIME_RANGE },
+      });
+      const { getByText, queryByTestId } = renderWizard();
+
+      expect(queryByTestId('wizard-place-banner')).toBeNull();
+      fireEvent.press(getByText("Envoyer l'invitation"));
+
+      await waitFor(() => expect(onCreated).toHaveBeenCalled());
+      expect(addPlannedOuting).not.toHaveBeenCalled();
+    });
   });
 });
