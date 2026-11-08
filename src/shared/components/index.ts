@@ -15,7 +15,10 @@ export * from './Checkbox';
 export * from './Toggle';
 export * from './SegmentedControl';
 export * from './ChipGroup';
+export * from './MultiChipGroup';
+export * from './MultiDateCalendar';
 export * from './DateTimeField';
+export * from './TimeRangeField';
 export * from './DateTimePicker';
 
 // Affichage

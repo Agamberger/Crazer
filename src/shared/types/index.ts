@@ -56,6 +56,23 @@ export const PLANNED_OUTING_STATUS_CONFIG: Record<
   cancelled: { label: 'Annulée', emoji: '❌' },
 };
 
+/** Outing participants, candidate days and availabilities (scheduling workflow) */
+export type OutingParticipantRow = Database['public']['Tables']['outing_participants']['Row'];
+export type ParticipantStatus = Enums<'participant_status'>;
+export type OutingDayRow = Database['public']['Tables']['outing_days']['Row'];
+export type OutingAvailabilityRow = Database['public']['Tables']['outing_availabilities']['Row'];
+
+/** Configuration UI (libellés & émojis) pour le statut d'un participant */
+export const PARTICIPANT_STATUS_CONFIG: Record<
+  ParticipantStatus,
+  { label: string; emoji: string }
+> = {
+  invited: { label: 'En attente', emoji: '✉️' },
+  accepted: { label: 'Vient', emoji: '✅' },
+  maybe: { label: 'Peut-être', emoji: '🤔' },
+  declined: { label: 'Ne vient pas', emoji: '❌' },
+};
+
 /** Alias rétro-compatible */
 export type SortieRow = OutingRow;
 export type Sortie = OutingRow;

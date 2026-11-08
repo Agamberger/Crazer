@@ -37,7 +37,7 @@ Les données de test sont découpées de manière modulaire dans le dossier `sup
 - `01_users.sql` : Création des comptes de test (`auth.users`, `auth.identities` et `profiles`).
 - `02_friendships.sql` : Relations d'amitié entre utilisateurs.
 - `03_places.sql` : Lieux et POIs de test (coordonnées PostGIS).
-- `04_outings.sql` : Sorties, participants et étapes planifiées.
+- `04_outings.sql` : Sorties, participants et étapes planifiées. Also seeds the scheduling workflow: candidate days and Alice's availability for the rooftop outing (`c2222…`), with a pending invitation for Bob.
 
 ### Comptes de Test par Défaut
 
@@ -59,6 +59,15 @@ Les données de test sont découpées de manière modulaire dans le dossier `sup
 4. **`outings`** : Sorties organisées entre amis (`draft`, `planned`, `ongoing`, `done`, `cancelled`).
 5. **`outing_participants`** : Participants invités/inscrits aux sorties (`invited`, `accepted`, `declined`, `maybe`).
 6. **`planned_outings`** : Étapes planifiées au sein d'une sortie, liées à des lieux et triées par heure.
+7. **`outing_days`**: candidate days of an outing, chosen by the organizer (unique per outing).
+8. **`outing_availabilities`**: one time slot (`start_time` < `end_time`) per member and per candidate day; a composite FK guarantees the day is one of the outing's `outing_days`.
+
+### Scheduling RPCs (outing creation workflow)
+
+- **`create_outing_with_invites(p_title, p_start_date, p_days, p_slots, p_invitee_ids)`**: atomically creates a `draft` outing, adds the organizer as an `accepted` participant, its candidate days, the organizer's slots and the invitations. Only accepted friends can be invited; any error rolls everything back.
+- **`respond_to_outing_invitation(p_outing_id, p_status, p_slots)`**: an invitee accepts (`accepted` / `maybe`) with their slots, or declines (slots are deleted).
+- `p_slots` format: `[{"day": "YYYY-MM-DD", "start": "HH:MM", "end": "HH:MM"}]`.
+- Realtime: `outing_participants` and `outing_availabilities` are in the `supabase_realtime` publication (RLS applies to `postgres_changes`).
 
 ---
 
@@ -66,6 +75,7 @@ Les données de test sont découpées de manière modulaire dans le dossier `sup
 
 - **RLS activé** sur toutes les tables de l'application.
 - Les fonctions auxiliaires `is_outing_organizer` et `is_outing_participant` en `SECURITY DEFINER` préviennent toute récursion infinie de sécurité entre `outings` et `outing_participants`.
+- Outing members (organizer and every participant, whatever their status) can read the outing's participants, days and availabilities; each member only writes their own availabilities. Tests: `supabase/tests/database/outing_scheduling.test.sql`.
 
 ---
 

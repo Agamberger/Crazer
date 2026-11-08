@@ -8,3 +8,15 @@ export * from './components/OutingEditForm';
 export * from './components/OutingEditScreen';
 export * from './components/PlannedOutingEditScreen';
 export * from './hooks/useOutingEditing';
+
+// Scheduling workflow: creation wizard, invitations, availabilities, live recap
+export * from './types/scheduling';
+export * from './utils/availabilityUtils';
+export * from './services/outingSchedulingService';
+export * from './store/useOutingCreationStore';
+export * from './store/useOutingSchedulingStore';
+export * from './hooks/useOutingScheduling';
+export * from './components/scheduling/CreateOutingWizard';
+export * from './components/scheduling/JoinOutingFlow';
+export * from './components/scheduling/AvailabilityRecap';
+export * from './components/scheduling/PendingInvitationsSection';

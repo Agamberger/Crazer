@@ -18,17 +18,34 @@ src/features/outings/
 │   ├── PlannedOutingEditForm.tsx  # Formulaire d'édition d'une étape, suppression via ConfirmDialog
 │   ├── PlannedOutingFormActions.tsx # Boutons Annuler / Enregistrer / Supprimer d'une étape
 │   ├── PlannedOutingEditScreen.tsx # Onglet Sorties : chargement / introuvable / PlannedOutingEditForm
-│   └── TimelineStep.tsx           # Une étape de la timeline (nœud, segments, carte)
+│   ├── TimelineStep.tsx           # Une étape de la timeline (nœud, segments, carte)
+│   └── scheduling/                # Creation workflow (steps 1–3 of the outing journey)
+│       ├── CreateOutingWizard.tsx # « On sort ! » → « Quand ? » → « Mes dispos » → « Avec qui ? »
+│       ├── WizardHeader.tsx       # Back / close + « Étape x/n »
+│       ├── OutingNameStep.tsx, OutingDaysStep.tsx, AvailabilityStep.tsx, InviteFriendsStep.tsx
+│       ├── JoinOutingFlow.tsx     # Invitee: Rejoindre ? → Quel jour ? → Dispos → Qui vient ?
+│       ├── AvailabilityRecap.tsx  # Live recap: common slot per day, pending answers, « Choisir ce jour »
+│       ├── DayRecapRow.tsx, MembersList.tsx
+│       └── InvitationCard.tsx, PendingInvitationsSection.tsx
 ├── constants.ts                   # DURATION_PRESETS, PLANNED_STATUS_OPTIONS (partagés avec carte), OUTING_STATUS_OPTIONS, OUTINGS_SCREEN_EDGES
 ├── hooks/
 │   ├── useOutings.ts              # Chargement / création / mise à jour des sorties
 │   ├── useOutingEditing.ts        # Onglet Sorties : sélection, chargement des étapes, enregistrer / supprimer / annuler
 │   ├── useOutingPlannedOutings.ts # Étapes d'une sortie éditée (store ou props du parent, ajout depuis la carte)
-│   └── usePlannedOutingEditForm.ts # Champs, validation, enregistrement et suppression d'une étape
+│   ├── usePlannedOutingEditForm.ts # Champs, validation, enregistrement et suppression d'une étape
+│   ├── useOutingScheduling.ts     # Days + availabilities + members of an outing, kept live (realtime)
+│   ├── useCreateOutingWizard.ts   # Wizard validation and submission
+│   ├── useJoinOutingFlow.ts       # Invitee flow (accept / decline, days, slots)
+│   └── useAvailabilityRecap.ts    # Recap + organizer's day choice (« continuer sans tout le monde ? »)
 ├── services/
-│   └── outingService.ts           # Requêtes Supabase (outings & planned_outings CRUD)
+│   ├── outingService.ts           # Requêtes Supabase (outings & planned_outings CRUD)
+│   └── outingSchedulingService.ts # Scheduling RPCs, days, availabilities, members, invitations, realtime
 ├── store/
-│   └── useOutingsStore.ts         # Store Zustand réactif gérant l'état des sorties et étapes
+│   ├── useOutingsStore.ts         # Store Zustand réactif gérant l'état des sorties et étapes
+│   ├── useOutingCreationStore.ts  # Wizard draft (title, days, slots, invitees, step)
+│   └── useOutingSchedulingStore.ts # Invitations, scheduling per outing, create / respond actions
+├── types/scheduling.ts            # DayKey, AvailabilitySlot, OutingMember, DayRecap, OutingInvitation…
+├── utils/availabilityUtils.ts     # Pure helpers: candidate days, common slot per day, payloads
 ├── __tests__/                     # Tests unitaires et composants
 │   ├── DurationField.test.tsx
 │   ├── OutingCard.test.tsx
@@ -118,6 +135,22 @@ function EditPlannedOutingScreen() {
 
 ### Gestion des erreurs d'enregistrement
 `updateOuting`, `updatePlannedOuting` et `deletePlannedOuting` ne lèvent pas d'exception : ils renvoient `null` / `false` et placent le message dans `error`. L'écran Sorties (`app/(tabs)/sorties.tsx`) ne referme donc le formulaire **que si l'opération a réussi**, pour ne pas perdre la saisie. Un échec de création de sortie ou de suppression d'étape est signalé par un toast.
+
+## 🗓️ Outing creation workflow (invitations & availability)
+
+Implements steps 1 to 3 of the « Parcours complet d'une sortie » note. Routes live in `app/outing/`:
+
+| Route | Screen | Purpose |
+| :--- | :--- | :--- |
+| `/outing/create` (modal) | `CreateOutingWizard` | Name, candidate days (any future day, picked in a month calendar), my slot per day, friends to invite. Calls the `create_outing_with_invites` RPC (atomic). |
+| `/outing/[id]/join` (modal) | `JoinOutingFlow` | Invitee accepts or declines, picks among the outing's candidate days (chips) and gives slots (`respond_to_outing_invitation`). |
+| `/outing/[id]/recap` | `AvailabilityRecap` | Live recap per day: who is available and the common slot (`computeDayRecaps`). The organizer picks a day → outing becomes `planned` with `start_date` = day + common slot start. |
+
+- Entry points: « Organiser une sortie » (home, Sorties tab) opens the wizard; pending invitations are listed on the home screen and the Sorties tab (`PendingInvitationsSection`); the outing edit form has a « Participants & dispos » button.
+- Dates are never voted: the app computes the intersection of the slots of `accepted` / `maybe` members per day. Invitees who have not answered are counted as pending, and the organizer can « continuer sans tout le monde ».
+- `useOutingScheduling(outingId)` subscribes to `outing_participants` and `outing_availabilities` changes and refetches, so the recap updates live.
+- `createOutingWithInvites` and `respondToInvitation` throw on failure (screens show a toast and keep the draft); fetch actions store the message in `error`.
+- The legacy one-tap `createOuting` is still used by the map's « + Créer une nouvelle sortie » (reworked in the explore/home entry points lot).
 
 ## 🧪 Tests
 

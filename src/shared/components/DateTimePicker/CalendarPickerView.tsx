@@ -11,6 +11,12 @@ export interface CalendarPickerViewProps {
   onPrevMonth: () => void;
   onNextMonth: () => void;
   onSelectDay: (day: number) => void;
+  /** Overrides the single-date selection (e.g. several selected days). */
+  isDaySelected?: (day: number) => boolean;
+  /** Disables some days of the viewed month (e.g. past days). */
+  isDayDisabled?: (day: number) => boolean;
+  /** Disables the previous-month button (e.g. when viewing the current month). */
+  disablePrevMonth?: boolean;
 }
 
 export const CalendarPickerView: React.FC<CalendarPickerViewProps> = ({
@@ -20,6 +26,9 @@ export const CalendarPickerView: React.FC<CalendarPickerViewProps> = ({
   onPrevMonth,
   onNextMonth,
   onSelectDay,
+  isDaySelected,
+  isDayDisabled,
+  disablePrevMonth = false,
 }) => {
   // Calcul des cases du calendrier
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -44,14 +53,22 @@ export const CalendarPickerView: React.FC<CalendarPickerViewProps> = ({
     calendarCells.push({ day: d, isCurrentMonth: false });
   }
 
+  // One row per week, so the grid never wraps differently depending on the container width.
+  const weeks = Array.from({ length: calendarCells.length / 7 }, (_, i) =>
+    calendarCells.slice(i * 7, i * 7 + 7),
+  );
+
   return (
     <View style={styles.calendarContainer}>
       {/* Entête navigation mois/année */}
       <View style={styles.monthHeader}>
         <TouchableOpacity
           onPress={onPrevMonth}
-          style={styles.navButton}
+          style={[styles.navButton, disablePrevMonth && styles.dayCellDisabled]}
+          disabled={disablePrevMonth}
           testID="btn-prev-month"
+          accessibilityRole="button"
+          accessibilityLabel="Mois précédent"
           activeOpacity={0.7}
         >
           <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
@@ -65,6 +82,8 @@ export const CalendarPickerView: React.FC<CalendarPickerViewProps> = ({
           onPress={onNextMonth}
           style={styles.navButton}
           testID="btn-next-month"
+          accessibilityRole="button"
+          accessibilityLabel="Mois suivant"
           activeOpacity={0.7}
         >
           <Ionicons name="chevron-forward" size={20} color={colors.textPrimary} />
@@ -82,38 +101,49 @@ export const CalendarPickerView: React.FC<CalendarPickerViewProps> = ({
 
       {/* Grille des jours */}
       <View style={styles.daysGrid}>
-        {calendarCells.map((cell, index) => {
-          const isSelected =
-            cell.isCurrentMonth &&
-            cell.day === selectedDate.getDate() &&
-            viewMonth === selectedDate.getMonth() &&
-            viewYear === selectedDate.getFullYear();
+        {weeks.map((week, weekIndex) => (
+          <View key={`week-${weekIndex}`} style={styles.weekRow}>
+            {week.map((cell, dayIndex) => {
+              const index = weekIndex * 7 + dayIndex;
+              const isSelected =
+                cell.isCurrentMonth &&
+                (isDaySelected
+                  ? isDaySelected(cell.day)
+                  : cell.day === selectedDate.getDate() &&
+                    viewMonth === selectedDate.getMonth() &&
+                    viewYear === selectedDate.getFullYear());
+              const isDisabled = !cell.isCurrentMonth || (isDayDisabled?.(cell.day) ?? false);
 
-          return (
-            <TouchableOpacity
-              key={`${index}-${cell.day}`}
-              style={[
-                styles.dayCell,
-                isSelected && styles.dayCellSelected,
-                !cell.isCurrentMonth && styles.dayCellDisabled,
-              ]}
-              disabled={!cell.isCurrentMonth}
-              onPress={() => onSelectDay(cell.day)}
-              testID={cell.isCurrentMonth ? `day-cell-${cell.day}` : undefined}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[
-                  styles.dayText,
-                  isSelected && styles.dayTextSelected,
-                  !cell.isCurrentMonth && styles.dayTextDisabled,
-                ]}
-              >
-                {cell.day}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+              return (
+                <TouchableOpacity
+                  key={`${index}-${cell.day}`}
+                  style={[
+                    styles.dayCell,
+                    isSelected && styles.dayCellSelected,
+                    isDisabled && styles.dayCellDisabled,
+                  ]}
+                  disabled={isDisabled}
+                  accessibilityState={
+                    cell.isCurrentMonth ? { selected: isSelected, disabled: isDisabled } : undefined
+                  }
+                  onPress={() => onSelectDay(cell.day)}
+                  testID={cell.isCurrentMonth ? `day-cell-${cell.day}` : undefined}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.dayText,
+                      isSelected && styles.dayTextSelected,
+                      isDisabled && styles.dayTextDisabled,
+                    ]}
+                  >
+                    {cell.day}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ))}
       </View>
     </View>
   );
@@ -149,10 +179,7 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeights.bold,
   },
   daysGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 4,
-    justifyContent: 'space-between',
   },
   monthHeader: {
     alignItems: 'center',
@@ -176,6 +203,10 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeights.semibold,
     textAlign: 'center',
     width: 38,
+  },
+  weekRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   weekHeader: {
     flexDirection: 'row',
