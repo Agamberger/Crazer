@@ -94,6 +94,13 @@ describe('outing routes', () => {
     expect(router.replace).toHaveBeenCalledWith('/(tabs)/sorties');
   });
 
+  it('recap : continuer sélectionne la sortie et ouvre l’onglet Sorties sans la planifier', () => {
+    const { getByText } = render(<OutingRecapRoute />);
+    fireEvent.press(getByText('onContinue'));
+    expect(mockSelectOuting).toHaveBeenCalledWith('o1');
+    expect(router.replace).toHaveBeenCalledWith('/(tabs)/sorties');
+  });
+
   it('recap : fermer sans historique ramène à l’onglet Sorties', () => {
     router.canGoBack.mockReturnValueOnce(false);
     const { getByText } = render(<OutingRecapRoute />);

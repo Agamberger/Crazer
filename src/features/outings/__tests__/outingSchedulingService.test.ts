@@ -21,7 +21,6 @@ describe('outingSchedulingService', () => {
 
     const id = await outingSchedulingService.createOutingWithInvites({
       title: 'Glouglou',
-      startDate: '2026-11-10T17:00:00.000Z',
       days: ['2026-11-10'],
       slots: [{ day: '2026-11-10', start: '18:00', end: '23:00' }],
       inviteeIds: ['bob'],
@@ -30,7 +29,6 @@ describe('outingSchedulingService', () => {
     expect(id).toBe('outing-1');
     expect(mockRpc).toHaveBeenCalledWith('create_outing_with_invites', {
       p_title: 'Glouglou',
-      p_start_date: '2026-11-10T17:00:00.000Z',
       p_days: ['2026-11-10'],
       p_slots: [{ day: '2026-11-10', start: '18:00', end: '23:00' }],
       p_invitee_ids: ['bob'],
@@ -42,7 +40,6 @@ describe('outingSchedulingService', () => {
     await expect(
       outingSchedulingService.createOutingWithInvites({
         title: 'X',
-        startDate: '2026-11-10T17:00:00.000Z',
         days: ['2026-11-10'],
         slots: [],
         inviteeIds: ['stranger'],

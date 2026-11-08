@@ -1,3 +1,4 @@
+import { UNDATED_OUTING_LABEL } from '@/shared/constants/outings';
 import { OutingRow } from '@/shared/types';
 
 /** Une sortie est « active » tant qu'elle n'est ni terminée ni annulée. */
@@ -13,7 +14,8 @@ const toTime = (value: string | null): number | null => {
 /**
  * Prochaine sortie à mettre en avant sur l'accueil :
  * la sortie active la plus proche à venir, sinon une sortie en cours,
- * sinon la sortie active la plus récemment passée (pour ne jamais masquer un brouillon).
+ * sinon la sortie active datée la plus récemment passée,
+ * sinon (rien d'autre) une sortie sans date — pour ne jamais masquer un brouillon.
  */
 export const getNextOuting = (outings: OutingRow[], now: Date = new Date()): OutingRow | null => {
   const active = outings.filter(isActiveOuting);
@@ -31,17 +33,18 @@ export const getNextOuting = (outings: OutingRow[], now: Date = new Date()): Out
   const ongoing = active.find((outing) => outing.status === 'ongoing');
   if (ongoing) return ongoing;
 
-  return [...active].sort(
-    (a, b) => (toTime(b.start_date) ?? 0) - (toTime(a.start_date) ?? 0),
-  )[0];
+  const past = active
+    .filter((outing) => toTime(outing.start_date) !== null)
+    .sort((a, b) => (toTime(b.start_date) ?? 0) - (toTime(a.start_date) ?? 0));
+  return past[0] ?? active[0];
 };
 
 /** Max outings listed in the « À venir » section. */
 export const UPCOMING_OUTINGS_LIMIT = 5;
 
 /**
- * Active outings still to come, soonest first. `excludeId` skips the outing already
- * highlighted as « Prochaine sortie ».
+ * Active outings still to come, soonest first, followed by the active outings without a date
+ * (in the given order). `excludeId` skips the outing already highlighted as « Prochaine sortie ».
  */
 export const getUpcomingOutings = (
   outings: OutingRow[],
@@ -50,17 +53,20 @@ export const getUpcomingOutings = (
   limit: number = UPCOMING_OUTINGS_LIMIT,
 ): OutingRow[] => {
   const nowTime = now.getTime();
-  return outings
+  const candidates = outings.filter((outing) => isActiveOuting(outing) && outing.id !== excludeId);
+  const dated = candidates
     .filter((outing) => {
       const time = toTime(outing.start_date);
-      return isActiveOuting(outing) && outing.id !== excludeId && time !== null && time >= nowTime;
+      return time !== null && time >= nowTime;
     })
-    .sort((a, b) => (toTime(a.start_date) ?? 0) - (toTime(b.start_date) ?? 0))
-    .slice(0, limit);
+    .sort((a, b) => (toTime(a.start_date) ?? 0) - (toTime(b.start_date) ?? 0));
+  const undated = candidates.filter((outing) => outing.start_date === null);
+  return [...dated, ...undated].slice(0, limit);
 };
 
-/** « mer. 11 nov. · 18:00 » */
-export const formatUpcomingDate = (value: string): string => {
+/** « mer. 11 nov. · 18:00 », or « Date à définir » without date. */
+export const formatUpcomingDate = (value: string | null): string => {
+  if (value === null) return UNDATED_OUTING_LABEL;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
   const day = date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });

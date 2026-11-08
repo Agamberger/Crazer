@@ -48,7 +48,7 @@ describe('outingService', () => {
 
       expect(supabase.from).toHaveBeenCalledWith('outings');
       expect(selectMock).toHaveBeenCalledWith('*');
-      expect(orderMock).toHaveBeenCalledWith('start_date', { ascending: false });
+      expect(orderMock).toHaveBeenCalledWith('start_date', { ascending: false, nullsFirst: true });
       expect(result).toEqual(mockOutings);
     });
 
@@ -130,6 +130,7 @@ describe('outingService', () => {
       const createdRow: OutingRow = {
         id: 'out-999',
         ...newOuting,
+        start_date: newOuting.start_date ?? null,
         description: newOuting.description || null,
         status: 'draft',
         cover_image: null,

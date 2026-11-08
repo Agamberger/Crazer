@@ -64,7 +64,8 @@ Les données de test sont découpées de manière modulaire dans le dossier `sup
 
 ### Scheduling RPCs (outing creation workflow)
 
-- **`create_outing_with_invites(p_title, p_start_date, p_days, p_slots, p_invitee_ids)`**: atomically creates a `draft` outing, adds the organizer as an `accepted` participant, its candidate days, the organizer's slots and the invitations. Only accepted friends can be invited; any error rolls everything back.
+- **`create_outing_with_invites(p_title, p_days, p_slots, p_invitee_ids)`**: atomically creates an **undated** `draft` outing (`outings.start_date` is nullable since `outing_without_date`; the candidate days live in `outing_days`), adds the organizer as an `accepted` participant, its candidate days, the organizer's slots and the invitations. Only accepted friends can be invited; any error rolls everything back.
+- **Undated outings**: `outings.start_date` is `NULL` until a day is chosen. The trigger `check_planned_outing_scheduled_for` only enforces `scheduled_for >= start_date` when the outing has a date; `planned_outings.scheduled_for` stays required (the app defaults it to the outing date, else the first planned step's date, else the first candidate day). Setting a date on an outing moves earlier steps to that date (trigger `outings_align_planned_outings`).
 - **`respond_to_outing_invitation(p_outing_id, p_status, p_slots)`**: an invitee accepts (`accepted` / `maybe`) with their slots, or declines (slots are deleted).
 - `p_slots` format: `[{"day": "YYYY-MM-DD", "start": "HH:MM", "end": "HH:MM"}]`.
 - Realtime: `outing_participants` and `outing_availabilities` are in the `supabase_realtime` publication (RLS applies to `postgres_changes`).

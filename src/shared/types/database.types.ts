@@ -209,7 +209,7 @@ export type Database = {
           created_by: string
           description: string | null
           id: string
-          start_date: string
+          start_date: string | null
           status: Database["public"]["Enums"]["outing_status"]
           title: string
           updated_at: string
@@ -220,7 +220,7 @@ export type Database = {
           created_by: string
           description?: string | null
           id?: string
-          start_date: string
+          start_date?: string | null
           status?: Database["public"]["Enums"]["outing_status"]
           title: string
           updated_at?: string
@@ -231,7 +231,7 @@ export type Database = {
           created_by?: string
           description?: string | null
           id?: string
-          start_date?: string
+          start_date?: string | null
           status?: Database["public"]["Enums"]["outing_status"]
           title?: string
           updated_at?: string
@@ -633,7 +633,6 @@ export type Database = {
           p_days: string[]
           p_invitee_ids: string[]
           p_slots: Json
-          p_start_date: string
           p_title: string
         }
         Returns: string

@@ -3,7 +3,7 @@ import { outingSchedulingService } from '../services/outingSchedulingService';
 import { useOutingCreationStore } from '../store/useOutingCreationStore';
 import { useOutingSchedulingStore } from '../store/useOutingSchedulingStore';
 import { useOutingsStore } from '../store/useOutingsStore';
-import { DEFAULT_TIME_RANGE, buildStartDate } from '../utils/availabilityUtils';
+import { DEFAULT_TIME_RANGE } from '../utils/availabilityUtils';
 
 jest.mock('@/shared/lib/supabase', () => ({ supabase: {} }));
 jest.mock('../services/outingSchedulingService', () => ({
@@ -81,7 +81,6 @@ describe('useOutingSchedulingStore', () => {
     expect(id).toBe('outing-1');
     expect(service.createOutingWithInvites).toHaveBeenCalledWith({
       title: 'Glouglou',
-      startDate: buildStartDate('2026-11-10', '12:00'),
       days: ['2026-11-10', '2026-11-11'],
       slots: [
         { day: '2026-11-10', start: '12:00', end: '21:00' },

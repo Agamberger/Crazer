@@ -51,14 +51,10 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
 
   const [title, setTitle] = useState(outing.title || '');
   const [description, setDescription] = useState(outing.description || '');
-  const [startDate, setStartDate] = useState<Date>(() => {
-    if (outing.start_date) {
-      const parsed = new Date(outing.start_date);
-      if (!isNaN(parsed.getTime())) {
-        return parsed;
-      }
-    }
-    return new Date();
+  const [startDate, setStartDate] = useState<Date | null>(() => {
+    if (!outing.start_date) return null;
+    const parsed = new Date(outing.start_date);
+    return isNaN(parsed.getTime()) ? new Date() : parsed;
   });
   const [status, setStatus] = useState<OutingStatus>(outing.status || 'draft');
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -74,7 +70,7 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
     const updates: OutingUpdate = {
       title: title.trim(),
       description: description.trim() ? description.trim() : null,
-      start_date: startDate.toISOString(),
+      start_date: startDate ? startDate.toISOString() : null,
       status,
     };
 
@@ -125,7 +121,35 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
           testID="input-description"
         />
 
-        <DateTimeField label="Date et heure de début" value={startDate} onChange={setStartDate} />
+        {startDate ? (
+          <>
+            <DateTimeField
+              label="Date et heure de début"
+              value={startDate}
+              onChange={setStartDate}
+            />
+            <Button
+              title="Retirer la date"
+              variant="ghost"
+              size="sm"
+              leftIcon="close-circle-outline"
+              onPress={() => setStartDate(null)}
+              style={styles.dateButton}
+              testID="btn-clear-date"
+            />
+          </>
+        ) : (
+          <Button
+            title="Définir la date"
+            variant="secondary"
+            size="sm"
+            leftIcon="calendar-outline"
+            onPress={() => setStartDate(new Date())}
+            style={styles.dateButton}
+            accessibilityLabel="Définir la date de la sortie"
+            testID="btn-set-date"
+          />
+        )}
 
         <ChipGroup
           label="Statut de la sortie"
@@ -192,6 +216,9 @@ const styles = StyleSheet.create({
   contentContainer: {
     padding: spacing.md,
     paddingBottom: spacing.xxl,
+  },
+  dateButton: {
+    marginBottom: spacing.md,
   },
   participantsButton: {
     marginBottom: spacing.md,

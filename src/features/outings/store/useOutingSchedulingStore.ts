@@ -3,7 +3,7 @@ import { bindSetToSession, registerUserScopedStore } from '@/shared/store/sessio
 import { OutingRow, ParticipantStatus } from '@/shared/types';
 import { outingSchedulingService } from '../services/outingSchedulingService';
 import { AvailabilitySlot, OutingDraft, OutingInvitation, OutingScheduling } from '../types/scheduling';
-import { getDraftStartDate, slotsToPayload } from '../utils/availabilityUtils';
+import { slotsToPayload } from '../utils/availabilityUtils';
 import { useOutingsStore } from './useOutingsStore';
 
 export type InvitationResponse = Exclude<ParticipantStatus, 'invited'>;
@@ -97,7 +97,6 @@ export const useOutingSchedulingStore = create<OutingSchedulingState>((set) => (
       const slots = slotsToPayload(draft.days, draft.slots);
       const outingId = await outingSchedulingService.createOutingWithInvites({
         title: draft.title.trim(),
-        startDate: getDraftStartDate(draft.days, draft.slots),
         days: [...draft.days].sort(),
         slots,
         inviteeIds: draft.inviteeIds,

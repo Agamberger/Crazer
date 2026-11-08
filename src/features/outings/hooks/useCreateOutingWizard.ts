@@ -6,7 +6,7 @@ import { toast } from '@/shared/store/useToastStore';
 import { CREATION_STEPS, CreationStep, useOutingCreationStore } from '../store/useOutingCreationStore';
 import { useOutingSchedulingStore } from '../store/useOutingSchedulingStore';
 import { useOutingsStore } from '../store/useOutingsStore';
-import { areSlotsValid, getDraftStartDate } from '../utils/availabilityUtils';
+import { areSlotsValid, getFirstStepDate } from '../utils/availabilityUtils';
 
 /** A saved place the outing is created around (it becomes the first step). */
 export interface WizardPlace {
@@ -70,7 +70,7 @@ export const useCreateOutingWizard = (
         outing_id: outingId,
         place_id: target.id,
         title: target.name,
-        scheduled_for: getDraftStartDate(draft.days, draft.slots),
+        scheduled_for: getFirstStepDate(draft.days, draft.slots),
         duration_min: PLACE_STEP_DURATION_MIN,
         status: 'pending',
         created_by: userId,

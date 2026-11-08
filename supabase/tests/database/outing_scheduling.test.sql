@@ -12,7 +12,7 @@ BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET search_path = public, extensions;
 
-SELECT plan(16);
+SELECT plan(22);
 
 CREATE FUNCTION pg_temp.login(p_user UUID) RETURNS VOID LANGUAGE sql AS $$
   SELECT set_config('request.jwt.claims',
@@ -135,7 +135,7 @@ SELECT pg_temp.login('11111111-1111-1111-1111-111111111111'); -- Alice
 
 SELECT throws_ok(
   format(
-    $$ SELECT public.create_outing_with_invites('Sortie refusée', now(), ARRAY[%L]::date[],
+    $$ SELECT public.create_outing_with_invites('Sortie refusée', ARRAY[%L]::date[],
          '[]'::jsonb, ARRAY['33333333-3333-3333-3333-333333333333']::uuid[]) $$,
     CURRENT_DATE + 3),
   '42501', NULL,
@@ -148,7 +148,7 @@ SELECT is_empty(
 );
 
 SELECT public.create_outing_with_invites(
-  'Glouglou', now(), ARRAY[CURRENT_DATE + 3, CURRENT_DATE + 4]::date[],
+  'Glouglou', ARRAY[CURRENT_DATE + 3, CURRENT_DATE + 4]::date[],
   jsonb_build_array(jsonb_build_object('day', CURRENT_DATE + 3, 'start', '12:00', 'end', '21:00')),
   ARRAY['22222222-2222-2222-2222-222222222222']::uuid[]);
 
@@ -158,6 +158,50 @@ SELECT is(
    WHERE o.title = 'Glouglou'),
   2,
   'create_outing_with_invites : organisateur accepté + ami invité'
+);
+
+SELECT is(
+  (SELECT start_date FROM public.outings WHERE title = 'Glouglou'),
+  NULL::timestamptz,
+  'create_outing_with_invites : la sortie est créée sans date (start_date NULL)'
+);
+
+SELECT is(
+  (SELECT status::text FROM public.outings WHERE title = 'Glouglou'),
+  'draft',
+  'create_outing_with_invites : la sortie sans date est un brouillon'
+);
+
+-- ============================================================
+-- 4. Planned steps on undated / dated outings
+-- ============================================================
+SELECT lives_ok(
+  $$ INSERT INTO public.planned_outings (outing_id, title, scheduled_for, created_by)
+     SELECT id, 'Étape sans date', now() - INTERVAL '3 days', '11111111-1111-1111-1111-111111111111'
+     FROM public.outings WHERE title = 'Glouglou' $$,
+  'planned_outings : une étape peut être ajoutée à une sortie sans date'
+);
+
+SELECT lives_ok(
+  $$ UPDATE public.outings SET start_date = now() + INTERVAL '10 days' WHERE title = 'Glouglou' $$,
+  'outings : l''organisateur peut fixer une date plus tard'
+);
+
+SELECT cmp_ok(
+  (SELECT p.scheduled_for FROM public.planned_outings p
+   JOIN public.outings o ON o.id = p.outing_id
+   WHERE o.title = 'Glouglou' AND p.title = 'Étape sans date'),
+  '>=',
+  (SELECT start_date FROM public.outings WHERE title = 'Glouglou'),
+  'outings : fixer une date aligne les étapes antérieures sur cette date'
+);
+
+SELECT throws_ok(
+  $$ INSERT INTO public.planned_outings (outing_id, title, scheduled_for, created_by)
+     SELECT id, 'Trop tôt', now(), '11111111-1111-1111-1111-111111111111'
+     FROM public.outings WHERE title = 'Glouglou' $$,
+  'P0001', NULL,
+  'planned_outings : une étape antérieure à la date fixée reste refusée'
 );
 
 SELECT * FROM finish();

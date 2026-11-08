@@ -13,7 +13,6 @@ const DEFAULT_MEMBER_NAME = 'Utilisateur';
 
 export interface CreateOutingWithInvitesPayload {
   title: string;
-  startDate: string;
   days: DayKey[];
   slots: AvailabilitySlot[];
   inviteeIds: string[];
@@ -38,11 +37,10 @@ const fetchProfiles = async (ids: string[]): Promise<Map<string, ProfileSummary>
 };
 
 export const outingSchedulingService = {
-  /** Creates the outing, its days, the organizer's slots and the invitations atomically. */
+  /** Creates the undated `draft` outing, its days, the organizer's slots and the invitations atomically. */
   createOutingWithInvites: async (payload: CreateOutingWithInvitesPayload): Promise<string> => {
     const { data, error } = await supabase.rpc('create_outing_with_invites', {
       p_title: payload.title,
-      p_start_date: payload.startDate,
       p_days: payload.days,
       p_slots: payload.slots.map(({ day, start, end }) => ({ day, start, end })),
       p_invitee_ids: payload.inviteeIds,
