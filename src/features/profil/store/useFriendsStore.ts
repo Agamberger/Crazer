@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { bindSetToSession, registerUserScopedStore } from '@/shared/store/sessionReset';
 import { friendsService } from '../services/friendsService';
 import { UserSearchResult } from '../types';
 
@@ -32,26 +33,34 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
   setSearchQuery: (query) => set({ searchQuery: query }),
 
   searchUsers: async (query, currentUserId) => {
+    // Ignore les réponses arrivées après une déconnexion (compte suivant).
+    const setLive = bindSetToSession(set);
     const trimmed = query.trim();
-    set({ searchQuery: query });
+    setLive({ searchQuery: query });
 
     if (!trimmed) {
-      set({ searchResults: [], isSearching: false, error: null });
+      setLive({ searchResults: [], isSearching: false, error: null });
       return;
     }
 
-    set({ isSearching: true, error: null });
+    setLive({ isSearching: true, error: null });
+    // Une réponse lente ne doit pas écraser les résultats d'une saisie plus récente.
+    const isStale = () => get().searchQuery !== query;
     try {
       const results = await friendsService.searchUsers(trimmed, currentUserId);
-      set({ searchResults: results, isSearching: false });
+      if (isStale()) return;
+      setLive({ searchResults: results, isSearching: false });
     } catch (err: unknown) {
+      if (isStale()) return;
       const message = err instanceof Error ? err.message : 'Erreur de recherche';
-      set({ searchResults: [], isSearching: false, error: message });
+      setLive({ searchResults: [], isSearching: false, error: message });
     }
   },
 
   sendFriendRequest: async (currentUserId, targetUserId) => {
-    set({ error: null });
+    // Ignore les réponses arrivées après une déconnexion (compte suivant).
+    const setLive = bindSetToSession(set);
+    setLive({ error: null });
     try {
       const friendshipId = await friendsService.sendFriendRequest(currentUserId, targetUserId);
 
@@ -67,15 +76,17 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
         return user;
       });
 
-      set({ searchResults: updatedResults });
+      setLive({ searchResults: updatedResults });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erreur lors de l'envoi de la demande";
-      set({ error: message });
+      setLive({ error: message });
     }
   },
 
   acceptFriendRequest: async (friendshipId, currentUserId) => {
-    set({ error: null });
+    // Ignore les réponses arrivées après une déconnexion (compte suivant).
+    const setLive = bindSetToSession(set);
+    setLive({ error: null });
     try {
       await friendsService.acceptFriendRequest(friendshipId);
 
@@ -90,16 +101,18 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
         return user;
       });
 
-      set({ searchResults: updatedResults });
+      setLive({ searchResults: updatedResults });
       await get().fetchFriendsList(currentUserId);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erreur d'acceptation";
-      set({ error: message });
+      setLive({ error: message });
     }
   },
 
   removeFriendship: async (friendshipId, targetUserId) => {
-    set({ error: null });
+    // Ignore les réponses arrivées après une déconnexion (compte suivant).
+    const setLive = bindSetToSession(set);
+    setLive({ error: null });
     try {
       await friendsService.removeFriendship(friendshipId);
 
@@ -121,27 +134,32 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
         (f) => f.id !== targetUserId && f.friendshipId !== friendshipId
       );
 
-      set({
+      setLive({
         searchResults: updatedResults,
         friends: updatedFriends,
         pendingRequests: updatedPending,
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erreur de suppression';
-      set({ error: message });
+      setLive({ error: message });
     }
   },
 
   fetchFriendsList: async (currentUserId) => {
-    set({ isLoading: true, error: null });
+    // Ignore les réponses arrivées après une déconnexion (compte suivant).
+    const setLive = bindSetToSession(set);
+    setLive({ isLoading: true, error: null });
     try {
       const { friends, pendingRequests } = await friendsService.getFriendsList(currentUserId);
-      set({ friends, pendingRequests, isLoading: false });
+      setLive({ friends, pendingRequests, isLoading: false });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erreur de chargement de la liste d amitié';
-      set({ isLoading: false, error: message });
+      setLive({ isLoading: false, error: message });
     }
   },
 
   resetSearch: () => set({ searchResults: [], searchQuery: '', isSearching: false, error: null }),
 }));
+
+// Données propres au compte connecté : remises à zéro à la déconnexion.
+registerUserScopedStore(useFriendsStore);

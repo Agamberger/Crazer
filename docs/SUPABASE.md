@@ -102,8 +102,12 @@ Pour revenir au projet distant : `npm run env:remote` puis relancer Expo avec `-
 - **Git = Source de vérité absolue** : Le schéma de base de données est versionné sous `supabase/migrations/`.
 - **Pipeline CI/CD Supabase (`.github/workflows/supabase-db.yml`)** :
   - **Sur Pull Request** : Le CLI Supabase effectue un linting automatique (`supabase db lint`) pour valider la sécurité et la syntaxe des nouvelles migrations.
-  - **Sur Merge / Push dans `main`** : GitHub Actions applique automatiquement les migrations sur le projet Supabase de production avec `supabase db push`.
-- **Secrets GitHub requis pour le GitOps** :
-  - `SUPABASE_ACCESS_TOKEN` : Token d'accès CLI Supabase.
-  - `SUPABASE_DB_PASSWORD` : Mot de passe de la base de données Postgres Supabase.
+  - **Sur Pull Request** : les tests pgTAP (`supabase test db`) sont également exécutés.
+  - **Sur Merge / Push dans `main`** : GitHub Actions applique les migrations sur le projet Supabase de production avec `supabase db push` (précédé d'un `--dry-run` qui liste ce qui sera appliqué).
+  - **Version de la CLI épinglée** (`SUPABASE_CLI_VERSION` dans le workflow), identique à la devDependency `supabase` de `package.json` : ne jamais revenir à `latest`. Pour monter de version, la tester en local puis mettre à jour les deux. Le déploiement cible explicitement le projet lié (`db push --linked`).
+- **Environnement GitHub `production`** : le job de déploiement tourne dans cet environnement (*Settings → Environments → production*), sans jamais deux déploiements en parallèle :
+  - secrets `SUPABASE_ACCESS_TOKEN` (token d'accès CLI, *Account → Access Tokens*) et `SUPABASE_DB_PASSWORD` (mot de passe Postgres du projet), au niveau du dépôt ou de l'environnement ;
+  - **reviewers obligatoires** recommandés, pour valider chaque déploiement de schéma.
+  - Si un secret manque, le job échoue avec un message explicite et **rien n'est déployé**.
+- **Vérifier qu'une migration est bien en production** : `npx supabase migration list` (projet lié) ou l'onglet *Database → Migrations* du dashboard. Un merge sur `main` ne garantit pas le déploiement si le job a échoué.
 

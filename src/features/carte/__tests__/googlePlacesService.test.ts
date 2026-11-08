@@ -1,4 +1,5 @@
 import {
+  createPlacesSessionToken,
   fetchGooglePlaceAutocomplete,
   fetchGooglePlaceDetails,
   googlePlaceDetailsToPlaceItem,
@@ -183,6 +184,44 @@ describe('googlePlacesService', () => {
         formatted_phone_number: undefined,
         website: undefined,
       });
+    });
+  });
+  describe('session tokens (facturation groupée)', () => {
+    const okResponse = (body: Record<string, unknown>) =>
+      ({ json: jest.fn().mockResolvedValue(body) }) as unknown as Response;
+
+    test('createPlacesSessionToken génère des jetons UUID v4 distincts', () => {
+      const a = createPlacesSessionToken();
+      const b = createPlacesSessionToken();
+      expect(a).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+      expect(a).not.toBe(b);
+    });
+
+    test("transmet le même jeton à l'autocomplétion et au détail", async () => {
+      global.fetch = jest
+        .fn()
+        .mockResolvedValueOnce(okResponse({ status: 'OK', predictions: [] }))
+        .mockResolvedValueOnce(
+          okResponse({
+            status: 'OK',
+            result: { place_id: 'p', name: 'X', geometry: { location: { lat: 1, lng: 2 } } },
+          }),
+        );
+
+      await fetchGooglePlaceAutocomplete('Café', 'tok-123');
+      await fetchGooglePlaceDetails('p', 'tok-123');
+
+      const urls = (global.fetch as jest.Mock).mock.calls.map(([url]) => url as string);
+      expect(urls[0]).toContain('sessiontoken=tok-123');
+      expect(urls[1]).toContain('sessiontoken=tok-123');
+    });
+
+    test("n'ajoute pas de paramètre sessiontoken sans jeton", async () => {
+      global.fetch = jest.fn().mockResolvedValue(okResponse({ status: 'OK', predictions: [] }));
+
+      await fetchGooglePlaceAutocomplete('Café');
+
+      expect((global.fetch as jest.Mock).mock.calls[0][0]).not.toContain('sessiontoken');
     });
   });
 });

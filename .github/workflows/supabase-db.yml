@@ -45,6 +45,13 @@ jobs:
     needs: lint-migrations
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    # Environnement GitHub « production » : y ajouter des reviewers obligatoires pour
+    # valider chaque déploiement de schéma (les secrets du dépôt restent accessibles).
+    environment: production
+    # Jamais deux déploiements de migrations en parallèle
+    concurrency:
+      group: supabase-production
+      cancel-in-progress: false
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
@@ -64,4 +71,6 @@ jobs:
             exit 1
           fi
           supabase link --project-ref pqczmkchxhfufaufljxr
+          echo "Migrations qui vont être appliquées :"
+          supabase db push --linked --dry-run
           supabase db push --linked

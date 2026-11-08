@@ -1,6 +1,7 @@
 import React, { useEffect, useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useNavigation } from 'expo-router';
+import type { NavigationProp, NavigationState, ParamListBase } from '@react-navigation/native';
 import { AppText, Button, EmptyState, List, Loader, Screen } from '@/shared/components';
 import { useAuth } from '@/features/auth';
 import {
@@ -11,11 +12,22 @@ import {
 } from '@/features/outings';
 import { useFriends, PendingFriendRequestsBanner } from '@/features/profil';
 import { spacing } from '@/shared/constants/theme';
+import { toast } from '@/shared/store/useToastStore';
 import { OutingUpdate, PlannedOutingUpdate } from '@/shared/types';
+
+/** Navigation de l'onglet, avec l'événement `tabPress` du navigateur à onglets. */
+type TabNavigation = NavigationProp<
+  ParamListBase,
+  string,
+  undefined,
+  NavigationState,
+  object,
+  { tabPress: { data: undefined; canPreventDefault: true } }
+>;
 
 export default function SortiesScreen() {
   const { user } = useAuth();
-  const navigation = useNavigation();
+  const navigation = useNavigation<TabNavigation>();
 
   // Outings store state
   const outings = useOutingsStore((state) => state.outings);
@@ -45,7 +57,7 @@ export default function SortiesScreen() {
   }, [fetchOutings]);
 
   useEffect(() => {
-    if (user && typeof fetchFriendsList === 'function') {
+    if (user) {
       fetchFriendsList();
     }
   }, [user, fetchFriendsList]);
@@ -57,14 +69,12 @@ export default function SortiesScreen() {
   }, [selectedOutingId, selectedPlannedOutingId, fetchPlannedOutings]);
 
   useEffect(() => {
-    if (navigation && 'addListener' in navigation) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const unsubscribe = (navigation as any).addListener('tabPress', () => {
-        selectOuting(null);
-        selectPlannedOuting(null);
-      });
-      return unsubscribe;
-    }
+    // Un nouvel appui sur l'onglet ramène à la liste des sorties
+    const unsubscribe = navigation?.addListener?.('tabPress', () => {
+      selectOuting(null);
+      selectPlannedOuting(null);
+    });
+    return unsubscribe;
   }, [navigation, selectOuting, selectPlannedOuting]);
 
   const handleRefresh = useCallback(async () => {
@@ -72,7 +82,7 @@ export default function SortiesScreen() {
     try {
       await Promise.all([
         fetchOutings(),
-        user && typeof fetchFriendsList === 'function' ? fetchFriendsList() : Promise.resolve(),
+        user ? fetchFriendsList() : Promise.resolve(),
       ]);
     } finally {
       setRefreshing(false);
@@ -89,17 +99,19 @@ export default function SortiesScreen() {
 
   const handleCreateOuting = async () => {
     if (!user?.id) return;
-    await createOuting(user.id);
+    try {
+      await createOuting(user.id);
+    } catch {
+      toast.error('Impossible de créer la sortie. Réessaie dans un instant.', { title: 'Erreur' });
+    }
   };
 
+  // Les actions du store renvoient null / false en cas d'échec (message dans `error`) :
+  // le formulaire reste ouvert pour ne pas perdre la saisie.
   const handleUpdateOuting = async (updates: OutingUpdate) => {
     if (!selectedOutingId) return;
-    try {
-      await updateOuting(selectedOutingId, updates);
-      selectOuting(null);
-    } catch {
-      // Error handled in store
-    }
+    const updated = await updateOuting(selectedOutingId, updates);
+    if (updated) selectOuting(null);
   };
 
   const handleCancelEdit = () => {
@@ -108,21 +120,17 @@ export default function SortiesScreen() {
 
   const handleUpdatePlannedOuting = async (updates: PlannedOutingUpdate) => {
     if (!selectedPlannedOutingId) return;
-    try {
-      await updatePlannedOuting(selectedPlannedOutingId, updates);
-      selectPlannedOuting(null);
-    } catch {
-      // Error handled in store
-    }
+    const updated = await updatePlannedOuting(selectedPlannedOutingId, updates);
+    if (updated) selectPlannedOuting(null);
   };
 
   const handleDeletePlannedOuting = async () => {
     if (!selectedPlannedOutingId) return;
-    try {
-      await deletePlannedOuting(selectedPlannedOutingId);
+    const deleted = await deletePlannedOuting(selectedPlannedOutingId);
+    if (deleted) {
       selectPlannedOuting(null);
-    } catch {
-      // Error handled in store
+    } else {
+      toast.error("Impossible de supprimer l'étape. Réessaie dans un instant.", { title: 'Erreur' });
     }
   };
 

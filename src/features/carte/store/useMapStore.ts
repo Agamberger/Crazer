@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { registerUserScopedStore } from '@/shared/store/sessionReset';
 import { PlaceItem, PlaceCategoryFilter, MapStyleMode, MapRegion } from '../types/carte';
 
 // OpenStreetMap styles (Raster / Vector styles using standard Osm / CartoDB basemaps)
@@ -135,3 +136,6 @@ export const useMapStore = create<MapState>((set, get) => ({
     return get().getFilteredPlaces();
   },
 }));
+
+// Données propres au compte connecté : remises à zéro à la déconnexion.
+registerUserScopedStore(useMapStore);

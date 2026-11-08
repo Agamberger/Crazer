@@ -101,6 +101,9 @@ function EditPlannedOutingScreen() {
 
 ---
 
+### Gestion des erreurs d'enregistrement
+`updateOuting`, `updatePlannedOuting` et `deletePlannedOuting` ne lèvent pas d'exception : ils renvoient `null` / `false` et placent le message dans `error`. L'écran Sorties (`app/(tabs)/sorties.tsx`) ne referme donc le formulaire **que si l'opération a réussi**, pour ne pas perdre la saisie. Un échec de création de sortie ou de suppression d'étape est signalé par un toast.
+
 ## 🧪 Tests
 
 Exécuter la suite de tests dédiée au module :

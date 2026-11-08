@@ -8,6 +8,7 @@ import {
   SearchBar,
   SectionHeader,
 } from '@/shared/components';
+import { useDebouncedCallback } from '@/shared/hooks';
 import { spacing } from '@/shared/constants/theme';
 import { useFriends } from '../hooks/useFriends';
 import { UserSearchResult } from '../types';
@@ -39,7 +40,11 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({ visible, onClo
 
   const [selectedUser, setSelectedUser] = useState<UserSearchResult | null>(null);
 
+  // Une requête réseau par pause de frappe, pas par caractère.
+  const { run: debouncedSearch, cancel: cancelSearch } = useDebouncedCallback(searchUsers);
+
   const handleClose = () => {
+    cancelSearch();
     setSelectedUser(null);
     resetSearch();
     onClose();
@@ -47,7 +52,12 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({ visible, onClo
 
   const handleChangeText = (text: string) => {
     setSearchQuery(text);
-    searchUsers(text);
+    if (text.trim()) {
+      debouncedSearch(text);
+    } else {
+      cancelSearch();
+      searchUsers(text);
+    }
   };
 
   const currentSelectedUser = selectedUser

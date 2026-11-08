@@ -4,6 +4,7 @@ import { AppText, Chip, ListItem, SearchBar } from '@/shared/components';
 import { colors, radii, spacing, typography } from '@/shared/constants/theme';
 import { PlaceCategoryFilter, MapCategoryFilter, PlaceItem } from '../types/carte';
 import { useMapStore } from '../store/useMapStore';
+import { usePlacesSessionToken } from '../hooks/usePlacesSessionToken';
 import {
   fetchGooglePlaceAutocomplete,
   fetchGooglePlaceDetails,
@@ -46,6 +47,8 @@ export const MapHeaderSearch: React.FC<MapHeaderSearchProps> = ({
   const inputRef = useRef<React.ComponentRef<typeof TextInput>>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const justSelectedRef = useRef(false);
+  // Un jeton par session de recherche Google (frappes + détail du lieu choisi)
+  const { getToken: getSessionToken, endSession: endPlacesSession } = usePlacesSessionToken();
 
   // Gérer l'autocomplétion Google Places au fil de la frappe
   useEffect(() => {
@@ -57,33 +60,40 @@ export const MapHeaderSearch: React.FC<MapHeaderSearchProps> = ({
       return;
     }
 
+    // Ignore la réponse si la saisie a changé entre-temps
+    let isCurrent = true;
+
     if (searchQuery.trim().length >= 2 && isFocused) {
       debounceTimerRef.current = setTimeout(async () => {
         setIsSearchingGoogle(true);
         try {
-          const results = await fetchGooglePlaceAutocomplete(searchQuery);
+          const results = await fetchGooglePlaceAutocomplete(searchQuery, getSessionToken());
+          if (!isCurrent) return;
           setPredictions(results);
-          if (isFocused && !justSelectedRef.current) {
+          if (!justSelectedRef.current) {
             setIsDropdownVisible(results.length > 0);
           }
         } catch {
-          setPredictions([]);
+          if (isCurrent) setPredictions([]);
         } finally {
-          setIsSearchingGoogle(false);
+          if (isCurrent) setIsSearchingGoogle(false);
         }
       }, 350);
     } else if (searchQuery.trim().length < 2) {
+      // Recherche effacée : la prochaine saisie ouvre une nouvelle session Google
+      endPlacesSession();
       setPredictions([]);
       setIsDropdownVisible(false);
       setIsSearchingGoogle(false);
     }
 
     return () => {
+      isCurrent = false;
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [searchQuery, isFocused]);
+  }, [searchQuery, isFocused, getSessionToken, endPlacesSession]);
 
   const handleSelectCategory = (cat: PlaceCategoryFilter) => {
     setSelectedCategory(cat);
@@ -95,7 +105,7 @@ export const MapHeaderSearch: React.FC<MapHeaderSearchProps> = ({
     if (predictions.length > 0 && searchQuery.trim().length >= 2) {
       setIsDropdownVisible(true);
     } else if (searchQuery.trim().length >= 2) {
-      fetchGooglePlaceAutocomplete(searchQuery)
+      fetchGooglePlaceAutocomplete(searchQuery, getSessionToken())
         .then((results) => {
           setPredictions(results);
           if (!justSelectedRef.current) {
@@ -104,7 +114,7 @@ export const MapHeaderSearch: React.FC<MapHeaderSearchProps> = ({
         })
         .catch(() => {});
     }
-  }, [predictions.length, searchQuery]);
+  }, [predictions.length, searchQuery, getSessionToken]);
 
   const handleSelectPrediction = async (prediction: GoogleAutocompletePrediction) => {
     justSelectedRef.current = true;
@@ -118,7 +128,9 @@ export const MapHeaderSearch: React.FC<MapHeaderSearchProps> = ({
 
     try {
       setIsSearchingGoogle(true);
-      const details = await fetchGooglePlaceDetails(prediction.place_id);
+      const details = await fetchGooglePlaceDetails(prediction.place_id, getSessionToken());
+      // La session Google se termine avec la requête de détail
+      endPlacesSession();
       if (details) {
         const newPlace = googlePlaceDetailsToPlaceItem(details);
 

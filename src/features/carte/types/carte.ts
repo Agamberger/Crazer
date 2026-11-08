@@ -1,4 +1,5 @@
 import { Place, PlaceCategory, PlaceSource, CreatePlaceDto, PlaceSearchResult } from '@/shared/types';
+import { toDisplayImageUrl, toStorableImageRef } from '../utils/googlePhotos';
 
 export type PlaceCategoryFilter = 'all' | 'resto' | 'bar' | 'activite' | 'nature' | 'culture';
 
@@ -43,10 +44,12 @@ export interface PlaceItem {
  * Convertit une entité Place (ou PlaceSearchResult) en PlaceItem pour la carte.
  */
 export function placeToPlaceItem(place: Place | PlaceSearchResult): PlaceItem {
-  let images: string[] = [];
-  if (Array.isArray(place.images) && place.images.length > 0) {
-    images = place.images;
-  }
+  // Les références Google stockées (`google-photo:…`) sont résolues avec la clé de l'app.
+  const images: string[] = Array.isArray(place.images)
+    ? place.images
+        .map(toDisplayImageUrl)
+        .filter((url): url is string => Boolean(url))
+    : [];
 
   let openingHours: string[] | undefined;
   if (Array.isArray(place.opening_hours)) {
@@ -66,7 +69,8 @@ export function placeToPlaceItem(place: Place | PlaceSearchResult): PlaceItem {
     latitude: Number(place.latitude),
     longitude: Number(place.longitude),
     address: place.address || (place.city ? `${place.city}` : 'Adresse inconnue'),
-    rating: place.rating !== null ? Number(place.rating) : 4.0,
+    // 0 = pas de note (aucune note n'est inventée)
+    rating: place.rating !== null ? Number(place.rating) : 0,
     reviewsCount: place.reviews_count ?? 0,
     description: place.description || undefined,
     priceRange: place.price_range || undefined,
@@ -181,12 +185,14 @@ export function placeItemToCreatePlaceDto(
           ? (place.category as PlaceCategory)
           : 'autre');
 
-  const images =
+  // Jamais de clé API en base : les photos Google deviennent des références.
+  const images = (
     place.images && place.images.length > 0
       ? place.images
       : place.imageUrl
       ? [place.imageUrl]
-      : [];
+      : []
+  ).map(toStorableImageRef);
 
   const openingHoursStr = Array.isArray(place.openingHours)
     ? place.openingHours.join('\n')

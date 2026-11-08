@@ -4,6 +4,7 @@ import OutingsScreen from '../sorties';
 import { useOutingsStore } from '@/features/outings';
 import { OutingRow, PlannedOutingRow } from '@/shared/types';
 import { useNavigation } from 'expo-router';
+import { toast } from '@/shared/store/useToastStore';
 
 jest.mock('@/features/profil', () => ({
   useFriends: () => ({
@@ -13,6 +14,11 @@ jest.mock('@/features/profil', () => ({
     removeFriendship: jest.fn(),
   }),
   PendingFriendRequestsBanner: () => null,
+}));
+
+jest.mock('@/shared/store/useToastStore', () => ({
+  ...jest.requireActual('@/shared/store/useToastStore'),
+  toast: { error: jest.fn(), success: jest.fn(), info: jest.fn(), warning: jest.fn() },
 }));
 
 jest.mock('@/features/auth', () => ({
@@ -391,6 +397,65 @@ describe('OutingsScreen (Outings Tab)', () => {
 
       fireEvent.press(getByText('Retour à la sortie'));
       expect(useOutingsStore.getState().selectedPlannedOutingId).toBeNull();
+    });
+  });
+  describe('erreurs de sauvegarde', () => {
+    it("garde le formulaire de sortie ouvert si l'enregistrement échoue", async () => {
+      mockUpdateOuting.mockImplementation(async () => {
+        useOutingsStore.setState({ error: 'Erreur réseau' });
+        return null;
+      });
+      useOutingsStore.setState({ outings: [mockOuting], selectedOutingId: 'out-1' });
+
+      const { getByTestId } = render(<OutingsScreen />);
+      fireEvent.changeText(getByTestId('input-title'), 'Titre non sauvegardé');
+      fireEvent.press(getByTestId('btn-submit-outing-edit'));
+
+      await waitFor(() => expect(mockUpdateOuting).toHaveBeenCalled());
+      expect(useOutingsStore.getState().selectedOutingId).toBe('out-1');
+      expect(getByTestId('input-title').props.value).toBe('Titre non sauvegardé');
+    });
+
+    it("garde le formulaire d'étape ouvert si l'enregistrement échoue", async () => {
+      mockUpdatePlannedOuting.mockResolvedValue(null);
+      useOutingsStore.setState({
+        outings: [mockOuting],
+        selectedOutingId: 'out-1',
+        plannedOutings: [mockPlannedOuting],
+        selectedPlannedOutingId: 'po-1',
+      });
+
+      const { getByTestId } = render(<OutingsScreen />);
+      fireEvent.press(getByTestId('btn-submit-planned-edit'));
+
+      await waitFor(() => expect(mockUpdatePlannedOuting).toHaveBeenCalled());
+      expect(useOutingsStore.getState().selectedPlannedOutingId).toBe('po-1');
+    });
+
+    it("reste sur l'étape si la suppression échoue", async () => {
+      mockDeletePlannedOuting.mockResolvedValue(false);
+      useOutingsStore.setState({
+        outings: [mockOuting],
+        selectedOutingId: 'out-1',
+        plannedOutings: [mockPlannedOuting],
+        selectedPlannedOutingId: 'po-1',
+      });
+
+      const { getByTestId } = render(<OutingsScreen />);
+      fireEvent.press(getByTestId('btn-delete-planned-edit'));
+      fireEvent.press(getByTestId('confirm-delete-planned-confirm'));
+
+      await waitFor(() => expect(mockDeletePlannedOuting).toHaveBeenCalledWith('po-1'));
+      expect(useOutingsStore.getState().selectedPlannedOutingId).toBe('po-1');
+    });
+
+    it("affiche un toast si la création d'une sortie échoue", async () => {
+      mockCreateOuting.mockRejectedValue(new Error('RLS'));
+
+      const { getByText } = render(<OutingsScreen />);
+      fireEvent.press(getByText('+ Organiser une sortie'));
+
+      await waitFor(() => expect(toast.error).toHaveBeenCalled());
     });
   });
 });

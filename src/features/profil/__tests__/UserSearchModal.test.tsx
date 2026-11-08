@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { act, render, fireEvent, waitFor } from '@testing-library/react-native';
 import { UserListItem } from '../components/UserListItem';
 import { UserSearchModal } from '../components/UserSearchModal';
 import { UserProfileDetailModal } from '../components/UserProfileDetailModal';
@@ -180,5 +180,24 @@ describe('Composants UI - Recherche d utilisateurs et Amis', () => {
         expect(getByText("Profil de l'utilisateur")).toBeTruthy();
       });
     });
-  });
+      it('ne lance qu une requête après une frappe rapide (debounce)', () => {
+      jest.useFakeTimers();
+      (friendsService.searchUsers as jest.Mock).mockResolvedValue([]);
+      const { getByTestId } = render(<UserSearchModal visible onClose={jest.fn()} />);
+      const input = getByTestId('input-user-search');
+
+      fireEvent.changeText(input, 'L');
+      fireEvent.changeText(input, 'Lu');
+      fireEvent.changeText(input, 'Luc');
+      expect(friendsService.searchUsers).not.toHaveBeenCalled();
+
+      act(() => {
+        jest.advanceTimersByTime(300);
+      });
+
+      expect(friendsService.searchUsers).toHaveBeenCalledTimes(1);
+      expect(friendsService.searchUsers).toHaveBeenCalledWith('Luc', 'current-user-id');
+      jest.useRealTimers();
+    });
+});
 });

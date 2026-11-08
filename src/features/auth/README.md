@@ -41,6 +41,8 @@ Interagit directement avec l'instance `@supabase/supabase-js` :
 - `onAuthStateChange(callback)` : Abonnement temps réel aux changements de session Supabase.
 
 ### 2. Store Zustand (`useAuthStore.ts`)
+À la déconnexion (`logout()` ou événement `SIGNED_OUT` reçu de Supabase, par ex. session expirée), le store appelle `resetUserScopedStores()` (`@/shared/store`) : les stores enregistrés via `registerUserScopedStore` (sorties, amis, carte) reviennent à leur état initial, pour que le compte suivant ne voie jamais les données du précédent. **Tout nouveau store contenant des données d'utilisateur doit s'y enregistrer.** La remise à zéro invalide aussi les requêtes encore en cours : dans une action asynchrone, utiliser `const setLive = bindSetToSession(set)` (ou `captureUserSession()` hors d'un store) pour que les réponses arrivées après la déconnexion soient ignorées au lieu de réinjecter les données de l'ancien compte.
+
 Gère l'état global réactif de l'utilisateur et de la session :
 - `user: AuthUser | null`
 - `session: Session | null`

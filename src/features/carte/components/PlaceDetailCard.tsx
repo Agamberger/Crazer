@@ -146,15 +146,17 @@ export const PlaceDetailCard: React.FC<PlaceDetailCardProps> = ({
           📍 {place.address}
         </AppText>
 
-        <View style={[styles.row, styles.rating]}>
-          <AppText variant="bodySmall">⭐</AppText>
-          <AppText variant="bodySmall" weight="bold">
-            {place.rating.toFixed(1)}
-          </AppText>
-          <AppText variant="caption" color="muted">
-            ({place.reviewsCount} avis)
-          </AppText>
-        </View>
+        {place.rating > 0 ? (
+          <View style={[styles.row, styles.rating]} testID="place-rating">
+            <AppText variant="bodySmall">⭐</AppText>
+            <AppText variant="bodySmall" weight="bold">
+              {place.rating.toFixed(1)}
+            </AppText>
+            <AppText variant="caption" color="muted">
+              ({place.reviewsCount} avis)
+            </AppText>
+          </View>
+        ) : null}
 
         {isExpanded && (place.phone || place.website) ? (
           <View style={styles.contactRow} testID="contact-buttons-row">

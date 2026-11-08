@@ -4,12 +4,17 @@ import {
   CreatePlaceDto,
   PlaceCategory,
   PlaceSearchResult,
+  PlaceSource,
   SearchPlacesParams,
 } from '@/shared/types/place';
+
 import {
   PlaceItem,
   placeItemToCreatePlaceDto,
 } from '../types/carte';
+
+/** Code Postgres d'une violation de contrainte d'unicité. */
+const UNIQUE_VIOLATION = '23505';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Recherche de lieux (RPC search_places)
@@ -69,65 +74,90 @@ export async function fetchNearbyPlaces(
 // Création et Upsert de lieux
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Rayon (m) dans lequel un lieu du même nom est considéré comme identique. */
+export const SAME_PLACE_RADIUS_M = 75;
+
+/** Normalise un nom pour comparaison : minuscules, sans accents ni espaces superflus. */
+export function normalizePlaceName(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function hasValidCoordinates(latitude: number, longitude: number): boolean {
+  return (
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    Math.abs(latitude) <= 90 &&
+    Math.abs(longitude) <= 180 &&
+    !(latitude === 0 && longitude === 0)
+  );
+}
+
+/** Lieu déjà importé depuis le même provider (source + source_id). */
+async function findBySource(source: PlaceSource, sourceId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('places')
+    .select('id')
+    .eq('source', source)
+    .eq('source_id', sourceId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  return data?.id ?? null;
+}
+
+/** Lieu public du même nom à moins de SAME_PLACE_RADIUS_M mètres. */
+async function findSameNameNearby(
+  name: string,
+  latitude: number,
+  longitude: number,
+): Promise<string | null> {
+  const nearby = await searchPlaces({
+    query: name,
+    lat: latitude,
+    lng: longitude,
+    radius_m: SAME_PLACE_RADIUS_M,
+    max_results: 10,
+  });
+  const target = normalizePlaceName(name);
+  return nearby.find((place) => normalizePlaceName(place.name) === target)?.id ?? null;
+}
+
 /**
- * Upsert un lieu dans la base de données :
- * - Si le lieu existe déjà (même source + source_id, ou même nom + coordonnées proches), il est mis à jour
- * - Sinon, il est créé
+ * Retourne l'identifiant du lieu correspondant dans `places`, en le créant si besoin :
+ * 1. même provider + même `source_id` (lieu externe déjà importé) ;
+ * 2. même nom (casse et accents ignorés) à moins de 75 m ;
+ * 3. sinon, insertion d'un nouveau lieu.
+ *
+ * Un lieu existant n'est jamais réécrit : ses données appartiennent à son créateur.
  *
  * @param dto - Données du lieu à persister
  * @returns L'identifiant UUID du lieu dans Supabase
+ * @throws si les coordonnées sont invalides ou si Supabase renvoie une erreur
  */
 export async function upsertPlace(dto: CreatePlaceDto): Promise<string> {
-  // 1. Recherche par source_id si disponible
-  if (dto.source_id && dto.source !== 'custom') {
-    const { data: existingBySource } = await supabase
-      .from('places')
-      .select('id')
-      .eq('source', dto.source)
-      .eq('source_id', dto.source_id)
-      .maybeSingle();
+  const hasExternalId = Boolean(dto.source_id) && dto.source !== 'custom';
 
-    if (existingBySource?.id) {
-      // Mise à jour des informations enrichies
-      await supabase
-        .from('places')
-        .update({
-          name: dto.name,
-          category: dto.category,
-          address: dto.address,
-          description: dto.description,
-          phone: dto.phone,
-          website: dto.website,
-          opening_hours: dto.opening_hours,
-          price_range: dto.price_range,
-          rating: dto.rating,
-          reviews_count: dto.reviews_count,
-          images: dto.images,
-          tags: dto.tags,
-          metadata: dto.metadata as Json,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', existingBySource.id);
-
-      return existingBySource.id;
-    }
+  if (hasExternalId && dto.source_id) {
+    const existingId = await findBySource(dto.source, dto.source_id);
+    if (existingId) return existingId;
   }
 
-  // 2. Recherche par nom exact si c'est un lieu personnalisé ou si pas de source_id
-  const { data: existingByName } = await supabase
-    .from('places')
-    .select('id')
-    .ilike('name', dto.name)
-    .maybeSingle();
-
-  if (existingByName?.id) {
-    return existingByName.id;
+  if (!hasValidCoordinates(dto.latitude, dto.longitude)) {
+    throw new Error('Coordonnées du lieu invalides : impossible de l\'enregistrer.');
   }
 
-  // 3. Insertion d'un nouveau lieu (PostGIS geography point: POINT(lng lat))
-  const longitude = dto.longitude ?? 0;
-  const latitude = dto.latitude ?? 0;
-  const location = `POINT(${longitude} ${latitude})`;
+  const sameNameId = await findSameNameNearby(dto.name, dto.latitude, dto.longitude);
+  if (sameNameId) return sameNameId;
+
+  // PostGIS geography point : POINT(lng lat)
+  const location = `POINT(${dto.longitude} ${dto.latitude})`;
 
   const { data: newPlace, error: insertError } = await supabase
     .from('places')
@@ -160,7 +190,11 @@ export async function upsertPlace(dto: CreatePlaceDto): Promise<string> {
     .single();
 
   if (insertError) {
-    console.error('[placeService] Erreur lors de la création du lieu:', insertError);
+    // Import concurrent du même lieu externe : on récupère la ligne gagnante.
+    if (insertError.code === UNIQUE_VIOLATION && hasExternalId && dto.source_id) {
+      const existingId = await findBySource(dto.source, dto.source_id);
+      if (existingId) return existingId;
+    }
     throw new Error(insertError.message);
   }
 
@@ -201,7 +235,7 @@ export async function ensurePlaceExists(
       place.id,
     );
 
-  if (isUuid && !place.id.startsWith('custom-')) {
+  if (isUuid) {
     // Vérifier si l'ID existe déjà dans la base
     const { data: existing } = await supabase
       .from('places')

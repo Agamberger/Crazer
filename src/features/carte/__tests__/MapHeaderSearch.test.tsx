@@ -10,6 +10,7 @@ const mockGoogleService = googlePlacesService as jest.Mocked<typeof googlePlaces
 describe('MapHeaderSearch', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGoogleService.createPlacesSessionToken.mockReturnValue('session-tok');
   });
 
   test('rend la barre de recherche et les catégories', () => {
@@ -92,7 +93,12 @@ describe('MapHeaderSearch', () => {
     });
 
     await waitFor(() => {
-      expect(mockGoogleService.fetchGooglePlaceDetails).toHaveBeenCalledWith('place_1');
+      // Même jeton de session pour l'autocomplétion et le détail (facturation groupée)
+      expect(mockGoogleService.fetchGooglePlaceAutocomplete).toHaveBeenCalledWith(
+        expect.any(String),
+        'session-tok',
+      );
+      expect(mockGoogleService.fetchGooglePlaceDetails).toHaveBeenCalledWith('place_1', 'session-tok');
       expect(mockOnSelectGooglePlace).toHaveBeenCalledWith(
         expect.objectContaining({
           id: 'google-place_1',
@@ -102,5 +108,32 @@ describe('MapHeaderSearch', () => {
       // La liste d'autocomplétion doit être fermée
       expect(queryByTestId('autocomplete-dropdown')).toBeNull();
     });
+  });
+  test('démarre une nouvelle session Google quand la recherche est effacée puis reprise', async () => {
+    mockGoogleService.createPlacesSessionToken
+      .mockReturnValueOnce('session-1')
+      .mockReturnValueOnce('session-2');
+    mockGoogleService.fetchGooglePlaceAutocomplete.mockResolvedValue([]);
+
+    const { getByPlaceholderText } = render(<MapHeaderSearch />);
+    const input = getByPlaceholderText(/Rechercher un lieu/i);
+
+    fireEvent.changeText(input, 'Tour');
+    await waitFor(() =>
+      expect(mockGoogleService.fetchGooglePlaceAutocomplete).toHaveBeenLastCalledWith(
+        'Tour',
+        'session-1',
+      ),
+    );
+
+    // Recherche abandonnée (champ vidé) puis nouvelle recherche
+    fireEvent.changeText(input, '');
+    fireEvent.changeText(input, 'Bar');
+    await waitFor(() =>
+      expect(mockGoogleService.fetchGooglePlaceAutocomplete).toHaveBeenLastCalledWith(
+        'Bar',
+        'session-2',
+      ),
+    );
   });
 });

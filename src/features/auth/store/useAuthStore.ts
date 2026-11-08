@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { resetUserScopedStores } from '@/shared/store/sessionReset';
 import { authService } from '../services/authService';
 import { AUTH_EVENTS, AuthStore, SignInCredentials, SignUpCredentials } from '../types';
 
@@ -37,6 +38,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await authService.signOut();
+      resetUserScopedStores();
       set({ user: null, session: null, isLoading: false, error: null });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erreur lors de la déconnexion.';
@@ -55,6 +57,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       // Écouter les changements d'état Supabase Auth
       authService.onAuthStateChange((event, newSession) => {
         if (event === AUTH_EVENTS.SIGNED_OUT || (!newSession && event !== AUTH_EVENTS.INITIAL_SESSION)) {
+          resetUserScopedStores();
           set({ session: null, user: null });
         } else if (newSession?.user) {
           set({
@@ -68,7 +71,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           });
         }
       });
-    } catch (err: unknown) {
+    } catch {
       set({ isInitialized: true, isLoading: false });
     }
   },
