@@ -26,6 +26,11 @@ describe('OutingCard Component', () => {
     expect(getByText('Petite partie de bowling entre amis')).toBeTruthy();
   });
 
+  it('shows « Date à définir » when the outing has no date', () => {
+    const { getByText } = render(<OutingCard outing={{ ...mockOuting, start_date: null }} />);
+    expect(getByText('📅 Date à définir')).toBeTruthy();
+  });
+
   it('truncates very long titles with ellipsis', () => {
     const longOuting: OutingRow = {
       ...mockOuting,

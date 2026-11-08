@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppText, Badge, Card } from '@/shared/components';
+import { UNDATED_OUTING_LABEL } from '@/shared/constants/outings';
 import { spacing } from '@/shared/constants/theme';
 import { OutingRow, OUTING_STATUS_CONFIG } from '@/shared/types';
 
@@ -19,7 +20,7 @@ export const OutingCard: React.FC<OutingCardProps> = ({ outing, onPress, testID 
         hour: '2-digit',
         minute: '2-digit',
       })
-    : '';
+    : UNDATED_OUTING_LABEL;
 
   const statusConfig = OUTING_STATUS_CONFIG[outing.status];
   const statusText = statusConfig ? `${statusConfig.emoji} ${statusConfig.label}` : outing.status;

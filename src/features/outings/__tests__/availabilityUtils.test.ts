@@ -6,7 +6,7 @@ import {
   dayKeyToDate,
   DEFAULT_TIME_RANGE,
   formatDayLabel,
-  getDraftStartDate,
+  getFirstStepDate,
   intersectTimeRanges,
   normalizeTime,
   slotsToPayload,
@@ -128,7 +128,7 @@ describe('availabilityUtils', () => {
       '2026-11-11': { start: '18:00', end: '23:00' },
       '2026-11-10': { start: '12:30', end: '21:00' },
     };
-    expect(getDraftStartDate(['2026-11-11', '2026-11-10'], slots)).toBe(
+    expect(getFirstStepDate(['2026-11-11', '2026-11-10'], slots)).toBe(
       buildStartDate('2026-11-10', '12:30'),
     );
   });

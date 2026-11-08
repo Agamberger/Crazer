@@ -147,13 +147,13 @@ Implements steps 1 to 3 of the « Parcours complet d'une sortie » note. Routes 
 | :--- | :--- | :--- |
 | `/outing/create` (modal) | `CreateOutingWizard` | Name, candidate days (any future day, picked in a month calendar), my slot per day, friends to invite. Calls the `create_outing_with_invites` RPC (atomic). |
 | `/outing/[id]/join` (modal) | `JoinOutingFlow` | Invitee accepts or declines, picks among the outing's candidate days (chips) and gives slots (`respond_to_outing_invitation`). |
-| `/outing/[id]/recap` | `AvailabilityRecap` | Live recap per day: who is available and the common slot (`computeDayRecaps`). The organizer picks a day → outing becomes `planned` with `start_date` = day + common slot start. |
+| `/outing/[id]/recap` | `AvailabilityRecap` | Live recap per day: who is available and the common slot (`computeDayRecaps`). The organizer either picks a day (outing becomes `planned` with `start_date` = day + common slot start) or presses **« Continuer »** to open the outing in the Sorties tab edit form without any date. « Fermer » is secondary. |
 
 - Entry points: « Organiser une sortie » (home, Sorties tab) opens the wizard; pending invitations are listed on the home screen and the Sorties tab (`PendingInvitationsSection`); the outing edit form has a « Participants & dispos » button.
 - Dates are never voted: the app computes the intersection of the slots of `accepted` / `maybe` members per day. Invitees who have not answered are counted as pending, and the organizer can « continuer sans tout le monde ».
 - `useOutingScheduling(outingId)` subscribes to `outing_participants` and `outing_availabilities` changes and refetches, so the recap updates live.
 - `createOutingWithInvites` and `respondToInvitation` throw on failure (screens show a toast and keep the draft); fetch actions store the message in `error`.
-- **From a place** (map « + sortie » → « + Créer une nouvelle sortie »): `/outing/create?placeId=…&placeName=…` opens the wizard with the title prefilled and the place announced as the first step. After the outing is created, the place is added as a `pending` 60 min step at the start of the organizer's first slot (`getDraftStartDate`). If that step cannot be added, the outing is still created and a warning toast says so. The place must already be saved (`ensurePlaceExists`, done by the map).
+- **From a place** (map « + sortie » → « + Créer une nouvelle sortie »): `/outing/create?placeId=…&placeName=…` opens the wizard with the title prefilled and the place announced as the first step. After the outing is created, the place is added as a `pending` 60 min step at the start of the organizer's first slot (`getFirstStepDate`). If that step cannot be added, the outing is still created and a warning toast says so. The place must already be saved (`ensurePlaceExists`, done by the map).
 - **Outings the user does not attend**: `useOutingSchedulingStore.nonAttendingOutingIds` lists the outings where the user's participation is `invited` or `declined` (loaded with the invitations, updated by `respondToInvitation`). `useVisibleOutings()` removes them from every « my outings » list (home, Sorties tab, map outing picker), so a pending invitation only appears in the invitations section.
 - `useOutingMembers(outing)` loads an outing's participants once (home « Prochaine sortie »), and `ParticipantAvatars` shows who is coming (« 3 participants · 1 en attente »).
 - The legacy one-tap `createOuting` store action is no longer used by any screen.
@@ -173,3 +173,11 @@ Les formulaires utilisent le kit `@/shared/components` : `TextField` (variante `
 `multiline`), `DateTimeField`, `ChipGroup`, `InlineAlert`, `ConfirmDialog`, `AppModal`.
 La suppression d'une étape demande une confirmation via `ConfirmDialog`
 (`testID` : `confirm-delete-planned`) au lieu de `Alert.alert`.
+
+## Outings without a date
+
+`outings.start_date` is nullable: the wizard creates an undated `draft` outing (candidate days are in `outing_days`).
+- `OutingCard` and the Home « À venir » list show « Date à définir ».
+- `OutingEditForm` offers « Définir la date » / « Retirer la date »; saving without a date is allowed.
+- Default date of a new step (`resolveStepBaseDate` / `useStepBaseDate`, used by `createPlannedOuting` and the carte « Ajouter à une sortie » modal): the outing's `start_date`; for an undated outing, the first planned step's date, else the first candidate day at 18:00, else now. The DB requires `scheduled_for` but only checks it against `start_date` when one exists. The wizard's first step (opened from a place) uses the first candidate day at the start of the organizer's slot.
+- `fetchMyOutings` orders by `start_date` descending with undated outings first.

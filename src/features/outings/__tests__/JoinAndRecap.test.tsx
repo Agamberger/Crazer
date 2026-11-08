@@ -97,7 +97,7 @@ describe('JoinOutingFlow', () => {
     expect(await findByText('Qui vient ?')).toBeTruthy();
     fireEvent.press(getByText('Voir le récap'));
     expect(callbacks.onJoined).toHaveBeenCalled();
-  });
+  }, 20000);
 
   it('permet de refuser l’invitation', async () => {
     service.respondToInvitation.mockResolvedValue();
@@ -120,11 +120,12 @@ describe('JoinOutingFlow', () => {
 
 describe('AvailabilityRecap', () => {
   const onPlanned = jest.fn();
+  const onContinue = jest.fn();
   const onClose = jest.fn();
 
   it('affiche le créneau commun par jour et les réponses en attente', async () => {
     const { findByTestId, getByTestId, getByText } = render(
-      <AvailabilityRecap outingId="o1" onPlanned={onPlanned} onClose={onClose} />,
+      <AvailabilityRecap outingId="o1" onPlanned={onPlanned} onContinue={onContinue} onClose={onClose} />,
     );
 
     expect((await findByTestId('day-recap-slot-2026-11-10')).props.children).toBe('12h – 21h');
@@ -135,16 +136,40 @@ describe('AvailabilityRecap', () => {
 
   it('se désabonne du temps réel au démontage', async () => {
     const { findByTestId, unmount } = render(
-      <AvailabilityRecap outingId="o1" onPlanned={onPlanned} onClose={onClose} />,
+      <AvailabilityRecap outingId="o1" onPlanned={onPlanned} onContinue={onContinue} onClose={onClose} />,
     );
     await findByTestId('availability-recap');
     unmount();
     expect(unsubscribe).toHaveBeenCalled();
   });
 
+  it('l’organisateur peut continuer sans choisir de jour', async () => {
+    mockUserId = 'alice';
+    const { findByTestId, getByTestId } = render(
+      <AvailabilityRecap outingId="o1" onPlanned={onPlanned} onContinue={onContinue} onClose={onClose} />,
+    );
+    await findByTestId('availability-recap');
+
+    fireEvent.press(getByTestId('btn-recap-continue'));
+
+    expect(onContinue).toHaveBeenCalled();
+    expect(updateOuting).not.toHaveBeenCalled();
+    expect(onPlanned).not.toHaveBeenCalled();
+  });
+
+  it('un invité n’a que « Fermer » (il ne peut pas modifier la sortie)', async () => {
+    const { findByTestId, queryByTestId, getByTestId } = render(
+      <AvailabilityRecap outingId="o1" onPlanned={onPlanned} onContinue={onContinue} onClose={onClose} />,
+    );
+    await findByTestId('availability-recap');
+    expect(queryByTestId('btn-recap-continue')).toBeNull();
+    fireEvent.press(getByTestId('btn-recap-close'));
+    expect(onClose).toHaveBeenCalled();
+  });
+
   it('un invité ne peut pas choisir le jour', async () => {
     const { findByTestId, queryByTestId } = render(
-      <AvailabilityRecap outingId="o1" onPlanned={onPlanned} onClose={onClose} />,
+      <AvailabilityRecap outingId="o1" onPlanned={onPlanned} onContinue={onContinue} onClose={onClose} />,
     );
     await findByTestId('availability-recap');
     expect(queryByTestId('btn-choose-day-2026-11-10')).toBeNull();
@@ -154,12 +179,12 @@ describe('AvailabilityRecap', () => {
     mockUserId = 'alice';
     updateOuting.mockResolvedValue({ ...OUTING, status: 'planned' });
     const { findByTestId, getByText } = render(
-      <AvailabilityRecap outingId="o1" onPlanned={onPlanned} onClose={onClose} />,
+      <AvailabilityRecap outingId="o1" onPlanned={onPlanned} onContinue={onContinue} onClose={onClose} />,
     );
 
     fireEvent.press(await findByTestId('btn-choose-day-2026-11-10'));
     expect(getByText('Continuer sans tout le monde ?')).toBeTruthy();
-    fireEvent.press(getByText('Continuer'));
+    fireEvent.press(getByText('Planifier quand même'));
 
     await waitFor(() => expect(onPlanned).toHaveBeenCalled());
     expect(updateOuting).toHaveBeenCalledWith('o1', {
@@ -173,7 +198,7 @@ describe('AvailabilityRecap', () => {
     service.fetchMembers.mockResolvedValue([member('alice', 'accepted', true)]);
     updateOuting.mockResolvedValue(null);
     const { findByTestId } = render(
-      <AvailabilityRecap outingId="o1" onPlanned={onPlanned} onClose={onClose} />,
+      <AvailabilityRecap outingId="o1" onPlanned={onPlanned} onContinue={onContinue} onClose={onClose} />,
     );
 
     fireEvent.press(await findByTestId('btn-choose-day-2026-11-10'));

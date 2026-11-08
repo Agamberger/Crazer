@@ -11,7 +11,7 @@ import {
 import { spacing } from '@/shared/constants/theme';
 import { DurationField } from '@/features/outings/components/DurationField';
 import { PLANNED_STATUS_OPTIONS } from '@/features/outings/constants';
-import { OutingRow, PlannedOutingStatus } from '@/shared/types';
+import { PlannedOutingStatus } from '@/shared/types';
 import { PlaceItem } from '../types/carte';
 
 export interface PlannedStepValues {
@@ -38,8 +38,8 @@ const STATUS_OPTIONS = PLANNED_STATUS_OPTIONS.filter(
 );
 const DEFAULT_DURATION_MIN = 60;
 
-/** Pré-remplit l'étape avec les infos pratiques du lieu et la date de la sortie. */
-export const buildPlannedStepValues = (outing: OutingRow, place: PlaceItem): PlannedStepValues => {
+/** Pré-remplit l'étape avec les infos pratiques du lieu et la date de base de la sortie (voir `useStepBaseDate`). */
+export const buildPlannedStepValues = (baseDate: Date, place: PlaceItem): PlannedStepValues => {
   const notes: string[] = [];
   if (place.address) notes.push(`Adresse : ${place.address}`);
   if (place.phone) notes.push(`Tél : ${place.phone}`);
@@ -53,7 +53,7 @@ export const buildPlannedStepValues = (outing: OutingRow, place: PlaceItem): Pla
     title: place.title,
     description: place.description || '',
     notes: notes.join('\n\n'),
-    scheduledFor: new Date(outing.start_date || Date.now()),
+    scheduledFor: baseDate,
     durationMin: DEFAULT_DURATION_MIN,
     status: 'pending',
   };

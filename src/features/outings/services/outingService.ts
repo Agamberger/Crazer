@@ -10,13 +10,13 @@ import {
 
 export const outingService = {
   /**
-   * Fetches outings accessible by current user.
+   * Fetches outings accessible by current user, most recent first. Outings without a date come first.
    */
   fetchMyOutings: async (): Promise<OutingRow[]> => {
     const { data, error } = await supabase
       .from('outings')
       .select('*')
-      .order('start_date', { ascending: false });
+      .order('start_date', { ascending: false, nullsFirst: true });
 
     if (error) {
       throw new Error(error.message);

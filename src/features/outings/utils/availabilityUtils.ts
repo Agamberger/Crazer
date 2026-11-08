@@ -45,8 +45,8 @@ export const buildStartDate = (day: DayKey, time: string): string => {
   return date.toISOString();
 };
 
-/** Start of the outing being created: first selected day at the start of its slot. */
-export const getDraftStartDate = (
+/** Default `scheduled_for` of the first step added while creating an outing: first selected day at the start of its slot (the outing itself stays undated). */
+export const getFirstStepDate = (
   days: ReadonlyArray<DayKey>,
   slots: Record<DayKey, TimeRange>,
 ): string => {

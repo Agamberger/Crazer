@@ -12,13 +12,16 @@ export default function OutingRecapRoute() {
     else router.replace('/(tabs)/sorties');
   };
 
+  const openInSorties = () => {
+    selectOuting(id);
+    router.replace('/(tabs)/sorties');
+  };
+
   return (
     <AvailabilityRecap
       outingId={id}
-      onPlanned={() => {
-        selectOuting(id);
-        router.replace('/(tabs)/sorties');
-      }}
+      onPlanned={openInSorties}
+      onContinue={openInSorties}
       onClose={close}
     />
   );

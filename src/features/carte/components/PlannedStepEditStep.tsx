@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { AppText, Button } from '@/shared/components';
+import { useStepBaseDate } from '@/features/outings/hooks/useStepBaseDate';
+import { AppText, Button, Loader } from '@/shared/components';
 import { colors, radii, spacing } from '@/shared/constants/theme';
 import { OutingRow } from '@/shared/types';
 import { PlaceItem } from '../types/carte';
@@ -24,43 +25,51 @@ export const PlannedStepEditStep: React.FC<PlannedStepEditStepProps> = ({
   onSubmit,
   isSubmitting,
   error,
-}) => (
-  <ScrollView
-    style={styles.step}
-    contentContainerStyle={styles.scrollContent}
-    keyboardShouldPersistTaps="handled"
-    testID="step-edit-planned"
-  >
-    <View style={styles.parentOuting}>
-      <View style={styles.parentOutingText}>
-        <AppText variant="caption" color="muted">
-          Pour la sortie :
-        </AppText>
-        <AppText variant="bodySmall" color="accent" weight="bold" numberOfLines={1}>
-          {outing.title}
-        </AppText>
-      </View>
-      <Button
-        title="Changer"
-        variant="ghost"
-        size="sm"
-        leftIcon="arrow-back"
-        onPress={onChangeOuting}
-        accessibilityLabel="Changer de sortie"
-        testID="btn-back-to-outings-list"
-      />
-    </View>
+}) => {
+  const baseDate = useStepBaseDate(outing);
 
-    <PlannedStepForm
-      key={outing.id}
-      initialValues={buildPlannedStepValues(outing, place)}
-      onSubmit={onSubmit}
-      onCancel={onChangeOuting}
-      isSubmitting={isSubmitting}
-      error={error}
-    />
-  </ScrollView>
-);
+  return (
+    <ScrollView
+      style={styles.step}
+      contentContainerStyle={styles.scrollContent}
+      keyboardShouldPersistTaps="handled"
+      testID="step-edit-planned"
+    >
+      <View style={styles.parentOuting}>
+        <View style={styles.parentOutingText}>
+          <AppText variant="caption" color="muted">
+            Pour la sortie :
+          </AppText>
+          <AppText variant="bodySmall" color="accent" weight="bold" numberOfLines={1}>
+            {outing.title}
+          </AppText>
+        </View>
+        <Button
+          title="Changer"
+          variant="ghost"
+          size="sm"
+          leftIcon="arrow-back"
+          onPress={onChangeOuting}
+          accessibilityLabel="Changer de sortie"
+          testID="btn-back-to-outings-list"
+        />
+      </View>
+
+      {baseDate ? (
+        <PlannedStepForm
+          key={outing.id}
+          initialValues={buildPlannedStepValues(baseDate, place)}
+          onSubmit={onSubmit}
+          onCancel={onChangeOuting}
+          isSubmitting={isSubmitting}
+          error={error}
+        />
+      ) : (
+        <Loader message="Chargement..." testID="step-base-date-loader" />
+      )}
+    </ScrollView>
+  );
+};
 
 const styles = StyleSheet.create({
   parentOuting: {

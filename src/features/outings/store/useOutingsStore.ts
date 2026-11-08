@@ -9,6 +9,7 @@ import {
   PlannedOutingUpdate,
 } from '@/shared/types';
 import { outingService } from '../services/outingService';
+import { resolveStepBaseDate } from '../services/stepBaseDate';
 
 export interface CreatePlannedOutingOptions extends Partial<PlannedOutingInsert> {
   userId?: string;
@@ -202,10 +203,16 @@ export const useOutingsStore = create<OutingsState>((set, get) => ({
     setLive({ isLoadingPlannedOutings: true, error: null });
     try {
       const opts = options ?? {};
-      const currentSteps = get().plannedOutings;
       const parentOuting = get().outings.find((o) => o.id === outingId);
 
-      let scheduledFor = parentOuting?.start_date || new Date().toISOString();
+      // The base date is only needed for the first step; later steps chain after the last one.
+      const baseDate =
+        parentOuting && get().plannedOutings.length === 0
+          ? await resolveStepBaseDate(parentOuting)
+          : new Date();
+      const currentSteps = get().plannedOutings;
+
+      let scheduledFor = baseDate.toISOString();
 
       if (currentSteps.length > 0) {
         const lastStep = currentSteps[currentSteps.length - 1];

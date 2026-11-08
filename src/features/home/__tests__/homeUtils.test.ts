@@ -93,6 +93,51 @@ describe('getFirstName', () => {
   });
 });
 
+describe('sorties sans date', () => {
+  const undated = (id: string, status: OutingRow['status'] = 'draft') =>
+    makeOuting({ id, start_date: null, status });
+
+  test('getNextOuting préfère une sortie datée à venir à une sortie sans date', () => {
+    const next = getNextOuting(
+      [undated('u'), makeOuting({ id: 'd', start_date: '2026-09-10T18:00:00Z' })],
+      NOW
+    );
+    expect(next?.id).toBe('d');
+  });
+
+  test('getNextOuting préfère une sortie passée datée à une sortie sans date', () => {
+    const next = getNextOuting(
+      [undated('u'), makeOuting({ id: 'past', start_date: '2026-09-01T18:00:00Z' })],
+      NOW
+    );
+    expect(next?.id).toBe('past');
+  });
+
+  test("getNextOuting met en avant une sortie sans date quand il n'y a rien d'autre", () => {
+    expect(getNextOuting([undated('u'), undated('done', 'done')], NOW)?.id).toBe('u');
+  });
+
+  test('getUpcomingOutings liste les sorties sans date après les datées', () => {
+    const result = getUpcomingOutings(
+      [
+        undated('u1'),
+        makeOuting({ id: 'late', start_date: '2026-09-20T18:00:00Z' }),
+        undated('u2'),
+        makeOuting({ id: 'soon', start_date: '2026-09-06T18:00:00Z' }),
+        undated('cancelled', 'cancelled'),
+      ],
+      NOW
+    );
+    expect(result.map((o) => o.id)).toEqual(['soon', 'late', 'u1', 'u2']);
+  });
+
+  test('getUpcomingOutings exclut la sortie mise en avant, même sans date', () => {
+    expect(getUpcomingOutings([undated('u1'), undated('u2')], NOW, 'u1').map((o) => o.id)).toEqual([
+      'u2',
+    ]);
+  });
+});
+
 describe('getUpcomingOutings', () => {
   const at = (id: string, start: string, status: OutingRow['status'] = 'planned') =>
     makeOuting({ id, start_date: start, status });
@@ -134,6 +179,10 @@ describe('formatUpcomingDate', () => {
   test('formate le jour et l’heure en français', () => {
     const value = new Date(2026, 10, 11, 18, 5).toISOString();
     expect(formatUpcomingDate(value)).toMatch(/^mer\.? 11 nov\.? · 18:05$/);
+  });
+
+  test('indique « Date à définir » pour une sortie sans date', () => {
+    expect(formatUpcomingDate(null)).toBe('Date à définir');
   });
 
   test('retourne une chaîne vide pour une date invalide', () => {

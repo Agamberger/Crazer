@@ -2,7 +2,7 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { AddPlaceToOutingModal } from '../components/AddPlaceToOutingModal';
 import { PlaceItem } from '../types/carte';
-import { useOutingSchedulingStore, useOutingsStore } from '@/features/outings';
+import { outingSchedulingService, useOutingSchedulingStore, useOutingsStore } from '@/features/outings';
 import { ensurePlaceExists } from '../services/placeService';
 import { OutingRow, PlannedOutingRow } from '@/shared/types';
 import { useMapStore } from '../store/useMapStore';
@@ -164,6 +164,25 @@ describe('AddPlaceToOutingModal', () => {
     expect(getByTestId('input-planned-title').props.value).toBe('Café de Flore');
     expect(getByTestId('input-planned-description').props.value).toBe('Un célèbre café parisien.');
     expect(getByTestId('input-planned-notes').props.value).toContain('0145485526');
+  });
+
+  test("préremplit l'étape d'une sortie sans date avec son premier jour candidat", async () => {
+    jest.spyOn(outingSchedulingService, 'fetchOutingDays').mockResolvedValue(['2026-11-14']);
+    const undated: OutingRow = { ...mockActiveOuting, id: 'outing-undated', start_date: null };
+
+    const { getByTestId, queryByTestId, findByTestId } = render(
+      <AddPlaceToOutingModal
+        visible={true}
+        place={mockPlace}
+        initialOuting={undated}
+        onClose={mockOnClose} onCreateNewOuting={mockOnCreateNewOuting}
+      />
+    );
+
+    expect(getByTestId('step-base-date-loader')).toBeTruthy();
+    expect(queryByTestId('input-planned-title')).toBeNull();
+    expect((await findByTestId('input-planned-title')).props.value).toBe('Café de Flore');
+    expect(queryByTestId('step-base-date-loader')).toBeNull();
   });
 
   test('ouvre directement en étape 2 edit-planned si initialOuting est fourni', () => {

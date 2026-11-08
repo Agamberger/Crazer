@@ -40,7 +40,17 @@ const renderStep = (props: Partial<React.ComponentProps<typeof PlannedStepEditSt
     />,
   );
 
+jest.mock('@/features/outings/hooks/useStepBaseDate', () => ({
+  useStepBaseDate: jest.fn((o: OutingRow) => (o.start_date ? new Date(o.start_date) : null)),
+}));
+
 describe('PlannedStepEditStep', () => {
+  it('shows a loader until the base date of an undated outing is resolved', () => {
+    const { getByTestId, queryByTestId } = renderStep({ outing: { ...outing, start_date: null } });
+    expect(getByTestId('step-base-date-loader')).toBeTruthy();
+    expect(queryByTestId('input-planned-title')).toBeNull();
+  });
+
   it('reminds the chosen outing and prefills the step with the place', () => {
     const { getByTestId, getByText } = renderStep();
 

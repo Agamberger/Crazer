@@ -1,5 +1,6 @@
 import { useOutingsStore } from '../store/useOutingsStore';
 import { outingService } from '../services/outingService';
+import { resolveStepBaseDate } from '../services/stepBaseDate';
 import {
   OutingRow,
   OutingUpdate,
@@ -8,6 +9,7 @@ import {
   PlannedOutingUpdate,
 } from '@/shared/types';
 
+jest.mock('../services/stepBaseDate', () => ({ resolveStepBaseDate: jest.fn() }));
 jest.mock('../services/outingService', () => ({
   outingService: {
     fetchMyOutings: jest.fn(),
@@ -25,6 +27,9 @@ jest.mock('../services/outingService', () => ({
 describe('useOutingsStore', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (resolveStepBaseDate as jest.Mock).mockImplementation(
+      async (o: OutingRow) => new Date(o.start_date ?? Date.now())
+    );
     useOutingsStore.setState({
       outings: [],
       selectedOutingId: null,
@@ -355,6 +360,31 @@ describe('useOutingsStore', () => {
       );
       expect(result).toEqual(createdStep);
       expect(useOutingsStore.getState().plannedOutings).toEqual([createdStep]);
+    });
+
+    it('createPlannedOuting schedules the first step of an undated outing on its base date', async () => {
+      (resolveStepBaseDate as jest.Mock).mockResolvedValue(new Date('2026-11-14T18:00:00.000Z'));
+      {
+        const undated: OutingRow = {
+          id: 'out-1',
+          title: 'Sortie',
+          description: null,
+          start_date: null,
+          created_by: 'user-1',
+          status: 'draft',
+          cover_image: null,
+          created_at: '2026-08-24T20:00:00Z',
+          updated_at: '2026-08-24T20:00:00Z',
+        };
+        useOutingsStore.setState({ outings: [undated], plannedOutings: [] });
+        (outingService.createPlannedOuting as jest.Mock).mockResolvedValue({ id: 'po-1' });
+
+        await useOutingsStore.getState().createPlannedOuting('out-1', { userId: 'user-1' });
+
+        expect(outingService.createPlannedOuting).toHaveBeenCalledWith(
+          expect.objectContaining({ scheduled_for: '2026-11-14T18:00:00.000Z' })
+        );
+      }
     });
 
     it('addPlannedOuting adds a custom planned outing to store state', async () => {

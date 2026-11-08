@@ -55,6 +55,53 @@ describe('OutingEditForm Component', () => {
     useMapStore.setState({ targetOutingId: null });
   });
 
+  it('lets the user save an outing without date', async () => {
+    const onSubmit = jest.fn();
+    const { getByTestId, queryByTestId } = render(
+      <OutingEditForm outing={{ ...mockOuting, start_date: null }} onSubmit={onSubmit} />
+    );
+
+    expect(queryByTestId('btn-select-date')).toBeNull();
+    expect(getByTestId('btn-set-date')).toBeTruthy();
+
+    fireEvent.press(getByTestId('btn-submit-outing-edit'));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ start_date: null }))
+    );
+  });
+
+  it('lets the user define a date on an undated outing', async () => {
+    const onSubmit = jest.fn();
+    const { getByTestId } = render(
+      <OutingEditForm outing={{ ...mockOuting, start_date: null }} onSubmit={onSubmit} />
+    );
+
+    fireEvent.press(getByTestId('btn-set-date'));
+    expect(getByTestId('btn-select-date')).toBeTruthy();
+
+    fireEvent.press(getByTestId('btn-submit-outing-edit'));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ start_date: expect.any(String) })
+      )
+    );
+  });
+
+  it('lets the user remove the date of a dated outing', async () => {
+    const onSubmit = jest.fn();
+    const { getByTestId, queryByTestId } = render(
+      <OutingEditForm outing={mockOuting} onSubmit={onSubmit} />
+    );
+
+    fireEvent.press(getByTestId('btn-clear-date'));
+    expect(queryByTestId('btn-select-date')).toBeNull();
+
+    fireEvent.press(getByTestId('btn-submit-outing-edit'));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ start_date: null }))
+    );
+  });
+
   it('renders form fields pre-filled with outing data including editable title and formatted date and time', () => {
     const { getByTestId, getByText } = render(
       <OutingEditForm outing={mockOuting} onSubmit={jest.fn()} />

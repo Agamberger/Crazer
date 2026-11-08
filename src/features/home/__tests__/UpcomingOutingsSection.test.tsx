@@ -28,6 +28,14 @@ describe('UpcomingOutingsSection', () => {
     expect(toJSON()).toBeNull();
   });
 
+  test('affiche « Date à définir » pour une sortie sans date', () => {
+    const undated: OutingRow = { ...outings[0], id: 'u', title: 'Brunch', start_date: null };
+    const { getByText } = render(
+      <UpcomingOutingsSection outings={[undated]} onOpenOuting={jest.fn()} onCreateOuting={jest.fn()} />
+    );
+    expect(getByText('Date à définir')).toBeTruthy();
+  });
+
   test('liste les sorties avec leur date et ouvre celle choisie', () => {
     const onOpen = jest.fn();
     const { getByText, getByTestId } = render(
