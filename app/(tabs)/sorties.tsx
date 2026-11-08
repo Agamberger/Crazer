@@ -2,18 +2,19 @@ import React, { useEffect, useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useNavigation } from 'expo-router';
 import type { NavigationProp, NavigationState, ParamListBase } from '@react-navigation/native';
-import { AppText, Button, EmptyState, List, Loader, Screen } from '@/shared/components';
+import { AppText, Button, List, Screen } from '@/shared/components';
 import { useAuth } from '@/features/auth';
 import {
   OutingCard,
-  OutingEditForm,
-  PlannedOutingEditForm,
+  OutingEditScreen,
+  PlannedOutingEditScreen,
+  useOutingEditing,
   useOutingsStore,
 } from '@/features/outings';
+import { OUTINGS_SCREEN_EDGES } from '@/features/outings/constants';
 import { useFriends, PendingFriendRequestsBanner } from '@/features/profil';
 import { spacing } from '@/shared/constants/theme';
 import { toast } from '@/shared/store/useToastStore';
-import { OutingUpdate, PlannedOutingUpdate } from '@/shared/types';
 
 /** Navigation de l'onglet, avec l'événement `tabPress` du navigateur à onglets. */
 type TabNavigation = NavigationProp<
@@ -35,18 +36,21 @@ export default function SortiesScreen() {
   const error = useOutingsStore((state) => state.error);
   const fetchOutings = useOutingsStore((state) => state.fetchOutings);
   const createOuting = useOutingsStore((state) => state.createOuting);
-  const updateOuting = useOutingsStore((state) => state.updateOuting);
 
-  // Selection state
-  const selectedOutingId = useOutingsStore((state) => state.selectedOutingId);
-  const selectOuting = useOutingsStore((state) => state.selectOuting);
-  const selectedPlannedOutingId = useOutingsStore((state) => state.selectedPlannedOutingId);
-  const selectPlannedOuting = useOutingsStore((state) => state.selectPlannedOuting);
-  const plannedOutings = useOutingsStore((state) => state.plannedOutings);
-  const fetchPlannedOutings = useOutingsStore((state) => state.fetchPlannedOutings);
-  const updatePlannedOuting = useOutingsStore((state) => state.updatePlannedOuting);
-  const deletePlannedOuting = useOutingsStore((state) => state.deletePlannedOuting);
-  const isLoadingPlannedOutings = useOutingsStore((state) => state.isLoadingPlannedOutings);
+  // Outing / step edition
+  const {
+    selectedOutingId,
+    selectedPlannedOutingId,
+    plannedOutings,
+    isLoadingPlannedOutings,
+    selectOuting,
+    selectPlannedOuting,
+    handleUpdateOuting,
+    handleCancelEdit,
+    handleUpdatePlannedOuting,
+    handleDeletePlannedOuting,
+    handleCancelPlannedEdit,
+  } = useOutingEditing();
 
   const { pendingRequests, fetchFriendsList, acceptFriendRequest, removeFriendship } = useFriends();
 
@@ -63,12 +67,6 @@ export default function SortiesScreen() {
   }, [user, fetchFriendsList]);
 
   useEffect(() => {
-    if (selectedOutingId && !selectedPlannedOutingId) {
-      fetchPlannedOutings(selectedOutingId);
-    }
-  }, [selectedOutingId, selectedPlannedOutingId, fetchPlannedOutings]);
-
-  useEffect(() => {
     // Un nouvel appui sur l'onglet ramène à la liste des sorties
     const unsubscribe = navigation?.addListener?.('tabPress', () => {
       selectOuting(null);
@@ -80,10 +78,7 @@ export default function SortiesScreen() {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await Promise.all([
-        fetchOutings(),
-        user ? fetchFriendsList() : Promise.resolve(),
-      ]);
+      await Promise.all([fetchOutings(), user ? fetchFriendsList() : Promise.resolve()]);
     } finally {
       setRefreshing(false);
     }
@@ -106,127 +101,39 @@ export default function SortiesScreen() {
     }
   };
 
-  // Les actions du store renvoient null / false en cas d'échec (message dans `error`) :
-  // le formulaire reste ouvert pour ne pas perdre la saisie.
-  const handleUpdateOuting = async (updates: OutingUpdate) => {
-    if (!selectedOutingId) return;
-    const updated = await updateOuting(selectedOutingId, updates);
-    if (updated) selectOuting(null);
-  };
-
-  const handleCancelEdit = () => {
-    selectOuting(null);
-  };
-
-  const handleUpdatePlannedOuting = async (updates: PlannedOutingUpdate) => {
-    if (!selectedPlannedOutingId) return;
-    const updated = await updatePlannedOuting(selectedPlannedOutingId, updates);
-    if (updated) selectPlannedOuting(null);
-  };
-
-  const handleDeletePlannedOuting = async () => {
-    if (!selectedPlannedOutingId) return;
-    const deleted = await deletePlannedOuting(selectedPlannedOutingId);
-    if (deleted) {
-      selectPlannedOuting(null);
-    } else {
-      toast.error("Impossible de supprimer l'étape. Réessaie dans un instant.", { title: 'Erreur' });
-    }
-  };
-
-  const handleCancelPlannedEdit = () => {
-    selectPlannedOuting(null);
-  };
-
   // Case 1: Editing a selected planned outing
   if (selectedPlannedOutingId) {
-    const selectedPlannedOuting = plannedOutings.find((p) => p.id === selectedPlannedOutingId);
-    const selectedOuting = outings.find((o) => o.id === selectedOutingId);
-
-    if (isLoadingPlannedOutings && !selectedPlannedOuting) {
-      return (
-        <Screen edges={SCREEN_EDGES} testID="planned-loading-state">
-          <Loader fullScreen message="Chargement de l'étape..." />
-        </Screen>
-      );
-    }
-
-    if (!selectedPlannedOuting) {
-      return (
-        <Screen edges={SCREEN_EDGES} contentStyle={styles.center} testID="planned-not-found-state">
-          <EmptyState
-            icon="help-circle-outline"
-            title="Étape introuvable"
-            description="L'étape demandée n'existe pas ou a été supprimée."
-            actionLabel="Retour à la sortie"
-            onAction={handleCancelPlannedEdit}
-          />
-        </Screen>
-      );
-    }
-
     return (
-      <Screen edges={SCREEN_EDGES} padded={false} testID="planned-outing-edit-screen">
-        <PlannedOutingEditForm
-          plannedOuting={selectedPlannedOuting}
-          parentOutingTitle={selectedOuting?.title}
-          onSubmit={handleUpdatePlannedOuting}
-          onDelete={handleDeletePlannedOuting}
-          onCancel={handleCancelPlannedEdit}
-          isLoading={isLoadingPlannedOutings}
-          error={error}
-          submitTestID="btn-submit-planned-edit"
-          cancelTestID="btn-cancel-planned-edit"
-          deleteTestID="btn-delete-planned-edit"
-        />
-      </Screen>
+      <PlannedOutingEditScreen
+        plannedOuting={plannedOutings.find((p) => p.id === selectedPlannedOutingId)}
+        parentOutingTitle={outings.find((o) => o.id === selectedOutingId)?.title}
+        isLoading={isLoadingPlannedOutings}
+        error={error}
+        onSubmit={handleUpdatePlannedOuting}
+        onDelete={handleDeletePlannedOuting}
+        onCancel={handleCancelPlannedEdit}
+      />
     );
   }
 
   // Case 2: Editing a selected outing
   if (selectedOutingId) {
-    const selectedOuting = outings.find((o) => o.id === selectedOutingId);
-
-    if (isLoading && !selectedOuting) {
-      return (
-        <Screen edges={SCREEN_EDGES} testID="loading-state">
-          <Loader fullScreen message="Chargement de la sortie..." />
-        </Screen>
-      );
-    }
-
-    if (!selectedOuting) {
-      return (
-        <Screen edges={SCREEN_EDGES} contentStyle={styles.center} testID="not-found-state">
-          <EmptyState
-            icon="help-circle-outline"
-            title="Sortie introuvable"
-            description="La sortie demandée n'existe pas ou vous n'avez pas les autorisations nécessaires."
-            actionLabel="Retour aux sorties"
-            onAction={handleCancelEdit}
-          />
-        </Screen>
-      );
-    }
-
     return (
-      <Screen edges={SCREEN_EDGES} padded={false}>
-        <OutingEditForm
-          outing={selectedOuting}
-          onSubmit={handleUpdateOuting}
-          isLoading={isLoading}
-          error={error}
-          onCancel={handleCancelEdit}
-          plannedOutings={plannedOutings}
-          onSelectPlannedOuting={(po) => handleSelectPlannedOuting(po.id)}
-        />
-      </Screen>
+      <OutingEditScreen
+        outing={outings.find((o) => o.id === selectedOutingId)}
+        isLoading={isLoading}
+        error={error}
+        plannedOutings={plannedOutings}
+        onSubmit={handleUpdateOuting}
+        onCancel={handleCancelEdit}
+        onSelectPlannedOuting={(po) => handleSelectPlannedOuting(po.id)}
+      />
     );
   }
 
   // Case 3: Outings list
   return (
-    <Screen edges={SCREEN_EDGES} padded={false}>
+    <Screen edges={OUTINGS_SCREEN_EDGES} padded={false}>
       <PendingFriendRequestsBanner
         pendingRequests={pendingRequests}
         onAccept={acceptFriendRequest}
@@ -264,12 +171,7 @@ export default function SortiesScreen() {
   );
 }
 
-const SCREEN_EDGES: ('top' | 'left' | 'right')[] = ['top', 'left', 'right'];
-
 const styles = StyleSheet.create({
-  center: {
-    justifyContent: 'center',
-  },
   createButton: {
     marginTop: spacing.sm,
   },

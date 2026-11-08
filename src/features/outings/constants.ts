@@ -37,3 +37,6 @@ export const OUTING_STATUS_OPTIONS: ChipOption<OutingStatus>[] =
     label: OUTING_STATUS_CONFIG[status].label,
     emoji: OUTING_STATUS_CONFIG[status].emoji,
   }));
+
+/** Safe-area edges of the Sorties tab screens (the tab bar already covers the bottom). */
+export const OUTINGS_SCREEN_EDGES: ('top' | 'left' | 'right')[] = ['top', 'left', 'right'];
