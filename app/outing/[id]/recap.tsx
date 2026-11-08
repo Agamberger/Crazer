@@ -17,11 +17,14 @@ export default function OutingRecapRoute() {
     router.replace('/(tabs)/sorties');
   };
 
+  const openQuestions = () => router.push({ pathname: '/outing/[id]/questions', params: { id } });
+
   return (
     <AvailabilityRecap
       outingId={id}
       onPlanned={openInSorties}
-      onContinue={openInSorties}
+      onContinue={openQuestions}
+      onAnswerQuestions={openQuestions}
       onClose={close}
     />
   );

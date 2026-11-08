@@ -26,3 +26,12 @@ export * from './services/stepBaseDate';
 export * from './hooks/useOutingMembers';
 export * from './components/scheduling/ParticipantAvatars';
 export type { WizardPlace } from './hooks/useCreateOutingWizard';
+
+// Outing type and guided questions (step 4)
+export * from './types/questions';
+export * from './questionOptions';
+export * from './utils/answersUtils';
+export * from './services/outingAnswersService';
+export * from './store/useOutingAnswersStore';
+export * from './hooks/useOutingQuestions';
+export * from './components/questions/OutingQuestions';

@@ -21,6 +21,7 @@ describe('outingSchedulingService', () => {
 
     const id = await outingSchedulingService.createOutingWithInvites({
       title: 'Glouglou',
+      outingType: 'one_day',
       days: ['2026-11-10'],
       slots: [{ day: '2026-11-10', start: '18:00', end: '23:00' }],
       inviteeIds: ['bob'],
@@ -32,6 +33,7 @@ describe('outingSchedulingService', () => {
       p_days: ['2026-11-10'],
       p_slots: [{ day: '2026-11-10', start: '18:00', end: '23:00' }],
       p_invitee_ids: ['bob'],
+      p_outing_type: 'one_day',
     });
   });
 
@@ -40,6 +42,7 @@ describe('outingSchedulingService', () => {
     await expect(
       outingSchedulingService.createOutingWithInvites({
         title: 'X',
+        outingType: null,
         days: ['2026-11-10'],
         slots: [],
         inviteeIds: ['stranger'],
@@ -149,6 +152,19 @@ describe('outingSchedulingService', () => {
     expect(inFn).toHaveBeenCalledWith('status', ['invited', 'declined']);
   });
 
+  it('subscribeToOutingScheduling : deux écrans de la même sortie n’utilisent pas le même canal', () => {
+    const channel = { on: jest.fn(), subscribe: jest.fn() };
+    channel.on.mockReturnValue(channel);
+    channel.subscribe.mockReturnValue(channel);
+    (supabase.channel as jest.Mock).mockReturnValue(channel);
+
+    outingSchedulingService.subscribeToOutingScheduling('outing-1', jest.fn());
+    outingSchedulingService.subscribeToOutingScheduling('outing-1', jest.fn());
+
+    const [[first], [second]] = (supabase.channel as jest.Mock).mock.calls;
+    expect(first).not.toBe(second);
+  });
+
   it('subscribeToOutingScheduling écoute les deux tables et se désabonne', () => {
     const channel = { on: jest.fn(), subscribe: jest.fn() };
     channel.on.mockReturnValue(channel);
@@ -158,7 +174,7 @@ describe('outingSchedulingService', () => {
 
     const unsubscribe = outingSchedulingService.subscribeToOutingScheduling('outing-1', onChange);
 
-    expect(supabase.channel).toHaveBeenCalledWith('outing-scheduling-outing-1');
+    expect(supabase.channel).toHaveBeenCalledWith(expect.stringMatching(/^outing-scheduling-outing-1-/));
     expect(channel.on).toHaveBeenCalledWith(
       'postgres_changes',
       expect.objectContaining({ table: 'outing_participants', filter: 'outing_id=eq.outing-1' }),

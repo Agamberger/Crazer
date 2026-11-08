@@ -1,5 +1,5 @@
 import { TimeRange } from '@/shared/components';
-import { OutingRow, ParticipantStatus } from '@/shared/types';
+import { OutingRow, OutingType, ParticipantStatus } from '@/shared/types';
 
 /** Local calendar day, formatted `YYYY-MM-DD`. */
 export type DayKey = string;
@@ -48,6 +48,8 @@ export interface OutingInvitation {
 /** Data collected by the creation wizard. */
 export interface OutingDraft {
   title: string;
+  /** Chosen right after the name; `null` until picked. */
+  outingType: OutingType | null;
   days: DayKey[];
   slots: Record<DayKey, TimeRange>;
   inviteeIds: string[];

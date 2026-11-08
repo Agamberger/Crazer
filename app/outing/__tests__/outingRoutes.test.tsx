@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import CreateOutingRoute from '../create';
 import JoinOutingRoute from '../[id]/join';
 import OutingRecapRoute from '../[id]/recap';
+import OutingQuestionsRoute from '../[id]/questions';
 
 const mockSelectOuting = jest.fn();
 
@@ -35,6 +36,7 @@ jest.mock('@/features/outings', () => {
     }),
     JoinOutingFlow: screen('join', (props) => String(props.outingId)),
     AvailabilityRecap: screen('recap', (props) => String(props.outingId)),
+    OutingQuestions: screen('questions', (props) => String(props.outingId)),
     useOutingsStore: (selector: (state: { selectOuting: jest.Mock }) => unknown) =>
       selector({ selectOuting: mockSelectOuting }),
   };
@@ -94,10 +96,31 @@ describe('outing routes', () => {
     expect(router.replace).toHaveBeenCalledWith('/(tabs)/sorties');
   });
 
-  it('recap : continuer sélectionne la sortie et ouvre l’onglet Sorties sans la planifier', () => {
+  it('recap : continuer enchaîne vers les questions de la sortie sans la planifier', () => {
     const { getByText } = render(<OutingRecapRoute />);
     fireEvent.press(getByText('onContinue'));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/outing/[id]/questions', params: { id: 'o1' } });
+    expect(mockSelectOuting).not.toHaveBeenCalled();
+  });
+
+  it('recap : un membre peut répondre aux questions', () => {
+    const { getByText } = render(<OutingRecapRoute />);
+    fireEvent.press(getByText('onAnswerQuestions'));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/outing/[id]/questions', params: { id: 'o1' } });
+  });
+
+  it('questions : une fois les réponses enregistrées, ouvre la sortie dans l’onglet Sorties', () => {
+    const { getByText } = render(<OutingQuestionsRoute />);
+    expect(getByText('questions:o1')).toBeTruthy();
+    fireEvent.press(getByText('onDone'));
     expect(mockSelectOuting).toHaveBeenCalledWith('o1');
+    expect(router.replace).toHaveBeenCalledWith('/(tabs)/sorties');
+  });
+
+  it('questions : fermer sans historique ramène à l’onglet Sorties', () => {
+    router.canGoBack.mockReturnValueOnce(false);
+    const { getByText } = render(<OutingQuestionsRoute />);
+    fireEvent.press(getByText('onClose'));
     expect(router.replace).toHaveBeenCalledWith('/(tabs)/sorties');
   });
 

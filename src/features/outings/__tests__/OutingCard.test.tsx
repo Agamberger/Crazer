@@ -12,6 +12,7 @@ describe('OutingCard Component', () => {
     created_by: 'u1',
     status: 'planned',
     cover_image: null,
+    outing_type: null,
     created_at: '2026-08-24T18:00:00Z',
     updated_at: '2026-08-24T18:00:00Z',
   };

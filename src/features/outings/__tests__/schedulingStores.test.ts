@@ -42,7 +42,7 @@ describe('useOutingCreationStore', () => {
     store.previousStep();
     expect(useOutingCreationStore.getState().stepIndex).toBe(0);
     for (let i = 0; i < 10; i += 1) useOutingCreationStore.getState().nextStep();
-    expect(useOutingCreationStore.getState().stepIndex).toBe(3);
+    expect(useOutingCreationStore.getState().stepIndex).toBe(4);
 
     useOutingCreationStore.getState().setTitle('Glouglou');
     useOutingCreationStore.getState().reset();
@@ -70,6 +70,7 @@ describe('useOutingSchedulingStore', () => {
 
     const id = await useOutingSchedulingStore.getState().createOutingWithInvites({
       title: '  Glouglou ',
+      outingType: 'precise',
       days: ['2026-11-11', '2026-11-10'],
       slots: {
         '2026-11-10': { start: '12:00', end: '21:00' },
@@ -81,6 +82,7 @@ describe('useOutingSchedulingStore', () => {
     expect(id).toBe('outing-1');
     expect(service.createOutingWithInvites).toHaveBeenCalledWith({
       title: 'Glouglou',
+      outingType: 'precise',
       days: ['2026-11-10', '2026-11-11'],
       slots: [
         { day: '2026-11-10', start: '12:00', end: '21:00' },
@@ -97,6 +99,7 @@ describe('useOutingSchedulingStore', () => {
     await expect(
       useOutingSchedulingStore.getState().createOutingWithInvites({
         title: 'X',
+        outingType: null,
         days: ['2026-11-10'],
         slots: { '2026-11-10': DEFAULT_TIME_RANGE },
         inviteeIds: [],

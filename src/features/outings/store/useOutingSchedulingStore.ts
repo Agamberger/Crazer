@@ -97,6 +97,7 @@ export const useOutingSchedulingStore = create<OutingSchedulingState>((set) => (
       const slots = slotsToPayload(draft.days, draft.slots);
       const outingId = await outingSchedulingService.createOutingWithInvites({
         title: draft.title.trim(),
+        outingType: draft.outingType,
         days: [...draft.days].sort(),
         slots,
         inviteeIds: draft.inviteeIds,

@@ -5,8 +5,17 @@
       "name": "expo-web-local",
       "runtimeExecutable": "bash",
       "runtimeArgs": [
-        "-c",
-        "export PATH=$HOME/.nvm/versions/node/v24.19.0/bin:$PATH CI=1 BROWSER=none; export EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321; export EXPO_PUBLIC_SUPABASE_ANON_KEY=$(npx supabase status -o env 2>/dev/null | sed -n 's/^ANON_KEY=\"\\(.*\\)\"$/\\1/p'); exec node node_modules/.bin/expo start --web --port 8081 --clear"
+        "scripts/expo-web-local.sh",
+        "ci"
+      ],
+      "port": 8081
+    },
+    {
+      "name": "expo-web-local-watch",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "scripts/expo-web-local.sh",
+        "watch"
       ],
       "port": 8081
     }

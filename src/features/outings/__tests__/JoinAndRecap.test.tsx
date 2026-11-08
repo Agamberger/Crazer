@@ -39,6 +39,7 @@ const OUTING: OutingRow = {
   created_by: 'alice',
   status: 'draft',
   cover_image: null,
+  outing_type: null,
   created_at: '2026-11-01T00:00:00Z',
   updated_at: '2026-11-01T00:00:00Z',
 };
@@ -165,6 +166,37 @@ describe('AvailabilityRecap', () => {
     expect(queryByTestId('btn-recap-continue')).toBeNull();
     fireEvent.press(getByTestId('btn-recap-close'));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('un invité peut répondre aux questions une fois le type choisi', async () => {
+    const onAnswerQuestions = jest.fn();
+    useOutingsStore.setState({ outings: [{ ...OUTING, outing_type: 'precise' }] });
+    const { findByTestId, getByTestId } = render(
+      <AvailabilityRecap
+        outingId="o1"
+        onPlanned={onPlanned}
+        onContinue={onContinue}
+        onAnswerQuestions={onAnswerQuestions}
+        onClose={onClose}
+      />,
+    );
+    await findByTestId('availability-recap');
+    fireEvent.press(getByTestId('btn-recap-questions'));
+    expect(onAnswerQuestions).toHaveBeenCalled();
+  });
+
+  it('un invité n’a pas « Répondre aux questions » tant que le type n’est pas choisi', async () => {
+    const { findByTestId, queryByTestId } = render(
+      <AvailabilityRecap
+        outingId="o1"
+        onPlanned={onPlanned}
+        onContinue={onContinue}
+        onAnswerQuestions={jest.fn()}
+        onClose={onClose}
+      />,
+    );
+    await findByTestId('availability-recap');
+    expect(queryByTestId('btn-recap-questions')).toBeNull();
   });
 
   it('un invité ne peut pas choisir le jour', async () => {

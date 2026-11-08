@@ -61,10 +61,18 @@ Les données de test sont découpées de manière modulaire dans le dossier `sup
 6. **`planned_outings`** : Étapes planifiées au sein d'une sortie, liées à des lieux et triées par heure.
 7. **`outing_days`**: candidate days of an outing, chosen by the organizer (unique per outing).
 8. **`outing_availabilities`**: one time slot (`start_time` < `end_time`) per member and per candidate day; a composite FK guarantees the day is one of the outing's `outing_days`.
+9. **`outing_answers`**: guided answers (step 4), one row per member and outing (`UNIQUE (outing_id, user_id)`) with typed columns; which columns are used depends on `outings.outing_type`.
+
+### Outing type and guided questions (step 4)
+
+- **`outings.outing_type`** (`outing_type` enum: `precise`, `one_day`, `holidays`): nullable, `NULL` until the organizer picks it (the organizer can reset it to `NULL` to choose again). Only the organizer can update `outings`, so no dedicated RPC.
+- **`outing_answers`** columns: `precise` → `activity_type` (`outing_activity_type` enum), `place_wish` (free text, ≤ 200), `preferred_time`, `eat_before`; `one_day` → `day_preferences` (text array); `holidays` → `period_start` / `period_end` (end ≥ start), `budget` (`outing_budget` enum), `wishes` (text array). Answers of an unused type are kept when the type changes.
+- RLS: members read every answer of the outing; each member inserts / updates / deletes only their own row, and a member who declined the outing can no longer write. `day_preferences` and `wishes` are restricted to the known values by CHECK constraints. `outing_id` and `user_id` are not updatable (hence the app does update-then-insert instead of `upsert`). `outing_answers` is not in the realtime publication (the app loads the group's answers on screen open).
+- Seeds: the rooftop outing (`c2222…`) is `precise` and Alice has answered; Bob has not. Tests: `supabase/tests/database/outing_type_questions.test.sql`.
 
 ### Scheduling RPCs (outing creation workflow)
 
-- **`create_outing_with_invites(p_title, p_days, p_slots, p_invitee_ids)`**: atomically creates an **undated** `draft` outing (`outings.start_date` is nullable since `outing_without_date`; the candidate days live in `outing_days`), adds the organizer as an `accepted` participant, its candidate days, the organizer's slots and the invitations. Only accepted friends can be invited; any error rolls everything back.
+- **`create_outing_with_invites(p_title, p_days, p_slots, p_invitee_ids, p_outing_type DEFAULT NULL)`**: atomically creates an **undated** `draft` outing (`outings.start_date` is nullable since `outing_without_date`; the candidate days live in `outing_days`), stores the `outing_type` chosen in the wizard (atomically), adds the organizer as an `accepted` participant, its candidate days, the organizer's slots and the invitations. Only accepted friends can be invited; any error rolls everything back.
 - **Undated outings**: `outings.start_date` is `NULL` until a day is chosen. The trigger `check_planned_outing_scheduled_for` only enforces `scheduled_for >= start_date` when the outing has a date; `planned_outings.scheduled_for` stays required (the app defaults it to the outing date, else the first planned step's date, else the first candidate day). Setting a date on an outing moves earlier steps to that date (trigger `outings_align_planned_outings`).
 - **`respond_to_outing_invitation(p_outing_id, p_status, p_slots)`**: an invitee accepts (`accepted` / `maybe`) with their slots, or declines (slots are deleted).
 - `p_slots` format: `[{"day": "YYYY-MM-DD", "start": "HH:MM", "end": "HH:MM"}]`.

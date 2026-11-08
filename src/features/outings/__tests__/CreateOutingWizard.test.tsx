@@ -47,14 +47,22 @@ describe('CreateOutingWizard', () => {
   it('bloque le passage à l’étape suivante sans nom', () => {
     const { getByTestId } = renderWizard();
     fireEvent.press(getByTestId('btn-wizard-next'));
-    expect(getByTestId('wizard-progress').props.children.join('')).toBe('Étape 1/4');
+    expect(getByTestId('wizard-progress').props.children.join('')).toBe('Étape 1/5');
   });
 
-  it('enchaîne nom → jours → dispos → invités puis crée la sortie', async () => {
+  it('enchaîne nom → type → invités → jours → dispos puis crée la sortie', async () => {
     createOutingWithInvites.mockResolvedValue('outing-1');
     const { getByTestId, getByText } = renderWizard();
 
     fireEvent.changeText(getByTestId('input-outing-name'), 'Glouglou');
+    fireEvent.press(getByTestId('btn-wizard-next'));
+    expect(getByText('Quel genre de sortie ?')).toBeTruthy();
+
+    fireEvent.press(getByTestId('outing-type-precise'));
+    fireEvent.press(getByTestId('btn-wizard-next'));
+    expect(getByText('Avec qui ?')).toBeTruthy();
+
+    fireEvent.press(getByTestId('checkbox-friend-bob'));
     fireEvent.press(getByTestId('btn-wizard-next'));
     expect(getByText('Quand ?')).toBeTruthy();
 
@@ -63,15 +71,12 @@ describe('CreateOutingWizard', () => {
     expect(getByText('Mes dispos')).toBeTruthy();
     expect(getByTestId(`slot-${today}-start`)).toBeTruthy();
 
-    fireEvent.press(getByTestId('btn-wizard-next'));
-    expect(getByText('Avec qui ?')).toBeTruthy();
-
-    fireEvent.press(getByTestId('checkbox-friend-bob'));
-    fireEvent.press(getByText("Envoyer l'invitation"));
+    fireEvent.press(getByText('Créer la sortie'));
 
     await waitFor(() => expect(onCreated).toHaveBeenCalledWith('outing-1'));
     expect(createOutingWithInvites).toHaveBeenCalledWith({
       title: 'Glouglou',
+      outingType: 'precise',
       days: [today],
       slots: { [today]: DEFAULT_TIME_RANGE },
       inviteeIds: ['bob'],
@@ -82,8 +87,21 @@ describe('CreateOutingWizard', () => {
     );
   });
 
-  it('« Quand ? » permet de choisir un jour dans un mois suivant', () => {
+  it('le type de sortie doit être choisi avant de continuer', () => {
     useOutingCreationStore.setState({ stepIndex: 1, title: 'Glouglou' });
+    const { getByTestId } = renderWizard();
+
+    fireEvent.press(getByTestId('btn-wizard-next'));
+    expect(getByTestId('wizard-progress').props.children.join('')).toBe('Étape 2/5');
+
+    fireEvent.press(getByTestId('outing-type-holidays'));
+    expect(useOutingCreationStore.getState().outingType).toBe('holidays');
+    fireEvent.press(getByTestId('btn-wizard-next'));
+    expect(getByTestId('wizard-progress').props.children.join('')).toBe('Étape 3/5');
+  });
+
+  it('« Quand ? » permet de choisir un jour dans un mois suivant', () => {
+    useOutingCreationStore.setState({ stepIndex: 3, title: 'Glouglou' });
     const { getByTestId } = renderWizard();
     const now = new Date();
     const inTwoMonths = new Date(now.getFullYear(), now.getMonth() + 2, 15);
@@ -107,14 +125,14 @@ describe('CreateOutingWizard', () => {
   it('garde le brouillon et affiche une erreur si la création échoue', async () => {
     createOutingWithInvites.mockRejectedValue(new Error('network'));
     useOutingCreationStore.setState({
-      stepIndex: 3,
+      stepIndex: 4,
       title: 'Glouglou',
       days: [today],
       slots: { [today]: DEFAULT_TIME_RANGE },
     });
     const { getByText } = renderWizard();
 
-    fireEvent.press(getByText("Envoyer l'invitation"));
+    fireEvent.press(getByText('Créer la sortie'));
 
     await waitFor(() =>
       expect(useToastStore.getState().queue).toContainEqual(
@@ -134,7 +152,7 @@ describe('CreateOutingWizard', () => {
     const fillDraft = () =>
       act(() => {
         useOutingCreationStore.setState({
-          stepIndex: 3,
+          stepIndex: 4,
           title: 'Burger Gourmet',
           days: [today],
           slots: { [today]: DEFAULT_TIME_RANGE },
@@ -161,7 +179,7 @@ describe('CreateOutingWizard', () => {
       const { getByText } = renderWithPlace();
       fillDraft();
 
-      fireEvent.press(getByText("Envoyer l'invitation"));
+      fireEvent.press(getByText('Créer la sortie'));
 
       await waitFor(() => expect(onCreated).toHaveBeenCalledWith('outing-1'));
       expect(addPlannedOuting).toHaveBeenCalledWith({
@@ -181,7 +199,7 @@ describe('CreateOutingWizard', () => {
       const { getByText } = renderWithPlace();
       fillDraft();
 
-      fireEvent.press(getByText("Envoyer l'invitation"));
+      fireEvent.press(getByText('Créer la sortie'));
 
       await waitFor(() => expect(onCreated).toHaveBeenCalledWith('outing-1'));
       expect(useToastStore.getState().queue).toContainEqual(
@@ -192,7 +210,7 @@ describe('CreateOutingWizard', () => {
     test('sans lieu, aucune étape n’est ajoutée', async () => {
       createOutingWithInvites.mockResolvedValue('outing-1');
       useOutingCreationStore.setState({
-        stepIndex: 3,
+        stepIndex: 4,
         title: 'Glouglou',
         days: [today],
         slots: { [today]: DEFAULT_TIME_RANGE },
@@ -200,7 +218,7 @@ describe('CreateOutingWizard', () => {
       const { getByText, queryByTestId } = renderWizard();
 
       expect(queryByTestId('wizard-place-banner')).toBeNull();
-      fireEvent.press(getByText("Envoyer l'invitation"));
+      fireEvent.press(getByText('Créer la sortie'));
 
       await waitFor(() => expect(onCreated).toHaveBeenCalled());
       expect(addPlannedOuting).not.toHaveBeenCalled();

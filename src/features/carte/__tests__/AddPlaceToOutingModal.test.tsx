@@ -55,6 +55,7 @@ const mockActiveOuting: OutingRow = {
   created_by: 'user-test-123',
   status: 'planned',
   cover_image: null,
+  outing_type: null,
   created_at: '2026-08-20T10:00:00Z',
   updated_at: '2026-08-20T10:00:00Z',
 };
@@ -67,6 +68,7 @@ const mockDoneOuting: OutingRow = {
   created_by: 'user-test-123',
   status: 'done',
   cover_image: null,
+  outing_type: null,
   created_at: '2026-07-20T10:00:00Z',
   updated_at: '2026-08-02T10:00:00Z',
 };
@@ -79,6 +81,7 @@ const mockCancelledOuting: OutingRow = {
   created_by: 'user-test-123',
   status: 'cancelled',
   cover_image: null,
+  outing_type: null,
   created_at: '2026-08-05T10:00:00Z',
   updated_at: '2026-08-06T10:00:00Z',
 };

@@ -62,6 +62,12 @@ export type ParticipantStatus = Enums<'participant_status'>;
 export type OutingDayRow = Database['public']['Tables']['outing_days']['Row'];
 export type OutingAvailabilityRow = Database['public']['Tables']['outing_availabilities']['Row'];
 
+/** Outing type and guided answers (step 4 of the outing journey) */
+export type OutingType = Enums<'outing_type'>;
+export type OutingActivityType = Enums<'outing_activity_type'>;
+export type OutingBudget = Enums<'outing_budget'>;
+export type OutingAnswerRow = Database['public']['Tables']['outing_answers']['Row'];
+
 /** Configuration UI (libellés & émojis) pour le statut d'un participant */
 export const PARTICIPANT_STATUS_CONFIG: Record<
   ParticipantStatus,

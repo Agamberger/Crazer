@@ -1,17 +1,19 @@
 import { create } from 'zustand';
 import { TimeRange } from '@/shared/components';
 import { registerUserScopedStore } from '@/shared/store/sessionReset';
+import { OutingType } from '@/shared/types';
 import { DayKey, OutingDraft } from '../types/scheduling';
 import { syncSlotsWithDays } from '../utils/availabilityUtils';
 
-/** Wizard steps, in order: « On sort ! », « Quand ? », « Mes dispos », « Avec qui ? ». */
-export const CREATION_STEPS = ['name', 'days', 'availability', 'invitees'] as const;
+/** Wizard steps, in order: « On sort ! », « Quel genre ? », « Avec qui ? », « Quand ? », « Mes dispos ». */
+export const CREATION_STEPS = ['name', 'type', 'invitees', 'days', 'availability'] as const;
 export type CreationStep = (typeof CREATION_STEPS)[number];
 
 interface OutingCreationState extends OutingDraft {
   stepIndex: number;
 
   setTitle: (title: string) => void;
+  setOutingType: (outingType: OutingType) => void;
   /** Replaces the selected days; slots of kept days are preserved, new days get the default slot. */
   setDays: (days: DayKey[]) => void;
   setSlot: (day: DayKey, range: TimeRange) => void;
@@ -24,6 +26,7 @@ interface OutingCreationState extends OutingDraft {
 const INITIAL_DRAFT: OutingDraft & { stepIndex: number } = {
   stepIndex: 0,
   title: '',
+  outingType: null,
   days: [],
   slots: {},
   inviteeIds: [],
@@ -33,6 +36,8 @@ export const useOutingCreationStore = create<OutingCreationState>((set) => ({
   ...INITIAL_DRAFT,
 
   setTitle: (title) => set({ title }),
+
+  setOutingType: (outingType) => set({ outingType }),
 
   setDays: (days) =>
     set((state) => {

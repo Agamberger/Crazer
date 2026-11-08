@@ -19,6 +19,8 @@ export interface AvailabilityRecapProps {
   onPlanned: () => void;
   /** Called when the organizer goes on without choosing a day (the outing stays undated). */
   onContinue: () => void;
+  /** Called by a member (not the organizer) who wants to answer the guided questions. */
+  onAnswerQuestions?: () => void;
   onClose: () => void;
 }
 
@@ -28,14 +30,32 @@ const pendingMessage = (count: number): string =>
 interface RecapFooterProps {
   isOrganizer: boolean;
   onContinue: () => void;
+  /** Shown to members once the organizer chose the outing type. */
+  onAnswerQuestions: (() => void) | null;
   onClose: () => void;
 }
 
-/** « Continuer » (organizer only: opens the edit form) as primary action, « Fermer » as secondary. */
-const RecapFooter: React.FC<RecapFooterProps> = ({ isOrganizer, onContinue, onClose }) => (
+/**
+ * « Continuer » (organizer only: goes on to the type and guided questions) or
+ * « Répondre aux questions » (members) as primary action, « Fermer » as secondary.
+ */
+const RecapFooter: React.FC<RecapFooterProps> = ({
+  isOrganizer,
+  onContinue,
+  onAnswerQuestions,
+  onClose,
+}) => (
   <>
     {isOrganizer ? (
       <Button title="Continuer" fullWidth onPress={onContinue} testID="btn-recap-continue" />
+    ) : null}
+    {!isOrganizer && onAnswerQuestions ? (
+      <Button
+        title="Répondre aux questions"
+        fullWidth
+        onPress={onAnswerQuestions}
+        testID="btn-recap-questions"
+      />
     ) : null}
     <Button
       title="Fermer"
@@ -52,6 +72,7 @@ export const AvailabilityRecap: React.FC<AvailabilityRecapProps> = ({
   outingId,
   onPlanned,
   onContinue,
+  onAnswerQuestions,
   onClose,
 }) => {
   const recap = useAvailabilityRecap(outingId, onPlanned);
@@ -78,7 +99,12 @@ export const AvailabilityRecap: React.FC<AvailabilityRecapProps> = ({
     <Screen
       scrollable
       footer={
-        <RecapFooter isOrganizer={recap.isOrganizer} onContinue={onContinue} onClose={onClose} />
+        <RecapFooter
+          isOrganizer={recap.isOrganizer}
+          onContinue={onContinue}
+          onAnswerQuestions={recap.outing.outing_type && onAnswerQuestions ? onAnswerQuestions : null}
+          onClose={onClose}
+        />
       }
       testID="availability-recap"
     >

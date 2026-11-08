@@ -45,6 +45,7 @@ export default function RootLayout() {
         <Stack.Screen name="outing/create" options={{ presentation: 'modal' }} />
         <Stack.Screen name="outing/[id]/join" options={{ presentation: 'modal' }} />
         <Stack.Screen name="outing/[id]/recap" />
+        <Stack.Screen name="outing/[id]/questions" />
       </Stack>
       <ToastHost />
     </SafeAreaProvider>

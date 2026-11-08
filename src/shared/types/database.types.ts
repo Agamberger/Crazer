@@ -76,6 +76,78 @@ export type Database = {
           },
         ]
       }
+      outing_answers: {
+        Row: {
+          activity_type:
+            | Database["public"]["Enums"]["outing_activity_type"]
+            | null
+          budget: Database["public"]["Enums"]["outing_budget"] | null
+          created_at: string
+          day_preferences: string[]
+          eat_before: boolean | null
+          id: string
+          outing_id: string
+          period_end: string | null
+          period_start: string | null
+          place_wish: string | null
+          preferred_time: string | null
+          updated_at: string
+          user_id: string
+          wishes: string[]
+        }
+        Insert: {
+          activity_type?:
+            | Database["public"]["Enums"]["outing_activity_type"]
+            | null
+          budget?: Database["public"]["Enums"]["outing_budget"] | null
+          created_at?: string
+          day_preferences?: string[]
+          eat_before?: boolean | null
+          id?: string
+          outing_id: string
+          period_end?: string | null
+          period_start?: string | null
+          place_wish?: string | null
+          preferred_time?: string | null
+          updated_at?: string
+          user_id: string
+          wishes?: string[]
+        }
+        Update: {
+          activity_type?:
+            | Database["public"]["Enums"]["outing_activity_type"]
+            | null
+          budget?: Database["public"]["Enums"]["outing_budget"] | null
+          created_at?: string
+          day_preferences?: string[]
+          eat_before?: boolean | null
+          id?: string
+          outing_id?: string
+          period_end?: string | null
+          period_start?: string | null
+          place_wish?: string | null
+          preferred_time?: string | null
+          updated_at?: string
+          user_id?: string
+          wishes?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outing_answers_outing_id_fkey"
+            columns: ["outing_id"]
+            isOneToOne: false
+            referencedRelation: "outings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outing_answers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       outing_availabilities: {
         Row: {
           created_at: string
@@ -209,6 +281,7 @@ export type Database = {
           created_by: string
           description: string | null
           id: string
+          outing_type: Database["public"]["Enums"]["outing_type"] | null
           start_date: string | null
           status: Database["public"]["Enums"]["outing_status"]
           title: string
@@ -220,6 +293,7 @@ export type Database = {
           created_by: string
           description?: string | null
           id?: string
+          outing_type?: Database["public"]["Enums"]["outing_type"] | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["outing_status"]
           title: string
@@ -231,6 +305,7 @@ export type Database = {
           created_by?: string
           description?: string | null
           id?: string
+          outing_type?: Database["public"]["Enums"]["outing_type"] | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["outing_status"]
           title?: string
@@ -632,6 +707,7 @@ export type Database = {
         Args: {
           p_days: string[]
           p_invitee_ids: string[]
+          p_outing_type?: Database["public"]["Enums"]["outing_type"]
           p_slots: Json
           p_title: string
         }
@@ -1471,7 +1547,17 @@ export type Database = {
       }
     }
     Enums: {
+      outing_activity_type:
+        | "food"
+        | "drinks"
+        | "sport"
+        | "culture"
+        | "party"
+        | "nature"
+        | "other"
+      outing_budget: "low" | "medium" | "high"
       outing_status: "draft" | "planned" | "ongoing" | "done" | "cancelled"
+      outing_type: "precise" | "one_day" | "holidays"
       participant_status: "invited" | "accepted" | "declined" | "maybe"
       place_category:
         | "resto"
@@ -1626,7 +1712,18 @@ export const Constants = {
   },
   public: {
     Enums: {
+      outing_activity_type: [
+        "food",
+        "drinks",
+        "sport",
+        "culture",
+        "party",
+        "nature",
+        "other",
+      ],
+      outing_budget: ["low", "medium", "high"],
       outing_status: ["draft", "planned", "ongoing", "done", "cancelled"],
+      outing_type: ["precise", "one_day", "holidays"],
       participant_status: ["invited", "accepted", "declined", "maybe"],
       place_category: [
         "resto",

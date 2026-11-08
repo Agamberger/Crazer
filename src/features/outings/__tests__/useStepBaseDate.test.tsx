@@ -15,6 +15,7 @@ const makeOuting = (overrides: Partial<OutingRow>): OutingRow => ({
   created_by: 'alice',
   status: 'draft',
   cover_image: null,
+  outing_type: null,
   created_at: '2026-11-01T00:00:00Z',
   updated_at: '2026-11-01T00:00:00Z',
   ...overrides,
