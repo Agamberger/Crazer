@@ -1,26 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
 import {
   Button,
   Card,
   ChipGroup,
-  ChipOption,
   DateTimeField,
   InlineAlert,
   TextField,
 } from '@/shared/components';
-import { useMapStore } from '@/features/carte/store/useMapStore';
 import { colors, spacing } from '@/shared/constants/theme';
-import {
-  Constants,
-  OUTING_STATUS_CONFIG,
-  OutingRow,
-  OutingStatus,
-  OutingUpdate,
-  PlannedOutingRow,
-} from '@/shared/types';
-import { useOutingsStore } from '../store/useOutingsStore';
+import { OutingRow, OutingStatus, OutingUpdate, PlannedOutingRow } from '@/shared/types';
+import { OUTING_STATUS_OPTIONS } from '../constants';
+import { useOutingPlannedOutings } from '../hooks/useOutingPlannedOutings';
 import { PlannedOutingsTimeline } from './PlannedOutingsTimeline';
 
 export interface OutingEditFormProps {
@@ -36,14 +27,6 @@ export interface OutingEditFormProps {
   onSelectPlannedOuting?: (plannedOuting: PlannedOutingRow) => void;
 }
 
-const STATUS_OPTIONS: ChipOption<OutingStatus>[] = Constants.public.Enums.outing_status.map(
-  (status: OutingStatus) => ({
-    value: status,
-    label: OUTING_STATUS_CONFIG[status].label,
-    emoji: OUTING_STATUS_CONFIG[status].emoji,
-  }),
-);
-
 export const OutingEditForm: React.FC<OutingEditFormProps> = ({
   outing,
   onSubmit,
@@ -56,12 +39,12 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
   isAddingPlannedOuting = false,
   onSelectPlannedOuting: propOnSelectPlannedOuting,
 }) => {
-  const router = useRouter();
-  const storePlannedOutings = useOutingsStore((state) => state.plannedOutings);
-  const fetchPlannedOutings = useOutingsStore((state) => state.fetchPlannedOutings);
-  const createPlannedOuting = useOutingsStore((state) => state.createPlannedOuting);
-  const setSelectedPlannedOutingId = useOutingsStore((state) => state.setSelectedPlannedOutingId);
-  const isLoadingPlannedOutings = useOutingsStore((state) => state.isLoadingPlannedOutings);
+  const timeline = useOutingPlannedOutings(outing.id, {
+    plannedOutings: propPlannedOutings,
+    onAddPlannedOuting: propOnAddPlannedOuting,
+    onAddFromMap: propOnAddFromMap,
+    onSelectPlannedOuting: propOnSelectPlannedOuting,
+  });
 
   const [title, setTitle] = useState(outing.title || '');
   const [description, setDescription] = useState(outing.description || '');
@@ -76,45 +59,6 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
   });
   const [status, setStatus] = useState<OutingStatus>(outing.status || 'draft');
   const [validationError, setValidationError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!propPlannedOutings && outing?.id) {
-      fetchPlannedOutings(outing.id);
-    }
-  }, [outing?.id, propPlannedOutings, fetchPlannedOutings]);
-
-  const activePlannedOutings =
-    propPlannedOutings ?? storePlannedOutings.filter((p) => p.outing_id === outing.id);
-
-  const handleAddPlannedOuting = async () => {
-    if (propOnAddPlannedOuting) {
-      await propOnAddPlannedOuting();
-    } else {
-      const newPlanned = await createPlannedOuting(outing.id, {
-        title: `Étape ${activePlannedOutings.length + 1}`,
-      });
-      if (propOnSelectPlannedOuting && newPlanned) {
-        propOnSelectPlannedOuting(newPlanned);
-      }
-    }
-  };
-
-  const handleAddFromMap = () => {
-    if (propOnAddFromMap) {
-      propOnAddFromMap();
-    } else {
-      useMapStore.getState().setTargetOutingId(outing.id);
-      router.push('/(tabs)/carte');
-    }
-  };
-
-  const handleSelectPlannedOuting = (plannedOuting: PlannedOutingRow) => {
-    if (propOnSelectPlannedOuting) {
-      propOnSelectPlannedOuting(plannedOuting);
-    } else {
-      setSelectedPlannedOutingId(plannedOuting.id);
-    }
-  };
 
   const handleSubmit = async () => {
     setValidationError(null);
@@ -170,7 +114,7 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
 
         <ChipGroup
           label="Statut de la sortie"
-          options={STATUS_OPTIONS}
+          options={OUTING_STATUS_OPTIONS}
           value={status}
           onChange={setStatus}
           testID="btn-status"
@@ -201,11 +145,11 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
 
       {/* Planned Outings timeline section */}
       <PlannedOutingsTimeline
-        plannedOutings={activePlannedOutings}
-        onAddPlannedOuting={handleAddPlannedOuting}
-        onAddFromMap={handleAddFromMap}
-        onSelectPlannedOuting={handleSelectPlannedOuting}
-        isLoading={!propPlannedOutings && isLoadingPlannedOutings}
+        plannedOutings={timeline.plannedOutings}
+        onAddPlannedOuting={timeline.addPlannedOuting}
+        onAddFromMap={timeline.addFromMap}
+        onSelectPlannedOuting={timeline.selectPlannedOuting}
+        isLoading={timeline.isLoading}
         isAdding={isAddingPlannedOuting}
       />
     </ScrollView>

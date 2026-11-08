@@ -2,18 +2,18 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { AppText, IconButton } from '@/shared/components';
 import {
   MapViewComponent,
   MapHeaderSearch,
   PlaceDetailCard,
   AddPlaceToOutingModal,
+  TargetOutingBanner,
   useMapStore,
   usePlaces,
   PlaceItem,
 } from '@/features/carte';
 import { useOutingsStore } from '@/features/outings';
-import { colors, radii, spacing } from '@/shared/constants/theme';
+import { spacing } from '@/shared/constants/theme';
 import { toast } from '@/shared/store/useToastStore';
 
 export default function CarteScreen() {
@@ -109,24 +109,10 @@ export default function CarteScreen() {
 
         {/* Targeted Outing Banner */}
         {targetOuting && (
-          <View style={styles.targetBanner} testID="target-outing-banner">
-            <View style={styles.targetBannerContent}>
-              <AppText variant="caption" color="accent" weight="bold">
-                🎯 Ajout à la sortie
-              </AppText>
-              <AppText variant="bodySmall" weight="semibold" numberOfLines={1}>
-                {targetOuting.title}
-              </AppText>
-            </View>
-            <IconButton
-              icon="close"
-              size="sm"
-              color={colors.textPrimary}
-              onPress={() => setTargetOutingId(null)}
-              accessibilityLabel="Quitter le mode ajout"
-              testID="btn-clear-target-outing"
-            />
-          </View>
+          <TargetOutingBanner
+            outingTitle={targetOuting.title}
+            onClear={() => setTargetOutingId(null)}
+          />
         )}
       </Animated.View>
 
@@ -177,27 +163,5 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     zIndex: 10,
-  },
-  targetBanner: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.primary,
-    borderRadius: radii.md,
-    borderWidth: 1.5,
-    elevation: 4,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginHorizontal: spacing.md,
-    marginTop: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  targetBannerContent: {
-    flex: 1,
-    marginRight: spacing.sm,
   },
 });

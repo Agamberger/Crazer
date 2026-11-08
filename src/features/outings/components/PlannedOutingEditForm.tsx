@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import {
   AppText,
@@ -11,9 +11,11 @@ import {
   TextField,
 } from '@/shared/components';
 import { colors, spacing } from '@/shared/constants/theme';
-import { PlannedOutingRow, PlannedOutingStatus, PlannedOutingUpdate } from '@/shared/types';
+import { PlannedOutingRow, PlannedOutingUpdate } from '@/shared/types';
 import { PLANNED_STATUS_OPTIONS } from '../constants';
+import { usePlannedOutingEditForm } from '../hooks/usePlannedOutingEditForm';
 import { DurationField } from './DurationField';
+import { PlannedOutingFormActions } from './PlannedOutingFormActions';
 
 export interface PlannedOutingEditFormProps {
   plannedOuting: PlannedOutingRow;
@@ -42,55 +44,13 @@ export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
   cancelTestID,
   deleteTestID,
 }) => {
-  const [title, setTitle] = useState(plannedOuting.title);
-  const [description, setDescription] = useState(plannedOuting.description || '');
-  const [notes, setNotes] = useState(plannedOuting.notes || '');
-  const [scheduledFor, setScheduledFor] = useState(new Date(plannedOuting.scheduled_for));
-  const [durationMin, setDurationMin] = useState<number | null>(plannedOuting.duration_min);
-  const [status, setStatus] = useState<PlannedOutingStatus>(plannedOuting.status);
-
-  const [formError, setFormError] = useState<string | null>(null);
-  const [isSubmittingInternal, setIsSubmittingInternal] = useState(false);
-  const [isDeletingInternal, setIsDeletingInternal] = useState(false);
-  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
-
-  const handleSubmit = async () => {
-    if (!title.trim()) {
-      setFormError("Le nom de l'étape est obligatoire.");
-      return;
-    }
-    setFormError(null);
-    setIsSubmittingInternal(true);
-
-    try {
-      await onSubmit({
-        title: title.trim(),
-        description: description.trim() || null,
-        notes: notes.trim() || null,
-        scheduled_for: scheduledFor.toISOString(),
-        duration_min: durationMin,
-        status,
-      });
-    } finally {
-      setIsSubmittingInternal(false);
-    }
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!onDelete) return;
-    setIsDeletingInternal(true);
-    try {
-      await onDelete(plannedOuting.id);
-    } finally {
-      setIsDeletingInternal(false);
-      setIsConfirmingDelete(false);
-    }
-  };
-
-  const isDeletingActive = propIsDeleting || isDeletingInternal;
-  const isSavingActive = isSubmittingInternal || (isLoading && !isDeletingActive);
-  const isAnyLoading = isLoading || isSavingActive || isDeletingActive;
-  const displayError = formError || error;
+  const form = usePlannedOutingEditForm(plannedOuting, {
+    onSubmit,
+    onDelete,
+    isLoading,
+    isDeleting: propIsDeleting,
+    error,
+  });
 
   return (
     <ScrollView
@@ -121,13 +81,15 @@ export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
           Modifier l&apos;étape
         </AppText>
 
-        {displayError ? <InlineAlert message={displayError} testID="error-container" /> : null}
+        {form.displayError ? (
+          <InlineAlert message={form.displayError} testID="error-container" />
+        ) : null}
 
         <TextField
           label="Nom de l'étape *"
           placeholder="Ex: Bar Le Centenaire, Escape Game..."
-          value={title}
-          onChangeText={setTitle}
+          value={form.title}
+          onChangeText={form.setTitle}
           accessibilityLabel="Nom de l'étape"
           testID="input-planned-title"
         />
@@ -135,25 +97,25 @@ export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
         <ChipGroup
           label="Statut de l'étape"
           options={PLANNED_STATUS_OPTIONS}
-          value={status}
-          onChange={setStatus}
+          value={form.status}
+          onChange={form.setStatus}
           testID="btn-planned-status"
         />
 
         <DateTimeField
           label="Date et heure planifiée"
-          value={scheduledFor}
-          onChange={setScheduledFor}
+          value={form.scheduledFor}
+          onChange={form.setScheduledFor}
           testIDScope="planned"
         />
 
-        <DurationField value={durationMin} onChange={setDurationMin} />
+        <DurationField value={form.durationMin} onChange={form.setDurationMin} />
 
         <TextField
           label="Description"
           placeholder="Détails du programme, consignes, réservations..."
-          value={description}
-          onChangeText={setDescription}
+          value={form.description}
+          onChangeText={form.setDescription}
           multiline
           minHeight={80}
           numberOfLines={3}
@@ -164,8 +126,8 @@ export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
         <TextField
           label="Notes & infos pratiques"
           placeholder="Code porte, contact, numéro de table, itinéraire..."
-          value={notes}
-          onChangeText={setNotes}
+          value={form.notes}
+          onChangeText={form.setNotes}
           multiline
           minHeight={64}
           numberOfLines={2}
@@ -173,52 +135,28 @@ export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
           testID="input-planned-notes"
         />
 
-        <View style={styles.primaryActionsRow}>
-          <Button
-            title="Annuler"
-            variant="outline"
-            size="sm"
-            onPress={onCancel}
-            disabled={isAnyLoading}
-            style={styles.actionButton}
-            testID={cancelTestID || 'btn-cancel-planned'}
-          />
-          <Button
-            title="Enregistrer"
-            size="sm"
-            loading={isSavingActive}
-            disabled={isAnyLoading}
-            onPress={handleSubmit}
-            style={styles.actionButton}
-            testID={submitTestID || 'btn-submit-planned'}
-          />
-        </View>
-
-        {onDelete ? (
-          <Button
-            title="Supprimer"
-            variant="danger"
-            size="sm"
-            leftIcon="trash-outline"
-            loading={isDeletingActive}
-            disabled={isAnyLoading}
-            onPress={() => setIsConfirmingDelete(true)}
-            fullWidth
-            style={styles.deleteButton}
-            testID={deleteTestID || 'btn-delete-planned'}
-          />
-        ) : null}
+        <PlannedOutingFormActions
+          onCancel={onCancel}
+          onSubmit={form.handleSubmit}
+          onRequestDelete={onDelete ? () => form.setIsConfirmingDelete(true) : undefined}
+          isSaving={form.isSavingActive}
+          isDeleting={form.isDeletingActive}
+          disabled={form.isAnyLoading}
+          submitTestID={submitTestID}
+          cancelTestID={cancelTestID}
+          deleteTestID={deleteTestID}
+        />
       </Card>
 
       <ConfirmDialog
-        visible={isConfirmingDelete}
+        visible={form.isConfirmingDelete}
         title="Supprimer l'étape"
         message={`Êtes-vous sûr de vouloir supprimer "${plannedOuting.title}" ?`}
         confirmLabel="Supprimer"
         destructive
-        loading={isDeletingActive}
-        onConfirm={handleConfirmDelete}
-        onCancel={() => setIsConfirmingDelete(false)}
+        loading={form.isDeletingActive}
+        onConfirm={form.handleConfirmDelete}
+        onCancel={() => form.setIsConfirmingDelete(false)}
         testID="confirm-delete-planned"
       />
     </ScrollView>
@@ -226,14 +164,8 @@ export const PlannedOutingEditForm: React.FC<PlannedOutingEditFormProps> = ({
 };
 
 const styles = StyleSheet.create({
-  actionButton: {
-    flex: 1,
-  },
   contentContainer: {
     paddingBottom: spacing.xxl,
-  },
-  deleteButton: {
-    marginTop: spacing.sm,
   },
   formCard: {
     marginHorizontal: spacing.md,
@@ -256,11 +188,6 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginRight: spacing.sm,
     maxWidth: 200,
-  },
-  primaryActionsRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
   },
   scrollContainer: {
     backgroundColor: colors.background,

@@ -25,6 +25,17 @@ Ce module gère l'affichage de la carte interactive, des lieux (Places) et des s
 - **`StyleSelector`** : Widget de sélection du style de carte (Dark, Light, Outdoor).
 - **`useMapStore`** : Store Zustand pour l'état de la carte (Places, filtres, mode de style, centrage).
 
+### Sous-composants (découpage des composants de plus de 200 lignes)
+
+- **`utils/mapLibreModule.ts`** : résolution sûre de `@maplibre/maplibre-react-native` (`isMapLibreAvailable`, `MapLibreMap`, `MapLibreCamera`, `MapLibreMarker`). Sur le web ou dans Expo Go, les composants retombent sur `View` et `MapViewComponent` affiche le fallback Leaflet.
+- **`NativeMapLibreView`** : carte vectorielle MapLibre native (caméra, position de l'utilisateur, marqueurs), rendue par `MapViewComponent` quand le module natif est présent. Elle s'appuie sur **`NativePlaceMarker`** (emoji de catégorie, nom du lieu sélectionné) et **`UserLocationMarker`** (point bleu « Votre position »).
+- **`PlannedStepEditStep`** : seconde étape de `AddPlaceToOutingModal` (rappel de la sortie choisie, bouton « Changer », `PlannedStepForm`).
+- **`TargetOutingBanner`** : bannière « 🎯 Ajout à la sortie » de l'écran Carte (`app/(tabs)/carte.tsx`) quand des lieux sont ajoutés à une sortie précise.
+- **`PlaceDetailCard`** se compose de **`PlaceDetailHeader`** (catégorie, prix, ouvert / fermé, boutons agrandir / enregistrer / fermer), **`PlacePhotoGallery`** (photos), **`PlaceContactChips`** (appel et site web, en mode agrandi) et **`PlaceDetailActions`** (« Itinéraire », « Ajouter à une sortie »).
+- **`MapHeaderSearch`** délègue l'autocomplétion Google Places au hook **`usePlaceAutocomplete`** (délai de 350 ms, 2 caractères minimum, réponses périmées ignorées, un jeton de session pour les frappes et le détail du lieu choisi). Il affiche **`PlacePredictionsDropdown`** (suggestions) et **`CategoryFilterChips`** (filtres `MAP_CATEGORY_FILTERS`).
+
+Tests associés : `mapLibreModule.test.ts`, `NativeMapLibreView.test.tsx`, `NativePlaceMarker.test.tsx`, `UserLocationMarker.test.tsx`, `PlannedStepEditStep.test.tsx`, `TargetOutingBanner.test.tsx`, `PlaceDetailHeader.test.tsx`, `PlacePhotoGallery.test.tsx`, `PlaceContactChips.test.tsx`, `PlaceDetailActions.test.tsx`, `PlacePredictionsDropdown.test.tsx`, `CategoryFilterChips.test.tsx`, `usePlaceAutocomplete.test.ts`.
+
 ## 🧪 Tests
 
 Les tests unitaires et de composants se trouvent dans `src/features/carte/__tests__/` :

@@ -7,6 +7,7 @@ export * from './components/PoiDetailCard';
 export * from './components/AddPlaceToOutingModal';
 export * from './components/AddPoiToOutingModal';
 export * from './components/StyleSelector';
+export * from './components/TargetOutingBanner';
 export * from './hooks/usePlaces';
 export type { MapVisibleArea } from './utils/leafletMap';
 export * from './services/placeService';

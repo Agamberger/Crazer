@@ -1,9 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { AppModal, AppText, Button } from '@/shared/components';
+import { AppModal } from '@/shared/components';
 import { useAuth } from '@/features/auth';
 import { useOutingsStore } from '@/features/outings/store/useOutingsStore';
-import { colors, radii, spacing } from '@/shared/constants/theme';
 import { toast } from '@/shared/store/useToastStore';
 import { OutingRow, PlannedOutingInsert, PlannedOutingRow } from '@/shared/types';
 import { ensurePlaceExists } from '../services/placeService';
@@ -11,7 +9,8 @@ import { useMapStore } from '../store/useMapStore';
 import { PlaceItem } from '../types/carte';
 import { OutingPickerStep } from './OutingPickerStep';
 import { PlaceSummaryBanner } from './PlaceSummaryBanner';
-import { buildPlannedStepValues, PlannedStepForm, PlannedStepValues } from './PlannedStepForm';
+import { PlannedStepValues } from './PlannedStepForm';
+import { PlannedStepEditStep } from './PlannedStepEditStep';
 
 export interface AddPlaceToOutingModalProps {
   visible: boolean;
@@ -146,41 +145,14 @@ export const AddPlaceToOutingModal: React.FC<AddPlaceToOutingModalProps> = ({
       <PlaceSummaryBanner place={place} />
 
       {selectedOuting ? (
-        <ScrollView
-          style={styles.step}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          testID="step-edit-planned"
-        >
-          <View style={styles.parentOuting}>
-            <View style={styles.parentOutingText}>
-              <AppText variant="caption" color="muted">
-                Pour la sortie :
-              </AppText>
-              <AppText variant="bodySmall" color="accent" weight="bold" numberOfLines={1}>
-                {selectedOuting.title}
-              </AppText>
-            </View>
-            <Button
-              title="Changer"
-              variant="ghost"
-              size="sm"
-              leftIcon="arrow-back"
-              onPress={() => selectOuting(null)}
-              accessibilityLabel="Changer de sortie"
-              testID="btn-back-to-outings-list"
-            />
-          </View>
-
-          <PlannedStepForm
-            key={selectedOuting.id}
-            initialValues={buildPlannedStepValues(selectedOuting, place)}
-            onSubmit={handleSavePlannedOuting}
-            onCancel={() => selectOuting(null)}
-            isSubmitting={isSubmitting}
-            error={submitError}
-          />
-        </ScrollView>
+        <PlannedStepEditStep
+          outing={selectedOuting}
+          place={place}
+          onChangeOuting={() => selectOuting(null)}
+          onSubmit={handleSavePlannedOuting}
+          isSubmitting={isSubmitting}
+          error={submitError}
+        />
       ) : (
         <OutingPickerStep
           outings={outings.filter(isActiveOuting)}
@@ -193,26 +165,3 @@ export const AddPlaceToOutingModal: React.FC<AddPlaceToOutingModalProps> = ({
     </AppModal>
   );
 };
-
-const styles = StyleSheet.create({
-  parentOuting: {
-    alignItems: 'center',
-    backgroundColor: colors.surfaceLight,
-    borderColor: colors.border,
-    borderRadius: radii.md - 2,
-    borderWidth: 1,
-    flexDirection: 'row',
-    marginBottom: spacing.sm,
-    paddingLeft: spacing.md,
-    paddingVertical: spacing.xs,
-  },
-  parentOutingText: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: spacing.xxl,
-  },
-  step: {
-    flex: 1,
-  },
-});
