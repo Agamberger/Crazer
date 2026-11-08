@@ -4,6 +4,7 @@ const mockRouter = {
   push: jest.fn(),
   replace: jest.fn(),
   back: jest.fn(),
+  canGoBack: jest.fn(() => true),
 };
 
 jest.mock('expo-router', () => {
@@ -19,6 +20,7 @@ jest.mock('expo-router', () => {
       addListener: jest.fn(),
     })),
     useSearchParams: () => ({}),
+    useLocalSearchParams: jest.fn(() => ({})),
     usePathname: () => '/',
     Link: 'Link',
     Tabs: MockTabs,

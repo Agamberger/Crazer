@@ -25,6 +25,8 @@ export interface OutingEditFormProps {
   onAddFromMap?: () => void;
   isAddingPlannedOuting?: boolean;
   onSelectPlannedOuting?: (plannedOuting: PlannedOutingRow) => void;
+  /** Opens the participants & availability recap of the outing. */
+  onOpenParticipants?: () => void;
 }
 
 export const OutingEditForm: React.FC<OutingEditFormProps> = ({
@@ -38,6 +40,7 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
   onAddFromMap: propOnAddFromMap,
   isAddingPlannedOuting = false,
   onSelectPlannedOuting: propOnSelectPlannedOuting,
+  onOpenParticipants,
 }) => {
   const timeline = useOutingPlannedOutings(outing.id, {
     plannedOutings: propPlannedOutings,
@@ -97,6 +100,18 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
         />
 
         {displayError ? <InlineAlert message={displayError} testID="error-container" /> : null}
+
+        {onOpenParticipants ? (
+          <Button
+            title="Participants & dispos"
+            variant="secondary"
+            size="sm"
+            leftIcon="people-outline"
+            onPress={onOpenParticipants}
+            style={styles.participantsButton}
+            testID="btn-open-participants"
+          />
+        ) : null}
 
         <TextField
           label="Description"
@@ -177,6 +192,9 @@ const styles = StyleSheet.create({
   contentContainer: {
     padding: spacing.md,
     paddingBottom: spacing.xxl,
+  },
+  participantsButton: {
+    marginBottom: spacing.md,
   },
   titleField: {
     marginBottom: spacing.lg,

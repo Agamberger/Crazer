@@ -1,8 +1,8 @@
 import React from 'react';
-import { fireEvent, render, waitFor, within } from '@testing-library/react-native';
+import { fireEvent, render, within } from '@testing-library/react-native';
 import { useRouter } from 'expo-router';
 import HomeScreen from '../index';
-import { useOutingsStore } from '@/features/outings';
+import { useOutingSchedulingStore, useOutingsStore } from '@/features/outings';
 import { useToastStore } from '@/shared/store/useToastStore';
 import { OutingRow } from '@/shared/types';
 
@@ -40,6 +40,7 @@ describe('HomeScreen (Accueil)', () => {
   const router = useRouter();
   const mockFetchOutings = jest.fn();
   const mockCreateOuting = jest.fn();
+  const mockFetchInvitations = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -54,6 +55,7 @@ describe('HomeScreen (Accueil)', () => {
       fetchOutings: mockFetchOutings,
       createOuting: mockCreateOuting,
     });
+    useOutingSchedulingStore.setState({ invitations: [], fetchInvitations: mockFetchInvitations });
   });
 
   test("salue l'utilisateur par son prénom et charge les sorties", () => {
@@ -93,31 +95,46 @@ describe('HomeScreen (Accueil)', () => {
     expect(router.push).toHaveBeenCalledWith('/(tabs)/sorties');
   });
 
-  test("affiche un état vide qui permet d'organiser une sortie", async () => {
-    mockCreateOuting.mockResolvedValueOnce(makeOuting({ id: 'new' }));
+  test("l'état vide ouvre l'assistant de création de sortie", () => {
     const { getByTestId } = render(<HomeScreen />);
 
     const emptyState = getByTestId('home-next-outing-empty');
     fireEvent.press(within(emptyState).getByText('Organiser une sortie'));
 
-    await waitFor(() => {
-      expect(mockCreateOuting).toHaveBeenCalledWith('user-1');
-      expect(router.push).toHaveBeenCalledWith('/(tabs)/sorties');
-    });
+    expect(router.push).toHaveBeenCalledWith('/outing/create');
+    expect(mockCreateOuting).not.toHaveBeenCalled();
   });
 
-  test("affiche un toast d'erreur si la création échoue, sans quitter l'accueil", async () => {
-    mockCreateOuting.mockRejectedValueOnce(new Error('network'));
+  test("le raccourci « Organiser une sortie » ouvre l'assistant sans créer de sortie", () => {
     const { getByTestId } = render(<HomeScreen />);
 
     fireEvent.press(getByTestId('home-action-create-outing'));
 
-    await waitFor(() => {
-      expect(useToastStore.getState().queue).toContainEqual(
-        expect.objectContaining({ tone: 'error' })
-      );
+    expect(router.push).toHaveBeenCalledWith('/outing/create');
+    expect(mockCreateOuting).not.toHaveBeenCalled();
+  });
+
+  test('charge les invitations et ouvre le parcours « Rejoindre »', () => {
+    useOutingSchedulingStore.setState({
+      invitations: [
+        {
+          outing: makeOuting({ id: 'invited-outing', title: 'Glouglou', status: 'draft' }),
+          organizerName: 'Macéo',
+          invitedAt: '2026-11-01T10:00:00Z',
+        },
+      ],
     });
-    expect(router.push).not.toHaveBeenCalled();
+    const { getByTestId, getByText } = render(<HomeScreen />);
+
+    expect(mockFetchInvitations).toHaveBeenCalledWith('user-1');
+    expect(getByText('✉️ Invité par Macéo')).toBeTruthy();
+
+    fireEvent.press(getByTestId('invitation-invited-outing'));
+
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/outing/[id]/join',
+      params: { id: 'invited-outing' },
+    });
   });
 
   test('les raccourcis mènent à la carte et au profil, avec le nombre de demandes en attente', () => {

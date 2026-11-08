@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen } from '@/shared/components';
@@ -12,10 +12,14 @@ import {
   QuickAction,
   QuickActions,
 } from '@/features/home';
-import { useOutingsStore } from '@/features/outings';
+import {
+  OutingInvitation,
+  PendingInvitationsSection,
+  useOutingSchedulingStore,
+  useOutingsStore,
+} from '@/features/outings';
 import { useFriends } from '@/features/profil';
 import { spacing } from '@/shared/constants/theme';
-import { toast } from '@/shared/store/useToastStore';
 import { OutingRow } from '@/shared/types';
 
 export default function HomeScreen() {
@@ -23,11 +27,11 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const outings = useOutingsStore((state) => state.outings);
   const fetchOutings = useOutingsStore((state) => state.fetchOutings);
-  const createOuting = useOutingsStore((state) => state.createOuting);
   const selectOuting = useOutingsStore((state) => state.selectOuting);
   const selectPlannedOuting = useOutingsStore((state) => state.selectPlannedOuting);
+  const invitations = useOutingSchedulingStore((state) => state.invitations);
+  const fetchInvitations = useOutingSchedulingStore((state) => state.fetchInvitations);
   const { pendingRequests, fetchFriendsList } = useFriends();
-  const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
     fetchOutings();
@@ -37,6 +41,10 @@ export default function HomeScreen() {
     if (user) fetchFriendsList();
   }, [user, fetchFriendsList]);
 
+  useEffect(() => {
+    if (user?.id) fetchInvitations(user.id);
+  }, [user?.id, fetchInvitations]);
+
   const nextOuting = useMemo(() => getNextOuting(outings), [outings]);
 
   const openOutings = (outing: OutingRow | null) => {
@@ -45,18 +53,12 @@ export default function HomeScreen() {
     router.push('/(tabs)/sorties');
   };
 
-  const handleCreateOuting = async () => {
-    if (!user) return;
-    setIsCreating(true);
-    try {
-      // La sortie créée devient la sortie sélectionnée : l'onglet Sorties ouvre son édition.
-      await createOuting(user.id);
-      router.push('/(tabs)/sorties');
-    } catch {
-      toast.error("Impossible de créer la sortie. Réessaie dans un instant.", { title: 'Erreur' });
-    } finally {
-      setIsCreating(false);
-    }
+  const handleCreateOuting = () => {
+    router.push('/outing/create');
+  };
+
+  const openInvitation = (invitation: OutingInvitation) => {
+    router.push({ pathname: '/outing/[id]/join', params: { id: invitation.outing.id } });
   };
 
   const pendingCount = pendingRequests.length;
@@ -64,10 +66,10 @@ export default function HomeScreen() {
     {
       id: 'create-outing',
       label: 'Organiser une sortie',
-      description: 'Crée une sortie et planifie ses étapes',
+      description: 'Choisis les jours, tes dispos et invite tes amis',
       icon: 'add-circle-outline',
       onPress: handleCreateOuting,
-      disabled: isCreating || !user,
+      disabled: !user,
     },
     {
       id: 'explore-map',
@@ -96,6 +98,7 @@ export default function HomeScreen() {
         fullName={user?.fullName}
         avatarUrl={user?.avatarUrl}
       />
+      <PendingInvitationsSection invitations={invitations} onOpenInvitation={openInvitation} />
       <NextOutingSection
         outing={nextOuting}
         onOpenOuting={openOutings}

@@ -39,7 +39,7 @@ export type Database = {
           created_at: string
           friend_id: string
           id: string
-          status: 'pending' | 'accepted' | 'rejected'
+          status: string
           updated_at: string
           user_id: string
         }
@@ -47,7 +47,7 @@ export type Database = {
           created_at?: string
           friend_id: string
           id?: string
-          status?: 'pending' | 'accepted' | 'rejected'
+          status?: string
           updated_at?: string
           user_id: string
         }
@@ -55,7 +55,7 @@ export type Database = {
           created_at?: string
           friend_id?: string
           id?: string
-          status?: 'pending' | 'accepted' | 'rejected'
+          status?: string
           updated_at?: string
           user_id?: string
         }
@@ -72,6 +72,90 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outing_availabilities: {
+        Row: {
+          created_at: string
+          day: string
+          end_time: string
+          id: string
+          outing_id: string
+          start_time: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          day: string
+          end_time: string
+          id?: string
+          outing_id: string
+          start_time: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          day?: string
+          end_time?: string
+          id?: string
+          outing_id?: string
+          start_time?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outing_availabilities_candidate_day"
+            columns: ["outing_id", "day"]
+            isOneToOne: false
+            referencedRelation: "outing_days"
+            referencedColumns: ["outing_id", "day"]
+          },
+          {
+            foreignKeyName: "outing_availabilities_outing_id_fkey"
+            columns: ["outing_id"]
+            isOneToOne: false
+            referencedRelation: "outings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outing_availabilities_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outing_days: {
+        Row: {
+          created_at: string
+          day: string
+          id: string
+          outing_id: string
+        }
+        Insert: {
+          created_at?: string
+          day: string
+          id?: string
+          outing_id: string
+        }
+        Update: {
+          created_at?: string
+          day?: string
+          id?: string
+          outing_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outing_days_outing_id_fkey"
+            columns: ["outing_id"]
+            isOneToOne: false
+            referencedRelation: "outings"
             referencedColumns: ["id"]
           },
         ]
@@ -544,6 +628,16 @@ export type Database = {
             Returns: string
           }
       can_view_profile_email: { Args: { p_target: string }; Returns: boolean }
+      create_outing_with_invites: {
+        Args: {
+          p_days: string[]
+          p_invitee_ids: string[]
+          p_slots: Json
+          p_start_date: string
+          p_title: string
+        }
+        Returns: string
+      }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
         | {
@@ -675,16 +769,16 @@ export type Database = {
         Returns: boolean
       }
       geomfromewkt: { Args: { "": string }; Returns: unknown }
-      gettransactionid: { Args: never; Returns: unknown }
       get_profiles: {
         Args: { p_ids: string[] }
         Returns: {
-          avatar_url: string | null
-          email: string | null
-          full_name: string | null
+          avatar_url: string
+          email: string
+          full_name: string
           id: string
         }[]
       }
+      gettransactionid: { Args: never; Returns: unknown }
       is_outing_member: { Args: { p_outing_id: string }; Returns: boolean }
       is_outing_organizer: {
         Args: { p_outing_id: string; p_user_id: string }
@@ -735,6 +829,19 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
+      replace_outing_availabilities: {
+        Args: { p_outing_id: string; p_slots: Json; p_user_id: string }
+        Returns: undefined
+      }
+      respond_to_outing_invitation: {
+        Args: {
+          p_outing_id: string
+          p_slots: Json
+          p_status: Database["public"]["Enums"]["participant_status"]
+        }
+        Returns: undefined
+      }
+      scrub_google_image_ref: { Args: { p_image: string }; Returns: string }
       search_places: {
         Args: {
           filter_cat?: Database["public"]["Enums"]["place_category"]
@@ -764,9 +871,9 @@ export type Database = {
       search_profiles: {
         Args: { p_query: string }
         Returns: {
-          avatar_url: string | null
-          email: string | null
-          full_name: string | null
+          avatar_url: string
+          email: string
+          full_name: string
           id: string
         }[]
       }

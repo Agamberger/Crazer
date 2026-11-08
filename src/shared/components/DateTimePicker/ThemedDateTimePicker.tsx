@@ -10,6 +10,8 @@ export interface ThemedDateTimePickerProps {
   visible: boolean;
   value: Date;
   mode?: 'date' | 'time';
+  /** Hide the Date / Time tabs so only `mode` can be edited (e.g. time-only fields). */
+  lockMode?: boolean;
   onConfirm: (date: Date) => void;
   onCancel: () => void;
 }
@@ -18,6 +20,7 @@ export const ThemedDateTimePicker: React.FC<ThemedDateTimePickerProps> = ({
   visible,
   value,
   mode = 'date',
+  lockMode = false,
   onConfirm,
   onCancel,
 }) => {
@@ -90,10 +93,9 @@ export const ThemedDateTimePicker: React.FC<ThemedDateTimePickerProps> = ({
       <View style={styles.backdrop}>
         <View style={styles.modalCard}>
           {/* Onglets de sélection du mode */}
-          <PickerModeTabs
-            currentMode={currentMode}
-            onModeChange={setCurrentMode}
-          />
+          {lockMode ? null : (
+            <PickerModeTabs currentMode={currentMode} onModeChange={setCurrentMode} />
+          )}
 
           {/* Vue Calendrier ou Vue Heure */}
           {currentMode === 'date' ? (

@@ -1,20 +1,22 @@
 import React, { useEffect, useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useNavigation } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
 import type { NavigationProp, NavigationState, ParamListBase } from '@react-navigation/native';
 import { AppText, Button, List, Screen } from '@/shared/components';
 import { useAuth } from '@/features/auth';
 import {
   OutingCard,
   OutingEditScreen,
+  OutingInvitation,
+  PendingInvitationsSection,
   PlannedOutingEditScreen,
   useOutingEditing,
+  useOutingSchedulingStore,
   useOutingsStore,
 } from '@/features/outings';
 import { OUTINGS_SCREEN_EDGES } from '@/features/outings/constants';
 import { useFriends, PendingFriendRequestsBanner } from '@/features/profil';
 import { spacing } from '@/shared/constants/theme';
-import { toast } from '@/shared/store/useToastStore';
 
 /** Navigation de l'onglet, avec l'événement `tabPress` du navigateur à onglets. */
 type TabNavigation = NavigationProp<
@@ -29,13 +31,15 @@ type TabNavigation = NavigationProp<
 export default function SortiesScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<TabNavigation>();
+  const router = useRouter();
 
   // Outings store state
   const outings = useOutingsStore((state) => state.outings);
   const isLoading = useOutingsStore((state) => state.isLoading);
   const error = useOutingsStore((state) => state.error);
   const fetchOutings = useOutingsStore((state) => state.fetchOutings);
-  const createOuting = useOutingsStore((state) => state.createOuting);
+  const invitations = useOutingSchedulingStore((state) => state.invitations);
+  const fetchInvitations = useOutingSchedulingStore((state) => state.fetchInvitations);
 
   // Outing / step edition
   const {
@@ -67,6 +71,10 @@ export default function SortiesScreen() {
   }, [user, fetchFriendsList]);
 
   useEffect(() => {
+    if (user?.id) fetchInvitations(user.id);
+  }, [user?.id, fetchInvitations]);
+
+  useEffect(() => {
     // Un nouvel appui sur l'onglet ramène à la liste des sorties
     const unsubscribe = navigation?.addListener?.('tabPress', () => {
       selectOuting(null);
@@ -78,11 +86,15 @@ export default function SortiesScreen() {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await Promise.all([fetchOutings(), user ? fetchFriendsList() : Promise.resolve()]);
+      await Promise.all([
+        fetchOutings(),
+        user ? fetchFriendsList() : Promise.resolve(),
+        user?.id ? fetchInvitations(user.id) : Promise.resolve(),
+      ]);
     } finally {
       setRefreshing(false);
     }
-  }, [fetchOutings, fetchFriendsList, user]);
+  }, [fetchOutings, fetchFriendsList, fetchInvitations, user]);
 
   const handleSelectOuting = (id: string) => {
     selectOuting(id);
@@ -92,13 +104,12 @@ export default function SortiesScreen() {
     selectPlannedOuting(id);
   };
 
-  const handleCreateOuting = async () => {
-    if (!user?.id) return;
-    try {
-      await createOuting(user.id);
-    } catch {
-      toast.error('Impossible de créer la sortie. Réessaie dans un instant.', { title: 'Erreur' });
-    }
+  const handleCreateOuting = () => {
+    router.push('/outing/create');
+  };
+
+  const handleOpenInvitation = (invitation: OutingInvitation) => {
+    router.push({ pathname: '/outing/[id]/join', params: { id: invitation.outing.id } });
   };
 
   // Case 1: Editing a selected planned outing
@@ -127,6 +138,9 @@ export default function SortiesScreen() {
         onSubmit={handleUpdateOuting}
         onCancel={handleCancelEdit}
         onSelectPlannedOuting={(po) => handleSelectPlannedOuting(po.id)}
+        onOpenParticipants={() =>
+          router.push({ pathname: '/outing/[id]/recap', params: { id: selectedOutingId } })
+        }
       />
     );
   }
@@ -141,6 +155,10 @@ export default function SortiesScreen() {
       />
 
       <View style={styles.headerArea}>
+        <PendingInvitationsSection
+          invitations={invitations}
+          onOpenInvitation={handleOpenInvitation}
+        />
         <AppText variant="bodySmall" color="secondary">
           Organise et rejoins des sorties entre amis !
         </AppText>

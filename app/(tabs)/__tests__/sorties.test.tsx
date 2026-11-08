@@ -1,10 +1,9 @@
 import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import OutingsScreen from '../sorties';
-import { useOutingsStore } from '@/features/outings';
+import { useOutingSchedulingStore, useOutingsStore } from '@/features/outings';
 import { OutingRow, PlannedOutingRow } from '@/shared/types';
-import { useNavigation } from 'expo-router';
-import { toast } from '@/shared/store/useToastStore';
+import { useNavigation, useRouter } from 'expo-router';
 
 jest.mock('@/features/profil', () => ({
   useFriends: () => ({
@@ -35,6 +34,7 @@ describe('OutingsScreen (Outings Tab)', () => {
   const mockCreatePlannedOuting = jest.fn();
   const mockUpdatePlannedOuting = jest.fn();
   const mockDeletePlannedOuting = jest.fn();
+  const mockFetchInvitations = jest.fn();
 
   const mockOuting: OutingRow = {
     id: 'out-1',
@@ -81,6 +81,7 @@ describe('OutingsScreen (Outings Tab)', () => {
       updatePlannedOuting: mockUpdatePlannedOuting,
       deletePlannedOuting: mockDeletePlannedOuting,
     });
+    useOutingSchedulingStore.setState({ invitations: [], fetchInvitations: mockFetchInvitations });
   });
 
   it('renders correctly and calls fetchOutings on mount', async () => {
@@ -222,14 +223,39 @@ describe('OutingsScreen (Outings Tab)', () => {
     expect(useOutingsStore.getState().selectedOutingId).toBeNull();
   });
 
-  it('triggers createOuting when "+ Organiser une sortie" is pressed', async () => {
+  it('opens the creation wizard when "+ Organiser une sortie" is pressed', () => {
     const { getByText } = render(<OutingsScreen />);
 
-    const button = getByText('+ Organiser une sortie');
-    fireEvent.press(button);
+    fireEvent.press(getByText('+ Organiser une sortie'));
 
-    await waitFor(() => {
-      expect(mockCreateOuting).toHaveBeenCalledWith('test-user-id');
+    expect(useRouter().push).toHaveBeenCalledWith('/outing/create');
+    expect(mockCreateOuting).not.toHaveBeenCalled();
+  });
+
+  it('lists pending invitations and opens the join flow', () => {
+    useOutingSchedulingStore.setState({
+      invitations: [{ outing: mockOuting, organizerName: 'Macéo', invitedAt: mockOuting.created_at }],
+    });
+    const { getByTestId } = render(<OutingsScreen />);
+
+    expect(mockFetchInvitations).toHaveBeenCalledWith('test-user-id');
+    fireEvent.press(getByTestId('invitation-out-1'));
+
+    expect(useRouter().push).toHaveBeenCalledWith({
+      pathname: '/outing/[id]/join',
+      params: { id: 'out-1' },
+    });
+  });
+
+  it('opens the participants recap from the outing edit form', () => {
+    useOutingsStore.setState({ outings: [mockOuting], selectedOutingId: 'out-1' });
+    const { getByTestId } = render(<OutingsScreen />);
+
+    fireEvent.press(getByTestId('btn-open-participants'));
+
+    expect(useRouter().push).toHaveBeenCalledWith({
+      pathname: '/outing/[id]/recap',
+      params: { id: 'out-1' },
     });
   });
 
@@ -447,15 +473,6 @@ describe('OutingsScreen (Outings Tab)', () => {
 
       await waitFor(() => expect(mockDeletePlannedOuting).toHaveBeenCalledWith('po-1'));
       expect(useOutingsStore.getState().selectedPlannedOutingId).toBe('po-1');
-    });
-
-    it("affiche un toast si la création d'une sortie échoue", async () => {
-      mockCreateOuting.mockRejectedValue(new Error('RLS'));
-
-      const { getByText } = render(<OutingsScreen />);
-      fireEvent.press(getByText('+ Organiser une sortie'));
-
-      await waitFor(() => expect(toast.error).toHaveBeenCalled());
     });
   });
 });
