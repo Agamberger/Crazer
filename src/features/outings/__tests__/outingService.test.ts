@@ -31,6 +31,7 @@ describe('outingService', () => {
           status: 'planned',
           description: 'Bowling entre amis',
           cover_image: null,
+          outing_type: null,
           created_at: '2026-08-24T20:00:00Z',
           updated_at: '2026-08-24T20:00:00Z',
         },
@@ -77,6 +78,7 @@ describe('outingService', () => {
         created_by: 'user-123',
         status: 'planned',
         cover_image: null,
+        outing_type: null,
         created_at: '2026-08-24T20:00:00Z',
         updated_at: '2026-08-24T20:00:00Z',
       };
@@ -134,6 +136,7 @@ describe('outingService', () => {
         description: newOuting.description || null,
         status: 'draft',
         cover_image: null,
+        outing_type: null,
         created_at: '2026-08-24T20:00:00Z',
         updated_at: '2026-08-24T20:00:00Z',
       };
@@ -197,6 +200,7 @@ describe('outingService', () => {
         created_by: 'user-123',
         status: 'planned',
         cover_image: null,
+        outing_type: null,
         created_at: '2026-08-24T20:00:00Z',
         updated_at: '2026-08-24T21:00:00Z',
       };

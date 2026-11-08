@@ -107,3 +107,18 @@ VALUES
   ('c2222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111',
    CURRENT_DATE + 6, '18:00', '23:00')
 ON CONFLICT (outing_id, user_id, day) DO NOTHING;
+
+-- 7. TYPE DE SORTIE ET RÉPONSES GUIDÉES (étape 4)
+-- Apéro rooftop : sortie précise ; Alice a déjà répondu, Bob non.
+UPDATE public.outings
+SET outing_type = 'precise'
+WHERE id = 'c2222222-2222-2222-2222-222222222222' AND outing_type IS NULL;
+
+INSERT INTO public.outing_answers (
+  outing_id, user_id, activity_type, place_wish, preferred_time, eat_before
+)
+VALUES (
+  'c2222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111',
+  'drinks', 'Vue sur Paris', '19:30', FALSE
+)
+ON CONFLICT (outing_id, user_id) DO NOTHING;

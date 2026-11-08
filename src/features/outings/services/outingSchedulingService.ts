@@ -1,5 +1,5 @@
 import { supabase } from '@/shared/lib/supabase';
-import { OutingRow, ParticipantStatus } from '@/shared/types';
+import { OutingRow, OutingType, ParticipantStatus } from '@/shared/types';
 import {
   AvailabilitySlot,
   DayKey,
@@ -11,8 +11,12 @@ import { normalizeTime } from '../utils/availabilityUtils';
 
 const DEFAULT_MEMBER_NAME = 'Utilisateur';
 
+/** Realtime reuses a channel with the same topic, so each subscription gets a unique one. */
+let subscriptionCounter = 0;
+
 export interface CreateOutingWithInvitesPayload {
   title: string;
+  outingType: OutingType | null;
   days: DayKey[];
   slots: AvailabilitySlot[];
   inviteeIds: string[];
@@ -37,13 +41,14 @@ const fetchProfiles = async (ids: string[]): Promise<Map<string, ProfileSummary>
 };
 
 export const outingSchedulingService = {
-  /** Creates the undated `draft` outing, its days, the organizer's slots and the invitations atomically. */
+  /** Creates the undated `draft` outing, its type, its days, the organizer's slots and the invitations atomically. */
   createOutingWithInvites: async (payload: CreateOutingWithInvitesPayload): Promise<string> => {
     const { data, error } = await supabase.rpc('create_outing_with_invites', {
       p_title: payload.title,
       p_days: payload.days,
       p_slots: payload.slots.map(({ day, start, end }) => ({ day, start, end })),
       p_invitee_ids: payload.inviteeIds,
+      p_outing_type: payload.outingType ?? undefined,
     });
     if (error) throw new Error(error.message);
     return data;
@@ -143,8 +148,9 @@ export const outingSchedulingService = {
   /** Live updates of participants and availabilities. Returns the unsubscribe function. */
   subscribeToOutingScheduling: (outingId: string, onChange: () => void): (() => void) => {
     const filter = `outing_id=eq.${outingId}`;
+    subscriptionCounter += 1;
     const channel = supabase
-      .channel(`outing-scheduling-${outingId}`)
+      .channel(`outing-scheduling-${outingId}-${subscriptionCounter}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'outing_participants', filter }, onChange)
       .on(
         'postgres_changes',

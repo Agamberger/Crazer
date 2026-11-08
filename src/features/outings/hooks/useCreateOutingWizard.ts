@@ -54,6 +54,8 @@ export const useCreateOutingWizard = (
     switch (step) {
       case 'name':
         return draft.title.trim().length > 0;
+      case 'type':
+        return draft.outingType !== null;
       case 'days':
         return draft.days.length > 0;
       case 'availability':
@@ -86,6 +88,7 @@ export const useCreateOutingWizard = (
     try {
       const outingId = await createOutingWithInvites({
         title: draft.title,
+        outingType: draft.outingType,
         days: draft.days,
         slots: draft.slots,
         inviteeIds: draft.inviteeIds,

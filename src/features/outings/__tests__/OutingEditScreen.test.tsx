@@ -15,6 +15,7 @@ const outing: OutingRow = {
   created_by: 'user-1',
   status: 'draft',
   cover_image: null,
+  outing_type: null,
   created_at: '2026-08-24T20:00:00Z',
   updated_at: '2026-08-24T20:00:00Z',
 };

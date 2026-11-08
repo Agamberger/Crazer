@@ -46,5 +46,5 @@ Comptes de test (seeds) : `alice@crazer.app`, `bob@crazer.app`, `charlie@crazer.
 
 ## Lancer l'app
 
-- Web contre Supabase local : configuration `expo-web-local` de `.claude/launch.json` (injecte l'URL et la clé anon locales, port 8081).
+- Web contre Supabase local : lancer d'abord `npm run env:local` (écrit `.env.local`, lu par Expo), puis la configuration `expo-web-local` de `.claude/launch.json` (mode CI, sans rechargement, cache vidé : vérifications automatisées) ou `expo-web-local-watch` (rechargement à chaud : développement avec l'utilisateur). Port 8081.
 - Sinon : `npm run env:local` puis `npx expo start --clear`.

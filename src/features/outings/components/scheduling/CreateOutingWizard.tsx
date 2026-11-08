@@ -6,6 +6,7 @@ import { AvailabilityStep } from './AvailabilityStep';
 import { InviteFriendsStep } from './InviteFriendsStep';
 import { OutingDaysStep } from './OutingDaysStep';
 import { OutingNameStep } from './OutingNameStep';
+import { OutingTypeStep } from '../questions/OutingTypeStep';
 import { WizardHeader } from './WizardHeader';
 
 export interface CreateOutingWizardProps {
@@ -15,7 +16,7 @@ export interface CreateOutingWizardProps {
   place?: WizardPlace | null;
 }
 
-/** Step 1 of the outing journey: name, days, my availability, invitees. */
+/** Step 1 of the outing journey: name, type, invitees, days, my availability. */
 export const CreateOutingWizard: React.FC<CreateOutingWizardProps> = ({
   onCreated,
   onClose,
@@ -26,7 +27,7 @@ export const CreateOutingWizard: React.FC<CreateOutingWizardProps> = ({
 
   const footer = (
     <Button
-      title={wizard.isLastStep ? "Envoyer l'invitation" : 'Suivant'}
+      title={wizard.isLastStep ? 'Créer la sortie' : 'Suivant'}
       fullWidth
       disabled={!wizard.canContinue}
       loading={wizard.isSubmitting}
@@ -60,6 +61,9 @@ export const CreateOutingWizard: React.FC<CreateOutingWizardProps> = ({
       ) : null}
       {step === 'name' ? (
         <OutingNameStep title={draft.title} onChangeTitle={draft.setTitle} />
+      ) : null}
+      {step === 'type' ? (
+        <OutingTypeStep selected={draft.outingType} onSelect={draft.setOutingType} />
       ) : null}
       {step === 'days' ? (
         <OutingDaysStep

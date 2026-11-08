@@ -20,7 +20,7 @@ src/features/outings/
 │   ├── PlannedOutingEditScreen.tsx # Onglet Sorties : chargement / introuvable / PlannedOutingEditForm
 │   ├── TimelineStep.tsx           # Une étape de la timeline (nœud, segments, carte)
 │   └── scheduling/                # Creation workflow (steps 1–3 of the outing journey)
-│       ├── CreateOutingWizard.tsx # « On sort ! » → « Quand ? » → « Mes dispos » → « Avec qui ? »
+│       ├── CreateOutingWizard.tsx # « On sort ! » → « Quel genre ? » → « Avec qui ? » → « Quand ? » → « Mes dispos »
 │       ├── WizardHeader.tsx       # Back / close + « Étape x/n »
 │       ├── OutingNameStep.tsx, OutingDaysStep.tsx, AvailabilityStep.tsx, InviteFriendsStep.tsx
 │       ├── JoinOutingFlow.tsx     # Invitee: Rejoindre ? → Quel jour ? → Dispos → Qui vient ?
@@ -28,6 +28,11 @@ src/features/outings/
 │       ├── DayRecapRow.tsx, MembersList.tsx
 │       ├── InvitationCard.tsx, PendingInvitationsSection.tsx
 │       └── ParticipantAvatars.tsx # Avatars + « n participants · m en attente »
+│   └── questions/                 # Outing type + guided questions (step 4)
+│       ├── OutingQuestions.tsx    # Screen: type picker (organizer) then the form of the type
+│       ├── OutingTypeStep.tsx     # « Quel genre de sortie ? » (precise / one_day / holidays)
+│       ├── PreciseQuestions.tsx, OneDayQuestions.tsx, HolidaysQuestions.tsx
+│       └── questionProps.ts       # Props shared by the three forms
 ├── constants.ts                   # DURATION_PRESETS, PLANNED_STATUS_OPTIONS (partagés avec carte), OUTING_STATUS_OPTIONS, OUTINGS_SCREEN_EDGES
 ├── hooks/
 │   ├── useOutings.ts              # Chargement / création / mise à jour des sorties
@@ -42,12 +47,17 @@ src/features/outings/
 │   └── useOutingMembers.ts        # Participants of one outing (loaded once)
 ├── services/
 │   ├── outingService.ts           # Requêtes Supabase (outings & planned_outings CRUD)
-│   └── outingSchedulingService.ts # Scheduling RPCs, days, availabilities, members, invitations, realtime
+│   ├── outingSchedulingService.ts # Scheduling RPCs, days, availabilities, members, invitations, realtime
+│   └── outingAnswersService.ts    # Guided answers (fetch / save) and outing type
 ├── store/
 │   ├── useOutingsStore.ts         # Store Zustand réactif gérant l'état des sorties et étapes
 │   ├── useOutingCreationStore.ts  # Wizard draft (title, days, slots, invitees, step)
-│   └── useOutingSchedulingStore.ts # Invitations, scheduling per outing, create / respond actions
+│   ├── useOutingSchedulingStore.ts # Invitations, scheduling per outing, create / respond actions
+│   └── useOutingAnswersStore.ts   # Guided answers per outing, save answers, set outing type
+├── questionOptions.ts             # Labels / emojis of the types, activities, budgets, wishes…
+├── types/questions.ts             # OutingAnswers, MemberAnswers, DayPreference, HolidayWish
 ├── types/scheduling.ts            # DayKey, AvailabilitySlot, OutingMember, DayRecap, OutingInvitation…
+├── utils/answersUtils.ts          # Row ↔ answers mapping, period helpers, per-type validation
 ├── utils/availabilityUtils.ts     # Pure helpers: candidate days, common slot per day, payloads
 ├── __tests__/                     # Tests unitaires et composants
 │   ├── DurationField.test.tsx
@@ -181,3 +191,26 @@ La suppression d'une étape demande une confirmation via `ConfirmDialog`
 - `OutingEditForm` offers « Définir la date » / « Retirer la date »; saving without a date is allowed.
 - Default date of a new step (`resolveStepBaseDate` / `useStepBaseDate`, used by `createPlannedOuting` and the carte « Ajouter à une sortie » modal): the outing's `start_date`; for an undated outing, the first planned step's date, else the first candidate day at 18:00, else now. The DB requires `scheduled_for` but only checks it against `start_date` when one exists. The wizard's first step (opened from a place) uses the first candidate day at the start of the organizer's slot.
 - `fetchMyOutings` orders by `start_date` descending with undated outings first.
+
+---
+
+## 🧭 Outing type and guided questions (step 4)
+
+Route `app/outing/[id]/questions.tsx` renders `OutingQuestions`. Journey: recap → **« Continuer »** (organizer) → questions → « Enregistrer mes réponses » → Sorties tab. Members reach the same screen from the recap through **« Répondre aux questions »**, shown once the organizer has chosen the type.
+
+1. **Type** (organizer only): `precise`, `one_day` or `holidays`, stored in `outings.outing_type`. It is chosen at creation, as step 2 of the wizard (name → type → who comes → days → my availability → recap → questions → steps), and saved atomically with the outing by `create_outing_with_invites` (`p_outing_type`); the questions screen only offers the picker again if the organizer resets the type. « Changer le type de sortie » resets it to `NULL`. A member opening the screen before the choice sees a waiting message.
+2. **Questions** per type, stored per member in `outing_answers`:
+
+| Type | Questions | Required to save |
+| :--- | :--- | :--- |
+| `precise` | Type d'activité · lieu · heure · manger avant ? (« Partant ? » is the invitation answer, not asked again) | nothing |
+| `one_day` | Préférences de la journée (matin, après-midi, soirée, dehors, à l'abri, actif, tranquille) | at least one preference |
+| `holidays` | Période · budget · envies | period |
+
+Design choices (simplest option, easy to refine later):
+- Answers are **per member** (not a single organizer answer): preferences are individual. The screen shows « n / m ont répondu » (answers saved by accepted or « peut-être » participants / those participants); a single-choice answer is cleared by pressing it again, and a failed loading shows an error instead of a blank form. There is no vote or aggregation of answers yet.
+- « Heure » is a set of preset start times (`PREFERRED_TIME_OPTIONS`), « lieu » is a free-text wish (≤ 200 characters), not a link to a `places` row.
+- « Période » uses the shared `MultiDateCalendar`: the first and last picked days are the period bounds.
+- « Budget » is a 3-level scale (`low`, `medium`, `high`), not an amount.
+- Answers of an unused type are kept in the row when the type is changed, but ignored by the UI.
+- Saving is update-then-insert (`outingAnswersService.saveMyAnswers`) because `outing_id` / `user_id` are not updatable columns, so `upsert` would be refused; a unique violation from a concurrent save is retried as an update. The outing type is changed through `useOutingsStore.updateOuting`.
