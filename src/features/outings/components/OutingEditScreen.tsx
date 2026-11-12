@@ -15,6 +15,7 @@ export interface OutingEditScreenProps {
   onCancel: () => void;
   onSelectPlannedOuting: (plannedOuting: PlannedOutingRow) => void;
   onOpenParticipants?: () => void;
+  onOpenActivities?: () => void;
 }
 
 /** Sorties tab, outing edition: loader, "not found" state or `OutingEditForm` with its steps. */
@@ -27,6 +28,7 @@ export const OutingEditScreen: React.FC<OutingEditScreenProps> = ({
   onCancel,
   onSelectPlannedOuting,
   onOpenParticipants,
+  onOpenActivities,
 }) => {
   if (isLoading && !outing) {
     return (
@@ -61,6 +63,7 @@ export const OutingEditScreen: React.FC<OutingEditScreenProps> = ({
         plannedOutings={plannedOutings}
         onSelectPlannedOuting={onSelectPlannedOuting}
         onOpenParticipants={onOpenParticipants}
+        onOpenActivities={onOpenActivities}
       />
     </Screen>
   );

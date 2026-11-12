@@ -148,3 +148,8 @@ export interface Badge {
   iconName: string;
   unlockedAt?: string;
 }
+
+/** Activity proposals and votes (step 5 of the outing journey) */
+export type ActivityVote = Enums<'activity_vote'>;
+export type OutingActivityRow = Database['public']['Tables']['outing_activities']['Row'];
+export type OutingActivityVoteRow = Database['public']['Tables']['outing_activity_votes']['Row'];

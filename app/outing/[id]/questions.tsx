@@ -1,21 +1,17 @@
 import React from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { OutingQuestions, useOutingsStore } from '@/features/outings';
+import { OutingQuestions } from '@/features/outings';
 
 export default function OutingQuestionsRoute() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const selectOuting = useOutingsStore((state) => state.selectOuting);
 
   const close = () => {
     if (router.canGoBack()) router.back();
     else router.replace('/(tabs)/sorties');
   };
 
-  const openInSorties = () => {
-    selectOuting(id);
-    router.replace('/(tabs)/sorties');
-  };
+  const openActivities = () => router.replace({ pathname: '/outing/[id]/activities', params: { id } });
 
-  return <OutingQuestions outingId={id} onDone={openInSorties} onClose={close} />;
+  return <OutingQuestions outingId={id} onDone={openActivities} onClose={close} />;
 }
