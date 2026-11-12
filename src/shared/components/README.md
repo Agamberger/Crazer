@@ -118,7 +118,7 @@ Les icônes sont des noms [Ionicons](https://icons.expo.fyi/) (type `IconName`, 
 
 | Composant | Rôle | Props clés |
 | :--- | :--- | :--- |
-| `AppModal` | Dialogue, bottom sheet ou écran complet | `visible`, `onClose`, `title`, `variant` (`center` `sheet` `fullScreen`), `footer`, `dismissOnBackdrop`, `closeIcon`, `closeAccessibilityLabel`, `closeButtonTestID` |
+| `AppModal` | Dialogue, bottom sheet, écran complet ou page qui arrive de la droite | `visible`, `onClose`, `title`, `variant` (`center` `sheet` `fullScreen` `slideOver`), `footer`, `dismissOnBackdrop`, `closeIcon`, `closeAccessibilityLabel`, `closeButtonTestID` |
 | `ConfirmDialog` | Confirmation Annuler / Confirmer | `visible`, `title`, `message`, `destructive`, `loading`, `onConfirm`, `onCancel` |
 | `Screen` | Conteneur racine d'écran | `scrollable`, `padded`, `edges`, `avoidKeyboard`, `header`, `footer` |
 | `ToastHost` + `toast` | Notifications éphémères (file d'attente Zustand) | `toast.success/error/info/warning(message, { title, duration })` — `ToastHost` est déjà monté dans `app/_layout.tsx` |
@@ -169,4 +169,6 @@ Tout nouveau composant partagé doit être ajouté à `index.ts`, à ce README e
 Sous-composants internes (non exportés par `index.ts`, chacun avec son test) :
 `TextFieldTrailingIcon` (œil du mot de passe ou icône d'action de `TextField`),
 `TextFieldFooter` (erreur / aide / compteur sous `TextField`) et `AppModalHeader`
-(barre de titre et bouton de fermeture de `AppModal`).
+(barre de titre et bouton de fermeture de `AppModal`), `SlideOverModal` (page de la variante
+`slideOver` : entre par la droite, ressort par la droite avant d'être démontée, animation
+`useSlideOverAnimation` de `@/shared/hooks`, retour ← « Retour » par défaut).
