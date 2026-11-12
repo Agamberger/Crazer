@@ -19,6 +19,13 @@ src/features/outings/
 │   ├── PlannedOutingFormActions.tsx # Boutons Annuler / Enregistrer / Supprimer d'une étape
 │   ├── PlannedOutingEditScreen.tsx # Onglet Sorties : chargement / introuvable / PlannedOutingEditForm
 │   ├── TimelineStep.tsx           # Une étape de la timeline (nœud, segments, carte)
+│   ├── hub/                       # Outing hub: one screen for creation and edition
+│   │   ├── CreateOutingScreen.tsx # « On sort ! »: name only, creates the outing, opens the hub
+│   │   ├── OutingHub.tsx          # Name + « Quand ? » / « Qui ? » / « Comment ? » rows
+│   │   ├── OutingHubTitle.tsx     # Name, renamed in place by the organizer (saved on blur)
+│   │   ├── HubSectionRow.tsx      # One row: emoji, title, visual summary, chevron
+│   │   ├── WhenSummaryView.tsx, HowSummaryView.tsx
+│   │   └── WhoPanel.tsx           # « Qui ? » slide-over panel: members + invite friends
 │   └── scheduling/                # Creation workflow (steps 1–3 of the outing journey)
 │       ├── CreateOutingWizard.tsx # « On sort ! » → « Quel genre ? » → « Avec qui ? » → « Quand ? » → « Mes dispos »
 │       ├── WizardHeader.tsx       # Back / close + « Étape x/n »
@@ -161,6 +168,20 @@ function EditPlannedOutingScreen() {
 
 ### Gestion des erreurs d'enregistrement
 `updateOuting`, `updatePlannedOuting` et `deletePlannedOuting` ne lèvent pas d'exception : ils renvoient `null` / `false` et placent le message dans `error`. L'écran Sorties (`app/(tabs)/sorties.tsx`) ne referme donc le formulaire **que si l'opération a réussi**, pour ne pas perdre la saisie. Un échec de création de sortie ou de suppression d'étape est signalé par un toast.
+
+## 🧭 Outing hub (creation and edition)
+
+The outing is created as soon as it has a name, then completed from a single screen, the **hub** (`app/outing/[id]/index.tsx`, `OutingHub`). Work in progress (feature/outing-creation-rework):
+
+| Route | Screen | Purpose |
+| :--- | :--- | :--- |
+| `/outing/create` (modal) | `CreateOutingScreen` | « On sort ! »: name only (prefilled by `?placeName=` or `?title=`). Calls `create_outing_with_invites` with no day, type nor invitee, then **replaces** itself with the hub. From a place, the place is added as a `pending` 60 min step dated now (the trigger `outings_align_planned_outings` moves it once a date is set). |
+| `/outing/[id]` | `OutingHub` | Name at the top (organizer renames in place, saved on blur), then one row per section with a visual summary. |
+
+- **Quand ?** summary (`summarizeWhen`): the chosen date (« sam. 15 nov. · 14:00 »), else the candidate days as chips (3 max + « +n ») and how many days have a common slot, else « Aucun jour proposé ». The row still opens the recap route (`/outing/[id]/recap`) until its panel exists.
+- **Qui ?** summary: `ParticipantAvatars` (« 1 participant · 1 en attente »). The row opens `WhoPanel`, an `AppModal` `slideOver` panel (full page, slides in from the right): members with their answer and, for the organizer, « Inviter des amis » (accepted friends who are not members yet, or who declined) through `invite_to_outing` (`useOutingSchedulingStore.inviteFriends`, `useInviteFriends`). The result is shown in the panel (`InlineAlert`), since a toast would stay under the modal.
+- **Comment ?** summary (`summarizeHow`): type, « n/m ont répondu aux questions » (attendees who answered for the type), retained activities (« ✅ Karting ») or the number of proposals. The row still opens the questions route until its panel exists.
+- `useOutingHub(outingId)` combines `useOutingScheduling` (realtime on participants, candidate days and availabilities) with the answers and activities, reloaded each time the hub gets the focus (`useFocusEffect`).
 
 ## 🗓️ Outing creation workflow (invitations & availability)
 

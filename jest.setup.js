@@ -22,6 +22,8 @@ jest.mock('expo-router', () => {
     useSearchParams: () => ({}),
     useLocalSearchParams: jest.fn(() => ({})),
     usePathname: () => '/',
+    // Runs the callback like an effect: the screen is considered focused once mounted.
+    useFocusEffect: (callback: () => void | (() => void)) => React.useEffect(callback, [callback]),
     Link: 'Link',
     Tabs: MockTabs,
     Stack: 'Stack',

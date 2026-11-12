@@ -1,0 +1,118 @@
+import React, { useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { EmptyState, IconButton, Loader, Screen } from '@/shared/components';
+import { spacing } from '@/shared/constants/theme';
+import { useOutingHub } from '../../hooks/useOutingHub';
+import { HubSection } from '../../types/hub';
+import { ParticipantAvatars } from '../scheduling/ParticipantAvatars';
+import { HowSummaryView } from './HowSummaryView';
+import { HubSectionRow } from './HubSectionRow';
+import { OutingHubTitle } from './OutingHubTitle';
+import { WhenSummaryView } from './WhenSummaryView';
+import { WhoPanel } from './WhoPanel';
+
+export interface OutingHubProps {
+  outingId: string;
+  onClose: () => void;
+  /** Opens the « Quand ? » screen (days, availabilities and day choice). */
+  onOpenWhen: () => void;
+  /** Opens the « Comment ? » screen (type, questions, activities). */
+  onOpenHow: () => void;
+}
+
+/**
+ * Main screen of an outing, for its creation and its edition: the name at the top, then the
+ * « Quand ? », « Qui ? » and « Comment ? » sections, each with a visual summary of its content.
+ */
+export const OutingHub: React.FC<OutingHubProps> = ({
+  outingId,
+  onClose,
+  onOpenWhen,
+  onOpenHow,
+}) => {
+  const hub = useOutingHub(outingId);
+  const [openSection, setOpenSection] = useState<HubSection | null>(null);
+  const { outing } = hub;
+
+  const header = (
+    <View style={styles.header}>
+      <IconButton
+        icon="arrow-back"
+        variant="ghost"
+        accessibilityLabel="Retour"
+        onPress={onClose}
+        testID="btn-hub-close"
+      />
+    </View>
+  );
+
+  if (!outing) {
+    return (
+      <Screen header={header} testID="outing-hub">
+        {hub.error ? (
+          <EmptyState
+            icon="alert-circle-outline"
+            title="Sortie introuvable"
+            description={hub.error}
+          />
+        ) : (
+          <Loader fullScreen message="Chargement de la sortie..." />
+        )}
+      </Screen>
+    );
+  }
+
+  return (
+    <Screen scrollable avoidKeyboard header={header} testID="outing-hub">
+      <OutingHubTitle title={outing.title} editable={hub.isOrganizer} onRename={hub.rename} />
+      <View style={styles.sections}>
+        <HubSectionRow
+          emoji="📅"
+          title="Quand ?"
+          onPress={onOpenWhen}
+          accessibilityLabel="Ouvrir Quand ?"
+          testID="hub-row-when"
+        >
+          <WhenSummaryView summary={hub.when} />
+        </HubSectionRow>
+        <HubSectionRow
+          emoji="👥"
+          title="Qui ?"
+          onPress={() => setOpenSection('who')}
+          accessibilityLabel="Ouvrir Qui ?"
+          testID="hub-row-who"
+        >
+          <ParticipantAvatars members={hub.members} testID="hub-who-avatars" />
+        </HubSectionRow>
+        <HubSectionRow
+          emoji="🎯"
+          title="Comment ?"
+          onPress={onOpenHow}
+          accessibilityLabel="Ouvrir Comment ?"
+          testID="hub-row-how"
+        >
+          <HowSummaryView summary={hub.how} />
+        </HubSectionRow>
+      </View>
+      <WhoPanel
+        visible={openSection === 'who'}
+        onClose={() => setOpenSection(null)}
+        outing={outing}
+        members={hub.members}
+        isOrganizer={hub.isOrganizer}
+      />
+    </Screen>
+  );
+};
+
+const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  sections: {
+    gap: spacing.md,
+    marginTop: spacing.lg,
+  },
+});

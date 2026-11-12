@@ -2,6 +2,7 @@ import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import CreateOutingRoute from '../create';
+import OutingHubRoute from '../[id]/index';
 import JoinOutingRoute from '../[id]/join';
 import OutingRecapRoute from '../[id]/recap';
 import OutingQuestionsRoute from '../[id]/questions';
@@ -27,16 +28,20 @@ jest.mock('@/features/outings', () => {
           .map(([name, fn]) =>
             createElement(
               MockText,
-              { key: name, onPress: () =>
+              {
+                key: name,
+                onPress: () =>
                   Reflect.apply(fn as never, undefined, [
                     name === 'onConvert' ? { activity: { title: 'Bowling' } } : 'new-outing',
-                  ]) },
+                  ]),
+              },
               name,
             ),
           ),
       );
   return {
-    CreateOutingWizard: screen('create', (props) => {
+    OutingHub: screen('hub', (props) => String(props.outingId)),
+    CreateOutingScreen: screen('create', (props) => {
       const place = props.place as { id: string; name: string } | null;
       const title = props.initialTitle ? `|title:${String(props.initialTitle)}` : '';
       return (place ? `${place.id}|${place.name}` : 'no-place') + title;
@@ -60,13 +65,13 @@ describe('outing routes', () => {
     (useLocalSearchParams as jest.Mock).mockReturnValue({ id: 'o1' });
   });
 
-  it('create : sans paramètre, aucun lieu n’est passé à l’assistant', () => {
+  it('create : sans paramètre, aucun lieu n’est passé à l’écran de création', () => {
     (useLocalSearchParams as jest.Mock).mockReturnValue({});
     const { getByText } = render(<CreateOutingRoute />);
     expect(getByText('create:no-place')).toBeTruthy();
   });
 
-  it('create : placeId et placeName deviennent le lieu de l’assistant', () => {
+  it('create : placeId et placeName deviennent le lieu de l’écran de création', () => {
     (useLocalSearchParams as jest.Mock).mockReturnValue({
       placeId: 'place-uuid-1',
       placeName: 'Burger Gourmet',
@@ -75,11 +80,11 @@ describe('outing routes', () => {
     expect(getByText('create:place-uuid-1|Burger Gourmet')).toBeTruthy();
   });
 
-  it('create : ouvre le récap de la sortie créée, ou revient en arrière', () => {
+  it('create : ouvre le hub de la sortie créée, ou revient en arrière', () => {
     const { getByText } = render(<CreateOutingRoute />);
     fireEvent.press(getByText('onCreated'));
     expect(router.replace).toHaveBeenCalledWith({
-      pathname: '/outing/[id]/recap',
+      pathname: '/outing/[id]',
       params: { id: 'new-outing' },
     });
     fireEvent.press(getByText('onClose'));
@@ -109,14 +114,20 @@ describe('outing routes', () => {
   it('recap : continuer enchaîne vers les questions de la sortie sans la planifier', () => {
     const { getByText } = render(<OutingRecapRoute />);
     fireEvent.press(getByText('onContinue'));
-    expect(router.push).toHaveBeenCalledWith({ pathname: '/outing/[id]/questions', params: { id: 'o1' } });
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/outing/[id]/questions',
+      params: { id: 'o1' },
+    });
     expect(mockSelectOuting).not.toHaveBeenCalled();
   });
 
   it('recap : un membre peut répondre aux questions', () => {
     const { getByText } = render(<OutingRecapRoute />);
     fireEvent.press(getByText('onAnswerQuestions'));
-    expect(router.push).toHaveBeenCalledWith({ pathname: '/outing/[id]/questions', params: { id: 'o1' } });
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/outing/[id]/questions',
+      params: { id: 'o1' },
+    });
   });
 
   it('questions : une fois les réponses enregistrées, ouvre les activités et votes', () => {
@@ -129,7 +140,32 @@ describe('outing routes', () => {
     });
   });
 
-  it('create : le paramètre title devient le nom de départ de l’assistant', () => {
+  it('hub : passe l’id, ouvre Quand ? (récap) et Comment ? (questions)', () => {
+    const { getByText } = render(<OutingHubRoute />);
+    expect(getByText('hub:o1')).toBeTruthy();
+    fireEvent.press(getByText('onOpenWhen'));
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/outing/[id]/recap',
+      params: { id: 'o1' },
+    });
+    fireEvent.press(getByText('onOpenHow'));
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/outing/[id]/questions',
+      params: { id: 'o1' },
+    });
+  });
+
+  it('hub : fermer revient en arrière, sinon ouvre l’onglet Sorties', () => {
+    const { getByText } = render(<OutingHubRoute />);
+    fireEvent.press(getByText('onClose'));
+    expect(router.back).toHaveBeenCalled();
+
+    router.canGoBack.mockReturnValueOnce(false);
+    fireEvent.press(getByText('onClose'));
+    expect(router.replace).toHaveBeenCalledWith('/(tabs)/sorties');
+  });
+
+  it('create : le paramètre title devient le nom de départ de l’écran de création', () => {
     (useLocalSearchParams as jest.Mock).mockReturnValue({ title: 'Bowling' });
     const { getByText } = render(<CreateOutingRoute />);
     expect(getByText('create:no-place|title:Bowling')).toBeTruthy();
@@ -167,13 +203,19 @@ describe('outing routes', () => {
     (useLocalSearchParams as jest.Mock).mockReturnValue({ id: 'o1' });
     const { getByText } = render(<OutingTieRoute />);
     fireEvent.press(getByText('onConvert'));
-    expect(router.push).toHaveBeenCalledWith({ pathname: '/outing/create', params: { title: 'Bowling' } });
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/outing/create',
+      params: { title: 'Bowling' },
+    });
   });
 
   it('activities : transformer une activité ouvre l’assistant avec son titre', () => {
     const { getByText } = render(<OutingActivitiesRoute />);
     fireEvent.press(getByText('onConvert'));
-    expect(router.push).toHaveBeenCalledWith({ pathname: '/outing/create', params: { title: 'Bowling' } });
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/outing/create',
+      params: { title: 'Bowling' },
+    });
   });
 
   it('questions : fermer sans historique ramène à l’onglet Sorties', () => {
@@ -193,7 +235,10 @@ describe('outing routes', () => {
   it('activities : « Planifier la journée » ouvre le planning de la sortie', () => {
     const { getByText } = render(<OutingActivitiesRoute />);
     fireEvent.press(getByText('onOpenPlanning'));
-    expect(router.push).toHaveBeenCalledWith({ pathname: '/outing/[id]/planning', params: { id: 'o1' } });
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/outing/[id]/planning',
+      params: { id: 'o1' },
+    });
   });
 
   it('planning : terminer ouvre la sortie dans l’onglet Sorties', () => {

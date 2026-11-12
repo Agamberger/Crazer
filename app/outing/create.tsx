@@ -1,10 +1,10 @@
 import React from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { CreateOutingWizard } from '@/features/outings';
+import { CreateOutingScreen } from '@/features/outings';
 
 /**
  * `/outing/create`, optionally around a saved place (`?placeId=…&placeName=…`) or
- * with a ready-made name (`?title=…`, e.g. from a not retained activity).
+ * with a ready-made name (`?title=…`, e.g. from a not retained activity). Opens the hub once created.
  */
 export default function CreateOutingRoute() {
   const router = useRouter();
@@ -16,11 +16,11 @@ export default function CreateOutingRoute() {
   const place = placeId ? { id: placeId, name: placeName ?? '' } : null;
 
   return (
-    <CreateOutingWizard
+    <CreateOutingScreen
       place={place}
       initialTitle={title}
       onCreated={(outingId) =>
-        router.replace({ pathname: '/outing/[id]/recap', params: { id: outingId } })
+        router.replace({ pathname: '/outing/[id]', params: { id: outingId } })
       }
       onClose={() => router.back()}
     />

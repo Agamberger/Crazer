@@ -2,7 +2,12 @@ import { create } from 'zustand';
 import { bindSetToSession, registerUserScopedStore } from '@/shared/store/sessionReset';
 import { OutingRow, ParticipantStatus } from '@/shared/types';
 import { outingSchedulingService } from '../services/outingSchedulingService';
-import { AvailabilitySlot, OutingDraft, OutingInvitation, OutingScheduling } from '../types/scheduling';
+import {
+  AvailabilitySlot,
+  OutingDraft,
+  OutingInvitation,
+  OutingScheduling,
+} from '../types/scheduling';
 import { slotsToPayload } from '../utils/availabilityUtils';
 import { useOutingsStore } from './useOutingsStore';
 
@@ -24,6 +29,14 @@ interface OutingSchedulingState {
   ) => Promise<OutingScheduling | null>;
   /** Creates the outing from the wizard draft. Throws on failure; returns the new outing id. */
   createOutingWithInvites: (draft: OutingDraft) => Promise<string>;
+  /**
+   * Invites friends to an existing outing (organizer) and refreshes its members.
+   * Throws on failure; resolves with the number of newly invited friends.
+   */
+  inviteFriends: (
+    outing: Pick<OutingRow, 'id' | 'created_by'>,
+    inviteeIds: string[],
+  ) => Promise<number>;
   /** Answers an invitation. Throws on failure. */
   respondToInvitation: (
     outingId: string,
@@ -37,7 +50,7 @@ const withoutId = (ids: string[], id: string): string[] => ids.filter((v) => v !
 const errorMessage = (err: unknown, fallback: string): string =>
   err instanceof Error ? err.message : fallback;
 
-export const useOutingSchedulingStore = create<OutingSchedulingState>((set) => ({
+export const useOutingSchedulingStore = create<OutingSchedulingState>((set, get) => ({
   invitations: [],
   nonAttendingOutingIds: [],
   isLoadingInvitations: false,
@@ -108,6 +121,23 @@ export const useOutingSchedulingStore = create<OutingSchedulingState>((set) => (
     } catch (err: unknown) {
       setLive({
         error: errorMessage(err, 'Erreur lors de la création de la sortie'),
+        isSubmitting: false,
+      });
+      throw err;
+    }
+  },
+
+  inviteFriends: async (outing, inviteeIds) => {
+    const setLive = bindSetToSession(set);
+    setLive({ isSubmitting: true, error: null });
+    try {
+      const invitedCount = await outingSchedulingService.inviteToOuting(outing.id, inviteeIds);
+      await get().fetchScheduling(outing);
+      setLive({ isSubmitting: false });
+      return invitedCount;
+    } catch (err: unknown) {
+      setLive({
+        error: errorMessage(err, 'Erreur lors de l’envoi des invitations'),
         isSubmitting: false,
       });
       throw err;

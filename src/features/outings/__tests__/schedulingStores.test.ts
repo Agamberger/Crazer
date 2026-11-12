@@ -10,6 +10,7 @@ jest.mock('../services/outingSchedulingService', () => ({
   outingSchedulingService: {
     createOutingWithInvites: jest.fn(),
     respondToInvitation: jest.fn(),
+    inviteToOuting: jest.fn(),
     fetchOutingDays: jest.fn(),
     fetchAvailabilities: jest.fn(),
     fetchMembers: jest.fn(),
@@ -92,6 +93,33 @@ describe('useOutingSchedulingStore', () => {
     });
     expect(fetchOutingById).toHaveBeenCalledWith('outing-1');
     expect(useOutingSchedulingStore.getState().isSubmitting).toBe(false);
+  });
+
+  it('inviteFriends invite puis recharge les membres de la sortie', async () => {
+    service.inviteToOuting.mockResolvedValue(1);
+    service.fetchOutingDays.mockResolvedValue([]);
+    service.fetchAvailabilities.mockResolvedValue([]);
+    service.fetchMembers.mockResolvedValue([]);
+
+    const count = await useOutingSchedulingStore
+      .getState()
+      .inviteFriends({ id: 'outing-1', created_by: 'alice' }, ['bob']);
+
+    expect(count).toBe(1);
+    expect(service.inviteToOuting).toHaveBeenCalledWith('outing-1', ['bob']);
+    expect(service.fetchMembers).toHaveBeenCalledWith('outing-1', 'alice');
+    expect(useOutingSchedulingStore.getState().isSubmitting).toBe(false);
+  });
+
+  it('inviteFriends relaie l’échec et mémorise l’erreur', async () => {
+    service.inviteToOuting.mockRejectedValue(new Error('only the organizer can invite'));
+    await expect(
+      useOutingSchedulingStore
+        .getState()
+        .inviteFriends({ id: 'outing-1', created_by: 'alice' }, ['bob']),
+    ).rejects.toThrow('only the organizer can invite');
+    expect(useOutingSchedulingStore.getState().error).toBe('only the organizer can invite');
+    expect(service.fetchMembers).not.toHaveBeenCalled();
   });
 
   it('relaie l’échec de création et mémorise l’erreur', async () => {
@@ -180,7 +208,9 @@ describe('useOutingSchedulingStore', () => {
     service.fetchAvailabilities.mockResolvedValue([]);
     service.fetchMembers.mockResolvedValue([]);
 
-    const pending = useOutingSchedulingStore.getState().fetchScheduling({ id: 'o1', created_by: 'a' });
+    const pending = useOutingSchedulingStore
+      .getState()
+      .fetchScheduling({ id: 'o1', created_by: 'a' });
     resetUserScopedStores();
     resolve(['2026-11-10']);
     await pending;
