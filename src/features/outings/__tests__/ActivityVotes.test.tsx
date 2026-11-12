@@ -104,6 +104,17 @@ beforeEach(() => {
 });
 
 describe('ActivityVotes', () => {
+  it('« Planifier la journée » ouvre le planning quand il est proposé', async () => {
+    const onOpenPlanning = jest.fn();
+    const { findByTestId, queryByTestId, rerender } = render(
+      <ActivityVotes outingId="o1" {...callbacks} onOpenPlanning={onOpenPlanning} />,
+    );
+    fireEvent.press(await findByTestId('btn-activities-planning'));
+    expect(onOpenPlanning).toHaveBeenCalled();
+    rerender(<ActivityVotes outingId="o1" {...callbacks} />);
+    expect(queryByTestId('btn-activities-planning')).toBeNull();
+  });
+
   it('affiche les propositions du jour avec leur score en direct', async () => {
     votes = [{ activityId: 'a', userId: 'bob', vote: 'accepted' }];
     const { findByTestId, getByTestId } = renderVotes();

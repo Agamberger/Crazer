@@ -6,6 +6,7 @@ import { PlannedOutingRow } from '@/shared/types';
 describe('PlannedOutingsTimeline Component', () => {
   const mockPlannedOutings: PlannedOutingRow[] = [
     {
+      activity_id: null,
       id: 'po-2',
       outing_id: 'out-1',
       title: 'Dîner Burger',
@@ -20,6 +21,7 @@ describe('PlannedOutingsTimeline Component', () => {
       updated_at: '2026-08-24T20:00:00Z',
     },
     {
+      activity_id: null,
       id: 'po-1',
       outing_id: 'out-1',
       title: 'Apéro Bar',
@@ -34,6 +36,7 @@ describe('PlannedOutingsTimeline Component', () => {
       updated_at: '2026-08-24T20:00:00Z',
     },
     {
+      activity_id: null,
       id: 'po-3',
       outing_id: 'out-1',
       title: 'Soirée Dansante',

@@ -27,6 +27,7 @@ export default function OutingActivitiesRoute() {
       onOpenTie={openTie}
       onConvert={(result) => convert(result.activity.title)}
       onClose={finish}
+      onOpenPlanning={() => router.push({ pathname: '/outing/[id]/planning', params: { id } })}
     />
   );
 }

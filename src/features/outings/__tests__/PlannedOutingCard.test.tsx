@@ -5,6 +5,7 @@ import { PlannedOutingRow } from '@/shared/types';
 
 describe('PlannedOutingCard Component', () => {
   const mockPlannedOuting: PlannedOutingRow = {
+    activity_id: null,
     id: 'po-1',
     outing_id: 'out-100',
     title: 'Apéro au Rooftop',

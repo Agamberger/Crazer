@@ -321,6 +321,7 @@ describe('AddPlaceToOutingModal', () => {
     (ensurePlaceExists as jest.Mock).mockResolvedValueOnce('created-place-uuid-123');
 
     const createdPlanned: PlannedOutingRow = {
+      activity_id: null,
       id: 'po-new-1',
       outing_id: mockActiveOuting.id,
       place_id: 'created-place-uuid-123',

@@ -72,13 +72,17 @@ export const slotsToPayload = (
     .filter((day) => slots[day] !== undefined)
     .map((day) => ({ day, start: slots[day].start, end: slots[day].end }));
 
+/** Members who come to the outing (accepted or « peut-être »). */
+export const attendingMembers = (members: ReadonlyArray<OutingMember>): OutingMember[] =>
+  members.filter((m) => ATTENDING_STATUSES.includes(m.status));
+
 /** Live recap: for each candidate day, who is available and their common slot. */
 export const computeDayRecaps = (
   days: ReadonlyArray<DayKey>,
   availabilities: ReadonlyArray<MemberAvailability>,
   members: ReadonlyArray<OutingMember>,
 ): DayRecap[] => {
-  const attending = members.filter((m) => ATTENDING_STATUSES.includes(m.status));
+  const attending = attendingMembers(members);
 
   return [...days].sort().map((day) => {
     const daySlots = availabilities.filter((a) => a.day === day);

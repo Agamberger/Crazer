@@ -7,6 +7,7 @@ import {
 import { PlannedOutingRow } from '@/shared/types';
 
 const plannedOuting: PlannedOutingRow = {
+  activity_id: null,
   id: 'po-1',
   outing_id: 'out-1',
   place_id: null,

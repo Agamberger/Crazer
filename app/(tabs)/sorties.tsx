@@ -146,6 +146,9 @@ export default function SortiesScreen() {
         onOpenActivities={() =>
           router.push({ pathname: '/outing/[id]/activities', params: { id: selectedOutingId } })
         }
+        onOpenPlanning={() =>
+          router.push({ pathname: '/outing/[id]/planning', params: { id: selectedOutingId } })
+        }
       />
     );
   }

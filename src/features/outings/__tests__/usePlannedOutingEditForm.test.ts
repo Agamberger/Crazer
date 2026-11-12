@@ -6,6 +6,7 @@ import {
 } from '../hooks/usePlannedOutingEditForm';
 
 const plannedOuting: PlannedOutingRow = {
+  activity_id: null,
   id: 'po-1',
   outing_id: 'out-1',
   place_id: null,

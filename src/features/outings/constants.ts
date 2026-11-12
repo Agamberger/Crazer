@@ -40,3 +40,11 @@ export const OUTING_STATUS_OPTIONS: ChipOption<OutingStatus>[] =
 
 /** Safe-area edges of the Sorties tab screens (the tab bar already covers the bottom). */
 export const OUTINGS_SCREEN_EDGES: ('top' | 'left' | 'right')[] = ['top', 'left', 'right'];
+
+/** Travel / waiting time options between two activities of the planning (minutes). */
+export const TRAVEL_TIME_OPTIONS: ChipOption<number>[] = [
+  { label: 'Aucun', value: 0 },
+  { label: '15 min', value: 15 },
+  { label: '30 min', value: 30 },
+  { label: '45 min', value: 45 },
+];

@@ -252,6 +252,7 @@ describe('outingService', () => {
     it('fetchPlannedOutings fetches steps ordered by scheduled_for ASC', async () => {
       const mockPlanned: PlannedOutingRow[] = [
         {
+          activity_id: null,
           id: 'po-1',
           outing_id: 'out-1',
           title: 'Apéro au bar',
@@ -297,6 +298,7 @@ describe('outingService', () => {
       };
 
       const created: PlannedOutingRow = {
+        activity_id: null,
         id: 'po-new',
         ...payload,
         description: null,
@@ -332,6 +334,7 @@ describe('outingService', () => {
       };
 
       const updated: PlannedOutingRow = {
+        activity_id: null,
         id: 'po-1',
         outing_id: 'out-1',
         title: 'Étape modifiée',

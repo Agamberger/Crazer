@@ -48,6 +48,7 @@ export default function RootLayout() {
         <Stack.Screen name="outing/[id]/questions" />
         <Stack.Screen name="outing/[id]/activities" />
         <Stack.Screen name="outing/[id]/tie" />
+        <Stack.Screen name="outing/[id]/planning" />
       </Stack>
       <ToastHost />
     </SafeAreaProvider>

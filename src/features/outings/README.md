@@ -34,6 +34,13 @@ src/features/outings/
 │   │   ├── ActivityPlacePicker.tsx # Link a Crazer / Google Maps place to a proposal
 │   │   ├── ActivityTieBreak.tsx   # Tie screen: choose by hand or random draw
 │   │   └── DrawRoulette.tsx       # Tie-break mini-game (animated roulette)
+│   ├── planning/                  # Planning of the day (step 6)
+│   │   ├── OutingPlanning.tsx     # Screen: day picker, travel time, « Proposer des horaires », steps, my slot
+│   │   ├── PlanningStepCard.tsx   # Times, who comes (StepAttendanceList), warnings, ↑ ↓ / « Durée »
+│   │   ├── PlanningGapRow.tsx     # Travel / waiting segment or overlap warning between two steps
+│   │   ├── StepAttendanceList.tsx, StepDurationModal.tsx
+│   │   ├── UnplacedActivitiesSection.tsx # Retained activities not placed yet (« Placer »)
+│   │   └── MyAvailabilityCard.tsx # Late arrival / early departure of the current user
 │   └── questions/                 # Outing type + guided questions (step 4)
 │       ├── OutingQuestions.tsx    # Screen: type picker (organizer) then the form of the type
 │       ├── OutingTypeStep.tsx     # « Quel genre de sortie ? » (precise / one_day / holidays)
@@ -232,6 +239,28 @@ Routes: `app/outing/[id]/activities.tsx` (`ActivityVotes`) and `app/outing/[id]/
 - **Votes**: « Partant » (`accepted`, 2 points) or « Peut-être » (`maybe`, 1 point); no row = no vote; pressing the current vote again removes it. Results (score, who voted what) are **live** through the realtime subscription on `outing_activities` and `outing_activity_votes` (`subscribeToActivities`, cleaned up on unmount).
 - **Decision (open question of the note — simplest option)**: *the organizer decides* when several options remain. A group is in the state `voting` (one leader), `tie` (≥ 2 activities share the best **positive** score; nobody voted = no tie), or `decided` (the organizer retained one activity: « Retenir »). The organizer can retain an activity at any time, with or without a tie, and « Rouvrir le vote ». A decided group closes the votes in the UI.
 - **Tie screen**: everyone sees the tied activities; members get a waiting message and see the decision appear live. The organizer chooses by hand or taps **« 🎲 Tirer au sort »**: the server draws (`draw_outing_activity`, `random()` among the best scored activities of the group, so the result is shared and tamper-proof), then `DrawRoulette` replays an animated roulette (`buildDrawSequence` / `drawStepDelay`) that slows down and stops on the winner. The candidates are frozen when the draw starts because the realtime refresh already contains the winner.
-- **Order of the activities (open question of the note)**: not decided here. Activities are only ranked by vote score; *placing* them in the day (using everyone's availability) is lot 5 (planning). A retained activity is not copied to `planned_outings` yet.
+- **Order of the activities (open question of the note)**: settled in step 6 (planning of the day, below): the app suggests times, the organizer orders the steps. Vote scores only rank activities inside a group.
 - **Convert a result into a new outing**: once a group is decided, every not retained activity shows **« En faire une sortie »** (also on the tie result). It opens the creation wizard (`/outing/create?title=…`, `CreateOutingWizard` prop `initialTitle`) with the activity title as name; the days, invitees and place are not carried over.
 - Known limit: votes are closed by the UI once a group is decided, not by the database (a direct API call can still change a vote after the decision; the `chosen` flag itself is only writable through the organizer RPCs).
+
+---
+
+## 🕒 Planning of the day (step 6)
+
+Route `app/outing/[id]/planning.tsx` renders `OutingPlanning`. Journey: activities & votes → **« Planifier la journée »** → planning → « Terminer » → Sorties tab. Also reachable from the outing edit form (« Planning de la journée »). Data: `outingPlanningService` (`apply_outing_planning` in one transaction, `set_my_outing_availability`, realtime on `planned_outings` + `outing_activities`), `useOutingPlanningStore` (steps and activities per outing — no votes —, `applyChanges`, `setMyAvailability`), hook `useOutingPlanning`; pure logic in `utils/planningUtils.ts`.
+
+- **One model**: the planning *is* the outing's `planned_outings` of the selected day (the same steps as the Sorties tab timeline). A retained activity becomes a step through `place_outing_activity` (`activity_id` links them, title / note / place are copied). Manual steps (« Ajouter une étape ») appear in the planning too. Cancelled steps are left out, and cancelling a step frees its activity (it is back in « à placer »).
+- **Days**: candidate days plus days that already have a step; the outing's date is opened first.
+- **Times**: each step shows `start – end` (default duration 60 min). Between two steps a **segment** shows the travel / waiting time, or « ⚠️ Chevauchement » when they overlap.
+- **Suggested start**: the earliest slot start at which **more than half** of the attendees who gave a slot that day are available (`suggestStartTime`), so one late person does not delay the group; 18:00 when nobody gave a slot.
+- **Who comes to each step** (`computeAttendance`, from `outing_availabilities`): ✅ present for the whole step, ⏰ arrives late (« arrive à 20:00 »), 🚪 leaves early, ❌ not available. Every step that is not fully covered for someone shows a warning « Hors des dispos de : … ».
+- **Organizer (decision of the note's open question — simplest option)**: *the app suggests, the organizer orders, everyone sees it live.*
+  - « ✨ Proposer des horaires » keeps the current order, appends the retained activities not placed yet, and packs everything from the suggested start with the chosen travel time (Aucun / 15 / 30 / 45 min, default 15).
+  - ↑ / ↓ swaps two steps and « Durée » changes a step's duration; both re-pack the day from its first step's start (manual gaps are replaced by the travel time).
+  - « Placer » puts one retained activity after the last step.
+  - Re-packing never goes past 23:59 (later steps start at 23:59 and show as overlaps) so every step stays on the planned day.
+  - All the times and placements are saved in one transaction by `apply_outing_planning`; if a step moves before the outing's `start_date`, the start date follows.
+- **Late arrival (open question of the note — e.g. D at 20h)**: a member's arrival is simply their own availability of the day. On the planning, each attendee has « Mes horaires ce jour-là » (`set_my_outing_availability`) to say « j'arrive à 20h » / « je pars à 22h »; the attendance and warnings of every step update live for everyone. Steps are not moved automatically: the organizer decides whether to reorder (e.g. put the restaurant after 20:00). The organizer cannot change someone else's slot.
+- **Live**: `useOutingPlanning` subscribes to `planned_outings` and `outing_activities` (one debounced reload, 300 ms, per burst of changes) and to `outing_availabilities` / `outing_participants` through `useOutingScheduling`. The hours being edited in « Mes horaires » are only reset when the saved slot itself changes.
+- Known limits: at most one retained activity per day group (lot 4 rule: one per day + one « any day »), other steps are added by hand; a step crossing midnight is shown on its start day; times are the device's local time (like the availabilities).
+

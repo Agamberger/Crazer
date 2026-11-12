@@ -140,3 +140,64 @@ VALUES
   ('f1111111-1111-1111-1111-111111111111', 'c2222222-2222-2222-2222-222222222222',
    '11111111-1111-1111-1111-111111111111', 'accepted')
 ON CONFLICT (activity_id, user_id) DO NOTHING;
+
+-- 9. PLANNING DE LA JOURNÉE (étape 6)
+-- « Samedi entre potes » (Alice) : un seul jour, Bob dispo 14h–22h, Charlie n'arrive qu'à 20h.
+-- Deux activités retenues : le karting (déjà placé à 14h) et le restaurant (à placer).
+INSERT INTO public.outings (id, title, description, start_date, created_by, status, outing_type)
+VALUES (
+  'c4444444-4444-4444-4444-444444444444',
+  'Samedi entre potes',
+  'Karting puis resto, Charlie nous rejoint le soir.',
+  (CURRENT_DATE + 3 + TIME '14:00') AT TIME ZONE 'Europe/Paris',
+  '11111111-1111-1111-1111-111111111111',
+  'planned',
+  'one_day'
+)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.outing_participants (outing_id, user_id, status, responded_at)
+VALUES
+  ('c4444444-4444-4444-4444-444444444444', '11111111-1111-1111-1111-111111111111', 'accepted', NOW()),
+  ('c4444444-4444-4444-4444-444444444444', '22222222-2222-2222-2222-222222222222', 'accepted', NOW()),
+  ('c4444444-4444-4444-4444-444444444444', '33333333-3333-3333-3333-333333333333', 'accepted', NOW())
+ON CONFLICT (outing_id, user_id) DO NOTHING;
+
+INSERT INTO public.outing_days (outing_id, day)
+VALUES ('c4444444-4444-4444-4444-444444444444', CURRENT_DATE + 3)
+ON CONFLICT (outing_id, day) DO NOTHING;
+
+INSERT INTO public.outing_availabilities (outing_id, user_id, day, start_time, end_time)
+VALUES
+  ('c4444444-4444-4444-4444-444444444444', '11111111-1111-1111-1111-111111111111',
+   CURRENT_DATE + 3, '14:00', '23:30'),
+  ('c4444444-4444-4444-4444-444444444444', '22222222-2222-2222-2222-222222222222',
+   CURRENT_DATE + 3, '14:00', '22:00'),
+  ('c4444444-4444-4444-4444-444444444444', '33333333-3333-3333-3333-333333333333',
+   CURRENT_DATE + 3, '20:00', '23:30')
+ON CONFLICT (outing_id, user_id, day) DO NOTHING;
+
+INSERT INTO public.outing_activities (id, outing_id, day, title, note, proposed_by, place_id, chosen)
+VALUES
+  ('f5555555-5555-5555-5555-555555555555', 'c4444444-4444-4444-4444-444444444444',
+   CURRENT_DATE + 3, 'Karting', 'Sessions de 2 × 15 min',
+   '11111111-1111-1111-1111-111111111111', NULL, TRUE),
+  ('f6666666-6666-6666-6666-666666666666', 'c4444444-4444-4444-4444-444444444444',
+   NULL, 'Restaurant', NULL,
+   '22222222-2222-2222-2222-222222222222', 'b1111111-1111-1111-1111-111111111111', TRUE)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.planned_outings (
+  id, outing_id, activity_id, title, notes, scheduled_for, duration_min, created_by
+)
+VALUES (
+  'e3333333-3333-3333-3333-333333333333',
+  'c4444444-4444-4444-4444-444444444444',
+  'f5555555-5555-5555-5555-555555555555',
+  'Karting',
+  'Sessions de 2 × 15 min',
+  (CURRENT_DATE + 3 + TIME '14:00') AT TIME ZONE 'Europe/Paris',
+  90,
+  '11111111-1111-1111-1111-111111111111'
+)
+ON CONFLICT (id) DO NOTHING;
