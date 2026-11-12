@@ -16,7 +16,6 @@ export default function OutingHubRoute() {
     <OutingHub
       outingId={id}
       onClose={close}
-      onOpenWhen={() => router.push({ pathname: '/outing/[id]/recap', params: { id } })}
       onOpenHow={() => router.push({ pathname: '/outing/[id]/questions', params: { id } })}
     />
   );

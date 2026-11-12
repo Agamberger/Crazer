@@ -7,13 +7,17 @@ import { useActivityVotesStore } from '../store/useActivityVotesStore';
 import { useOutingAnswersStore } from '../store/useOutingAnswersStore';
 import { useOutingsStore } from '../store/useOutingsStore';
 import { HowSummary, WhenSummary } from '../types/hub';
-import { OutingMember } from '../types/scheduling';
+import { DayRecap, OutingMember, OutingScheduling } from '../types/scheduling';
 import { summarizeHow, summarizeWhen } from '../utils/hubSummaryUtils';
 import { useOutingScheduling } from './useOutingScheduling';
 
 export interface UseOutingHubResult {
   outing: OutingRow | null;
+  userId: string | null;
   isOrganizer: boolean;
+  scheduling: OutingScheduling | null;
+  recaps: DayRecap[];
+  pendingCount: number;
   members: OutingMember[];
   when: WhenSummary;
   how: HowSummary | null;
@@ -30,7 +34,8 @@ export interface UseOutingHubResult {
  */
 export const useOutingHub = (outingId: string): UseOutingHubResult => {
   const { user } = useAuth();
-  const { outing, scheduling, recaps, isLoading, error } = useOutingScheduling(outingId);
+  const { outing, scheduling, recaps, pendingCount, isLoading, error } =
+    useOutingScheduling(outingId);
   const updateOuting = useOutingsStore((state) => state.updateOuting);
   const answers = useOutingAnswersStore((state) => state.answersByOutingId[outingId]);
   const fetchAnswers = useOutingAnswersStore((state) => state.fetchAnswers);
@@ -67,7 +72,11 @@ export const useOutingHub = (outingId: string): UseOutingHubResult => {
 
   return {
     outing,
+    userId: user?.id ?? null,
     isOrganizer: !!user?.id && outing?.created_by === user.id,
+    scheduling,
+    recaps,
+    pendingCount,
     members,
     when,
     how,

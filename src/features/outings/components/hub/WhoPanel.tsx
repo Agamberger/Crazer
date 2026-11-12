@@ -4,27 +4,37 @@ import { AppModal, Button, InlineAlert } from '@/shared/components';
 import { spacing } from '@/shared/constants/theme';
 import { OutingRow } from '@/shared/types';
 import { useInviteFriends } from '../../hooks/useInviteFriends';
-import { OutingMember } from '../../types/scheduling';
+import { useMyAnswer } from '../../hooks/useMyAnswer';
+import { OutingMember, OutingScheduling } from '../../types/scheduling';
 import { InviteFriendsStep } from '../scheduling/InviteFriendsStep';
 import { MembersList } from '../scheduling/MembersList';
+import { MyAnswerSection } from './MyAnswerSection';
 
 export interface WhoPanelProps {
   visible: boolean;
   onClose: () => void;
   outing: OutingRow;
   members: OutingMember[];
+  scheduling: OutingScheduling | null;
+  userId: string | null;
   isOrganizer: boolean;
 }
 
-/** « Qui ? » panel of the hub: members with their answer; the organizer invites more friends. */
+/**
+ * « Qui ? » panel of the hub: members with their answer; a member answers (or changes their
+ * answer), the organizer invites more friends.
+ */
 export const WhoPanel: React.FC<WhoPanelProps> = ({
   visible,
   onClose,
   outing,
   members,
+  scheduling,
+  userId,
   isOrganizer,
 }) => {
   const invitation = useInviteFriends(outing, members);
+  const myAnswer = useMyAnswer(outing, scheduling, userId, isOrganizer);
   const count = invitation.selectedIds.length;
 
   const footer =
@@ -34,6 +44,7 @@ export const WhoPanel: React.FC<WhoPanelProps> = ({
         fullWidth
         loading={invitation.isInviting}
         onPress={() => void invitation.invite()}
+        style={styles.footerButton}
         testID="btn-hub-invite"
       />
     ) : undefined;
@@ -48,6 +59,14 @@ export const WhoPanel: React.FC<WhoPanelProps> = ({
       testID="hub-who-panel"
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {myAnswer.myStatus ? (
+          <MyAnswerSection
+            myStatus={myAnswer.myStatus}
+            onAnswer={(response) => void myAnswer.answer(response)}
+            disabled={myAnswer.isSaving}
+            feedback={myAnswer.feedback}
+          />
+        ) : null}
         <MembersList members={members} />
         {invitation.feedback ? (
           <InlineAlert
@@ -74,6 +93,9 @@ export const WhoPanel: React.FC<WhoPanelProps> = ({
 };
 
 const styles = StyleSheet.create({
+  footerButton: {
+    flex: 1,
+  },
   content: {
     gap: spacing.sm,
     paddingBottom: spacing.lg,

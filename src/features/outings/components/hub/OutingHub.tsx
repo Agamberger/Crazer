@@ -8,14 +8,13 @@ import { ParticipantAvatars } from '../scheduling/ParticipantAvatars';
 import { HowSummaryView } from './HowSummaryView';
 import { HubSectionRow } from './HubSectionRow';
 import { OutingHubTitle } from './OutingHubTitle';
+import { WhenPanel } from './WhenPanel';
 import { WhenSummaryView } from './WhenSummaryView';
 import { WhoPanel } from './WhoPanel';
 
 export interface OutingHubProps {
   outingId: string;
   onClose: () => void;
-  /** Opens the « Quand ? » screen (days, availabilities and day choice). */
-  onOpenWhen: () => void;
   /** Opens the « Comment ? » screen (type, questions, activities). */
   onOpenHow: () => void;
 }
@@ -24,12 +23,7 @@ export interface OutingHubProps {
  * Main screen of an outing, for its creation and its edition: the name at the top, then the
  * « Quand ? », « Qui ? » and « Comment ? » sections, each with a visual summary of its content.
  */
-export const OutingHub: React.FC<OutingHubProps> = ({
-  outingId,
-  onClose,
-  onOpenWhen,
-  onOpenHow,
-}) => {
+export const OutingHub: React.FC<OutingHubProps> = ({ outingId, onClose, onOpenHow }) => {
   const hub = useOutingHub(outingId);
   const [openSection, setOpenSection] = useState<HubSection | null>(null);
   const { outing } = hub;
@@ -69,7 +63,7 @@ export const OutingHub: React.FC<OutingHubProps> = ({
         <HubSectionRow
           emoji="📅"
           title="Quand ?"
-          onPress={onOpenWhen}
+          onPress={() => setOpenSection('when')}
           accessibilityLabel="Ouvrir Quand ?"
           testID="hub-row-when"
         >
@@ -94,11 +88,23 @@ export const OutingHub: React.FC<OutingHubProps> = ({
           <HowSummaryView summary={hub.how} />
         </HubSectionRow>
       </View>
+      <WhenPanel
+        visible={openSection === 'when'}
+        onClose={() => setOpenSection(null)}
+        outing={outing}
+        scheduling={hub.scheduling}
+        recaps={hub.recaps}
+        pendingCount={hub.pendingCount}
+        userId={hub.userId}
+        isOrganizer={hub.isOrganizer}
+      />
       <WhoPanel
         visible={openSection === 'who'}
         onClose={() => setOpenSection(null)}
         outing={outing}
         members={hub.members}
+        scheduling={hub.scheduling}
+        userId={hub.userId}
         isOrganizer={hub.isOrganizer}
       />
     </Screen>

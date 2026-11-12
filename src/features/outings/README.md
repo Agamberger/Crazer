@@ -25,7 +25,10 @@ src/features/outings/
 │   │   ├── OutingHubTitle.tsx     # Name, renamed in place by the organizer (saved on blur)
 │   │   ├── HubSectionRow.tsx      # One row: emoji, title, visual summary, chevron
 │   │   ├── WhenSummaryView.tsx, HowSummaryView.tsx
-│   │   └── WhoPanel.tsx           # « Qui ? » slide-over panel: members + invite friends
+│   │   ├── WhenPanel.tsx          # « Quand ? » slide-over panel: days, my slots, recap, day choice
+│   │   ├── MySlotsEditor.tsx      # « Mes dispos »: available or not per day + slot
+│   │   ├── MyAnswerSection.tsx    # « Ma réponse »: Je viens / Peut-être / Je ne viens pas
+│   │   └── WhoPanel.tsx           # « Qui ? » slide-over panel: my answer, members, invite friends
 │   └── scheduling/                # Creation workflow (steps 1–3 of the outing journey)
 │       ├── CreateOutingWizard.tsx # « On sort ! » → « Quel genre ? » → « Avec qui ? » → « Quand ? » → « Mes dispos »
 │       ├── WizardHeader.tsx       # Back / close + « Étape x/n »
@@ -178,8 +181,13 @@ The outing is created as soon as it has a name, then completed from a single scr
 | `/outing/create` (modal) | `CreateOutingScreen` | « On sort ! »: name only (prefilled by `?placeName=` or `?title=`). Calls `create_outing_with_invites` with no day, type nor invitee, then **replaces** itself with the hub. From a place, the place is added as a `pending` 60 min step dated now (the trigger `outings_align_planned_outings` moves it once a date is set). |
 | `/outing/[id]` | `OutingHub` | Name at the top (organizer renames in place, saved on blur), then one row per section with a visual summary. |
 
-- **Quand ?** summary (`summarizeWhen`): the chosen date (« sam. 15 nov. · 14:00 »), else the candidate days as chips (3 max + « +n ») and how many days have a common slot, else « Aucun jour proposé ». The row still opens the recap route (`/outing/[id]/recap`) until its panel exists.
+- **Quand ?** summary (`summarizeWhen`): the chosen date (« sam. 15 nov. · 14:00 »), else the candidate days as chips (3 max + « +n ») and how many days have a common slot, else « Aucun jour proposé ». The row opens `WhenPanel` (`useWhenPanel`), a `slideOver` panel saved with « Enregistrer »:
+  - **Jours possibles**: the organizer picks them in a month calendar while no day is chosen (`set_outing_days` through `useOutingSchedulingStore.saveDays`); an added day is ticked in the organizer's own slots with the default 18:00–23:00. Others see the days as chips.
+  - **Mes dispos** (`MySlotsEditor`): for each day, available or not, and the slot (`set_my_outing_slots` through `saveMySlots`). Organizer and members who said yes / « peut-être » only; a pending invitee is asked to answer the invitation first.
+  - **Créneau commun par jour**: the live recap (`DayRecapRow`). The organizer taps « Choisir ce jour » (confirmation « Continuer sans tout le monde ? » while answers are missing, `useDayChoice`, shared with the legacy recap screen): `start_date` = day + common slot start, status `planned`. Once a date is chosen, « Changer de jour » clears it (status back to `draft`) so that the days can be edited again — the database also refuses to remove the chosen day.
+  - Drafts are reset from the saved data each time the panel opens; results are shown in the panel (`InlineAlert`).
 - **Qui ?** summary: `ParticipantAvatars` (« 1 participant · 1 en attente »). The row opens `WhoPanel`, an `AppModal` `slideOver` panel (full page, slides in from the right): members with their answer and, for the organizer, « Inviter des amis » (accepted friends who are not members yet, or who declined) through `invite_to_outing` (`useOutingSchedulingStore.inviteFriends`, `useInviteFriends`). The result is shown in the panel (`InlineAlert`), since a toast would stay under the modal.
+  - **Ma réponse** (members only, not the organizer, `useMyAnswer`): « Je viens » / « Peut-être » / « Je ne viens pas » through `respond_to_outing_invitation`. A pending invitee answers the invitation here; a member changes their answer at any time. The member's current slots are sent again with the answer, because the RPC replaces them (a « Je ne viens pas » deletes them). Once they come, the member gives their slots in « Quand ? ».
 - **Comment ?** summary (`summarizeHow`): type, « n/m ont répondu aux questions » (attendees who answered for the type), retained activities (« ✅ Karting ») or the number of proposals. The row still opens the questions route until its panel exists.
 - `useOutingHub(outingId)` combines `useOutingScheduling` (realtime on participants, candidate days and availabilities) with the answers and activities, reloaded each time the hub gets the focus (`useFocusEffect`).
 

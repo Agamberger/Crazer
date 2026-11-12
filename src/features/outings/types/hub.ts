@@ -18,3 +18,9 @@ export interface HowSummary {
   proposalCount: number;
   chosenTitles: string[];
 }
+
+/** Result of the last action of a panel, shown inside it (a toast would be hidden by the modal). */
+export interface PanelFeedback {
+  tone: 'success' | 'error';
+  message: string;
+}

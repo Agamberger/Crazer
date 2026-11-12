@@ -140,14 +140,9 @@ describe('outing routes', () => {
     });
   });
 
-  it('hub : passe l’id, ouvre Quand ? (récap) et Comment ? (questions)', () => {
+  it('hub : passe l’id et ouvre Comment ? (questions)', () => {
     const { getByText } = render(<OutingHubRoute />);
     expect(getByText('hub:o1')).toBeTruthy();
-    fireEvent.press(getByText('onOpenWhen'));
-    expect(router.push).toHaveBeenCalledWith({
-      pathname: '/outing/[id]/recap',
-      params: { id: 'o1' },
-    });
     fireEvent.press(getByText('onOpenHow'));
     expect(router.push).toHaveBeenCalledWith({
       pathname: '/outing/[id]/questions',

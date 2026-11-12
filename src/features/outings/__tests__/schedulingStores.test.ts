@@ -11,6 +11,8 @@ jest.mock('../services/outingSchedulingService', () => ({
     createOutingWithInvites: jest.fn(),
     respondToInvitation: jest.fn(),
     inviteToOuting: jest.fn(),
+    setOutingDays: jest.fn(),
+    setMySlots: jest.fn(),
     fetchOutingDays: jest.fn(),
     fetchAvailabilities: jest.fn(),
     fetchMembers: jest.fn(),
@@ -109,6 +111,37 @@ describe('useOutingSchedulingStore', () => {
     expect(service.inviteToOuting).toHaveBeenCalledWith('outing-1', ['bob']);
     expect(service.fetchMembers).toHaveBeenCalledWith('outing-1', 'alice');
     expect(useOutingSchedulingStore.getState().isSubmitting).toBe(false);
+  });
+
+  it('saveDays enregistre les jours triés puis recharge la sortie', async () => {
+    service.setOutingDays.mockResolvedValue();
+    service.fetchOutingDays.mockResolvedValue(['2026-11-10', '2026-11-12']);
+    service.fetchAvailabilities.mockResolvedValue([]);
+    service.fetchMembers.mockResolvedValue([]);
+
+    await useOutingSchedulingStore
+      .getState()
+      .saveDays({ id: 'outing-1', created_by: 'alice' }, ['2026-11-12', '2026-11-10']);
+
+    expect(service.setOutingDays).toHaveBeenCalledWith('outing-1', ['2026-11-10', '2026-11-12']);
+    expect(useOutingSchedulingStore.getState().schedulingByOutingId['outing-1']?.days).toEqual([
+      '2026-11-10',
+      '2026-11-12',
+    ]);
+    expect(useOutingSchedulingStore.getState().isSubmitting).toBe(false);
+  });
+
+  it('saveMySlots relaie l’échec sans recharger', async () => {
+    service.setMySlots.mockRejectedValue(
+      new Error('only an attendee can change their availability'),
+    );
+    await expect(
+      useOutingSchedulingStore.getState().saveMySlots({ id: 'outing-1', created_by: 'alice' }, []),
+    ).rejects.toThrow('only an attendee');
+    expect(useOutingSchedulingStore.getState().error).toBe(
+      'only an attendee can change their availability',
+    );
+    expect(service.fetchMembers).not.toHaveBeenCalled();
   });
 
   it('inviteFriends relaie l’échec et mémorise l’erreur', async () => {

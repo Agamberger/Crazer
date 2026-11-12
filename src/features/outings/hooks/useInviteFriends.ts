@@ -3,13 +3,8 @@ import { useAuth } from '@/features/auth';
 import { UserSearchResult, useFriendsStore } from '@/features/profil';
 import { OutingRow } from '@/shared/types';
 import { useOutingSchedulingStore } from '../store/useOutingSchedulingStore';
+import { PanelFeedback } from '../types/hub';
 import { OutingMember } from '../types/scheduling';
-
-/** Result of the last sending, shown inside the panel (a toast would be hidden by the modal). */
-export interface InviteFeedback {
-  tone: 'success' | 'error';
-  message: string;
-}
 
 export interface UseInviteFriendsResult {
   /** Friends who can be invited: not members yet, or members who declined. */
@@ -18,7 +13,7 @@ export interface UseInviteFriendsResult {
   setSelectedIds: (ids: string[]) => void;
   isLoadingFriends: boolean;
   isInviting: boolean;
-  feedback: InviteFeedback | null;
+  feedback: PanelFeedback | null;
   /** Sends the invitations; resolves with `true` on success. */
   invite: () => Promise<boolean>;
 }
@@ -39,7 +34,7 @@ export const useInviteFriends = (
   const inviteFriends = useOutingSchedulingStore((state) => state.inviteFriends);
   const isInviting = useOutingSchedulingStore((state) => state.isSubmitting);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [feedback, setFeedback] = useState<InviteFeedback | null>(null);
+  const [feedback, setFeedback] = useState<PanelFeedback | null>(null);
 
   useEffect(() => {
     if (user?.id) void fetchFriendsList(user.id);
