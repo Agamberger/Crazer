@@ -4,6 +4,7 @@ import { PlannedOutingEditForm } from '../components/PlannedOutingEditForm';
 import { PlannedOutingRow } from '@/shared/types';
 
 const mockPlannedOuting: PlannedOutingRow = {
+  activity_id: null,
   id: 'po-123',
   outing_id: 'outing-abc',
   place_id: 'place-xyz',

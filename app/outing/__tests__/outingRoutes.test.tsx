@@ -7,6 +7,7 @@ import OutingRecapRoute from '../[id]/recap';
 import OutingQuestionsRoute from '../[id]/questions';
 import OutingActivitiesRoute from '../[id]/activities';
 import OutingTieRoute from '../[id]/tie';
+import OutingPlanningRoute from '../[id]/planning';
 
 const mockSelectOuting = jest.fn();
 
@@ -44,6 +45,7 @@ jest.mock('@/features/outings', () => {
     AvailabilityRecap: screen('recap', (props) => String(props.outingId)),
     OutingQuestions: screen('questions', (props) => String(props.outingId)),
     ActivityVotes: screen('activities', (props) => String(props.outingId)),
+    OutingPlanning: screen('planning', (props) => String(props.outingId)),
     ActivityTieBreak: screen('tie', (props) => `${String(props.outingId)}|${String(props.day)}`),
     useOutingsStore: (selector: (state: { selectOuting: jest.Mock }) => unknown) =>
       selector({ selectOuting: mockSelectOuting }),
@@ -185,6 +187,20 @@ describe('outing routes', () => {
     router.canGoBack.mockReturnValueOnce(false);
     const { getByText } = render(<OutingRecapRoute />);
     fireEvent.press(getByText('onClose'));
+    expect(router.replace).toHaveBeenCalledWith('/(tabs)/sorties');
+  });
+
+  it('activities : « Planifier la journée » ouvre le planning de la sortie', () => {
+    const { getByText } = render(<OutingActivitiesRoute />);
+    fireEvent.press(getByText('onOpenPlanning'));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/outing/[id]/planning', params: { id: 'o1' } });
+  });
+
+  it('planning : terminer ouvre la sortie dans l’onglet Sorties', () => {
+    const { getByText } = render(<OutingPlanningRoute />);
+    expect(getByText('planning:o1')).toBeTruthy();
+    fireEvent.press(getByText('onClose'));
+    expect(mockSelectOuting).toHaveBeenCalledWith('o1');
     expect(router.replace).toHaveBeenCalledWith('/(tabs)/sorties');
   });
 });

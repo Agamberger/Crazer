@@ -9,6 +9,7 @@ const mockCreatePlannedOuting = jest.fn();
 const mockSetSelectedPlannedOutingId = jest.fn();
 
 const makeStep = (id: string, outingId: string): PlannedOutingRow => ({
+  activity_id: null,
   id,
   outing_id: outingId,
   title: `Étape ${id}`,

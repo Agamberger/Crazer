@@ -249,6 +249,7 @@ describe('useOutingsStore', () => {
     it('fetchPlannedOutings fetches steps for an outing and sets state', async () => {
       const mockSteps: PlannedOutingRow[] = [
         {
+          activity_id: null,
           id: 'po-1',
           outing_id: 'out-1',
           title: 'Étape 1',
@@ -301,6 +302,7 @@ describe('useOutingsStore', () => {
 
       resolveFirstCall([
         {
+          activity_id: null,
           id: 'po-stale',
           outing_id: 'out-1',
           title: 'Étape périmée',
@@ -336,6 +338,7 @@ describe('useOutingsStore', () => {
       useOutingsStore.setState({ outings: [parentOuting], plannedOutings: [] });
 
       const createdStep: PlannedOutingRow = {
+        activity_id: null,
         id: 'po-first',
         outing_id: 'out-1',
         title: 'Étape 1',
@@ -422,6 +425,7 @@ describe('useOutingsStore', () => {
       };
 
       const createdStep: PlannedOutingRow = {
+        activity_id: null,
         id: 'po-custom',
         ...payload,
         description: 'Dîner sympa',
@@ -458,6 +462,7 @@ describe('useOutingsStore', () => {
       };
 
       const existingStep1: PlannedOutingRow = {
+        activity_id: null,
         id: 'po-1',
         outing_id: 'out-1',
         title: 'Étape 1',
@@ -478,6 +483,7 @@ describe('useOutingsStore', () => {
       });
 
       const createdStep2: PlannedOutingRow = {
+        activity_id: null,
         id: 'po-2',
         outing_id: 'out-1',
         title: 'Étape 2',
@@ -509,6 +515,7 @@ describe('useOutingsStore', () => {
 
     it('updatePlannedOuting updates step in store', async () => {
       const existingStep: PlannedOutingRow = {
+        activity_id: null,
         id: 'po-1',
         outing_id: 'out-1',
         title: 'Ancien titre',
@@ -537,6 +544,7 @@ describe('useOutingsStore', () => {
 
     it('deletePlannedOuting removes step from store and clears selectedPlannedOutingId if matching', async () => {
       const existingStep: PlannedOutingRow = {
+        activity_id: null,
         id: 'po-1',
         outing_id: 'out-1',
         title: 'Étape à supprimer',

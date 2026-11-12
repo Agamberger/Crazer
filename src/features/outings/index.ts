@@ -46,3 +46,11 @@ export * from './store/useActivityVotesStore';
 export * from './hooks/useActivityVotes';
 export * from './components/activities/ActivityVotes';
 export * from './components/activities/ActivityTieBreak';
+
+// Planning of the day (step 6)
+export * from './types/planning';
+export * from './utils/planningUtils';
+export * from './services/outingPlanningService';
+export * from './store/useOutingPlanningStore';
+export * from './hooks/useOutingPlanning';
+export * from './components/planning/OutingPlanning';

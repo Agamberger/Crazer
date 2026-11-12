@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { View } from 'react-native';
 import { AppText, Button, EmptyState, Loader, Screen, SectionHeader } from '@/shared/components';
 import { spacing } from '@/shared/constants/theme';
 import { useAuth } from '@/features/auth';
@@ -13,9 +14,12 @@ export interface ActivityVotesProps {
   /** Turns a not retained activity into the title of a new outing. */
   onConvert: (result: ActivityResult) => void;
   onClose: () => void;
+  /** Opens the planning of the day (next step of the journey). */
+  onOpenPlanning?: () => void;
 }
 
 const CONTENT_STYLE = { gap: spacing.md } as const;
+const FOOTER_STYLE = { gap: spacing.xs } as const;
 
 /** Step 5 of the outing journey: propose activities, vote and see the live results. */
 export const ActivityVotes: React.FC<ActivityVotesProps> = ({
@@ -23,6 +27,7 @@ export const ActivityVotes: React.FC<ActivityVotesProps> = ({
   onOpenTie,
   onConvert,
   onClose,
+  onOpenPlanning,
 }) => {
   const { user } = useAuth();
   const votes = useActivityVotes(outingId);
@@ -58,7 +63,26 @@ export const ActivityVotes: React.FC<ActivityVotesProps> = ({
       scrollable
       avoidKeyboard
       contentStyle={CONTENT_STYLE}
-      footer={<Button title="Terminer" fullWidth onPress={onClose} testID="btn-activities-close" />}
+      footer={
+        <View style={FOOTER_STYLE}>
+          {onOpenPlanning ? (
+            <Button
+              title="Planifier la journée"
+              fullWidth
+              leftIcon="time-outline"
+              onPress={onOpenPlanning}
+              testID="btn-activities-planning"
+            />
+          ) : null}
+          <Button
+            title="Terminer"
+            fullWidth
+            variant={onOpenPlanning ? 'ghost' : 'primary'}
+            onPress={onClose}
+            testID="btn-activities-close"
+          />
+        </View>
+      }
       testID="activity-votes"
     >
       <AppText variant="h2">{votes.outing.title}</AppText>

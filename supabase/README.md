@@ -63,6 +63,7 @@ Les données de test sont découpées de manière modulaire dans le dossier `sup
 8. **`outing_availabilities`**: one time slot (`start_time` < `end_time`) per member and per candidate day; a composite FK guarantees the day is one of the outing's `outing_days`.
 9. **`outing_answers`**: guided answers (step 4), one row per member and outing (`UNIQUE (outing_id, user_id)`) with typed columns; which columns are used depends on `outings.outing_type`.
 10. **`outing_activities`** / **`outing_activity_votes`**: activity proposals and their votes (step 5, see below).
+11. **`planned_outings.activity_id`**: links a step to the retained activity it comes from (step 6, planning of the day, see below).
 
 ### Outing type and guided questions (step 4)
 
@@ -80,6 +81,18 @@ Les données de test sont découpées de manière modulaire dans le dossier `sup
 - RPCs (SECURITY DEFINER, `authenticated` only, organizer only): `choose_outing_activity(p_activity_id)` retains an activity and clears the other ones of its day group; `draw_outing_activity(p_outing_id, p_day)` random tie-break among the best scored activities of the group (accepted = 2 points, maybe = 1), retains the winner and returns its id; `reopen_outing_activities(p_outing_id, p_day)` clears the choice. Internal `set_chosen_outing_activity` is not callable by clients.
 - Realtime: both tables are in the `supabase_realtime` publication with `REPLICA IDENTITY FULL` (so DELETE events carry `outing_id` and match the filter).
 - Seeds: two proposals on the rooftop outing's first day (`f1111…`, `f2222…`), Alice voted « Partant » on the first. Tests: `supabase/tests/database/activity_votes.test.sql`.
+
+### Planning of the day (step 6)
+
+- **`planned_outings`** stays the single model of the day's steps (no parallel table): the order is `scheduled_for`, the length `duration_min`. New column **`activity_id`** (nullable): composite FK `(activity_id, outing_id)` → `outing_activities (id, outing_id)` `ON DELETE SET NULL (activity_id)` (deleting the activity keeps the step, unlinked), partial unique index (an activity is placed once; a `cancelled` step frees it). Clients cannot write `activity_id` (column-level `INSERT` grant without it, no `UPDATE` grant); members still insert manual steps.
+- RPCs (SECURITY DEFINER, `authenticated` only):
+  - `place_outing_activity(p_activity_id, p_scheduled_for, p_duration_min)` (organizer only, activity must be `chosen` and, when it has a day, placed on that day in some time zone — UTC−12 to UTC+14; duration 1–1440): creates the step (title, note → `notes`, `place_id` copied, status `pending`) and returns its id.
+  - `reschedule_outing_steps(p_outing_id, p_steps)` (organizer only): `p_steps` = `[{"id", "scheduled_for", "duration_min"}]`, every id must belong to the outing; saves all times atomically (reorder, durations, suggested schedule).
+  - `apply_outing_planning(p_outing_id, p_steps, p_placements)` (organizer only): runs both in **one transaction** (`p_placements` = `[{"activity_id", "scheduled_for", "duration_min"}]`, activities of the outing only). This is the RPC the app calls.
+  - Both move `outings.start_date` back to the earliest step when it is later (internal `lower_outing_start_date`), so a planning can start before the common slot (e.g. a late arrival made the common slot start at 20:00).
+  - `set_my_outing_availability(p_outing_id, p_day, p_start, p_end)` (attendees only, candidate day, end > start): replaces the caller's slot of the day — this is how a **late arrival** (or an early departure) is recorded.
+- Realtime: `planned_outings` is in the `supabase_realtime` publication with `REPLICA IDENTITY FULL`, so every member sees the planning live (the app debounces the refetch, so a re-pack of N steps triggers one reload).
+- Seeds: « Samedi entre potes » (`c4444…`, Alice, one day = today + 3, start 14:00 Paris): Bob available 14:00–22:00, **Charlie only from 20:00**; retained activities Karting (`f5555…`, placed as step `e3333…` at 14:00, 90 min) and Restaurant (`f6666…`, « any day », not placed). Tests: `supabase/tests/database/outing_planning.test.sql`.
 
 ### Scheduling RPCs (outing creation workflow)
 

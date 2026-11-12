@@ -50,6 +50,7 @@ describe('OutingsScreen (Outings Tab)', () => {
   };
 
   const mockPlannedOuting: PlannedOutingRow = {
+    activity_id: null,
     id: 'po-1',
     outing_id: 'out-1',
     title: 'Apéro & Cocktails',
@@ -260,6 +261,18 @@ describe('OutingsScreen (Outings Tab)', () => {
     });
   });
 
+  it('opens the planning of the day from the outing edit form', () => {
+    useOutingsStore.setState({ outings: [mockOuting], selectedOutingId: 'out-1' });
+    const { getByTestId } = render(<OutingsScreen />);
+
+    fireEvent.press(getByTestId('btn-open-planning'));
+
+    expect(useRouter().push).toHaveBeenCalledWith({
+      pathname: '/outing/[id]/planning',
+      params: { id: 'out-1' },
+    });
+  });
+
   it('opens the participants recap from the outing edit form', () => {
     useOutingsStore.setState({ outings: [mockOuting], selectedOutingId: 'out-1' });
     const { getByTestId } = render(<OutingsScreen />);
@@ -295,6 +308,7 @@ describe('OutingsScreen (Outings Tab)', () => {
 
     it('opens planned outing creation/edit page when custom step is chosen from timeline', async () => {
       const mockCreatedStep: PlannedOutingRow = {
+        activity_id: null,
         id: 'po-new-custom',
         outing_id: 'out-1',
         title: 'Étape 2',

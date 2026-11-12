@@ -526,6 +526,7 @@ export type Database = {
       }
       planned_outings: {
         Row: {
+          activity_id: string | null
           created_at: string
           created_by: string
           description: string | null
@@ -540,6 +541,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          activity_id?: string | null
           created_at?: string
           created_by: string
           description?: string | null
@@ -554,6 +556,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          activity_id?: string | null
           created_at?: string
           created_by?: string
           description?: string | null
@@ -568,6 +571,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "planned_outings_activity_fk"
+            columns: ["activity_id", "outing_id"]
+            isOneToOne: false
+            referencedRelation: "outing_activities"
+            referencedColumns: ["id", "outing_id"]
+          },
           {
             foreignKeyName: "planned_outings_created_by_fkey"
             columns: ["created_by"]
@@ -815,6 +825,10 @@ export type Database = {
             }
             Returns: string
           }
+      apply_outing_planning: {
+        Args: { p_outing_id: string; p_placements: Json; p_steps: Json }
+        Returns: undefined
+      }
       can_view_profile_email: { Args: { p_target: string }; Returns: boolean }
       choose_outing_activity: {
         Args: { p_activity_id: string }
@@ -986,6 +1000,18 @@ export type Database = {
         Returns: boolean
       }
       longtransactionsenabled: { Args: never; Returns: boolean }
+      lower_outing_start_date: {
+        Args: { p_earliest: string; p_outing_id: string }
+        Returns: undefined
+      }
+      place_outing_activity: {
+        Args: {
+          p_activity_id: string
+          p_duration_min: number
+          p_scheduled_for: string
+        }
+        Returns: string
+      }
       populate_geometry_columns:
         | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }
         | { Args: { use_typmod?: boolean }; Returns: string }
@@ -1034,6 +1060,10 @@ export type Database = {
         Args: { p_outing_id: string; p_slots: Json; p_user_id: string }
         Returns: undefined
       }
+      reschedule_outing_steps: {
+        Args: { p_outing_id: string; p_steps: Json }
+        Returns: undefined
+      }
       respond_to_outing_invitation: {
         Args: {
           p_outing_id: string
@@ -1080,6 +1110,15 @@ export type Database = {
       }
       set_chosen_outing_activity: {
         Args: { p_activity_id: string }
+        Returns: undefined
+      }
+      set_my_outing_availability: {
+        Args: {
+          p_day: string
+          p_end: string
+          p_outing_id: string
+          p_start: string
+        }
         Returns: undefined
       }
       st_3dclosestpoint: {

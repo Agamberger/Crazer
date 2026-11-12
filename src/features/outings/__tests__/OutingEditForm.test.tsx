@@ -37,6 +37,7 @@ describe('OutingEditForm Component', () => {
 
   const mockPlannedOutings: PlannedOutingRow[] = [
     {
+      activity_id: null,
       id: 'po-1',
       outing_id: 'out-123',
       title: 'Arrivée & Briefing',
