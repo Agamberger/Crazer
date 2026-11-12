@@ -27,6 +27,8 @@ export interface OutingEditFormProps {
   onSelectPlannedOuting?: (plannedOuting: PlannedOutingRow) => void;
   /** Opens the participants & availability recap of the outing. */
   onOpenParticipants?: () => void;
+  /** Opens the activity proposals and votes of the outing. */
+  onOpenActivities?: () => void;
 }
 
 export const OutingEditForm: React.FC<OutingEditFormProps> = ({
@@ -41,6 +43,7 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
   isAddingPlannedOuting = false,
   onSelectPlannedOuting: propOnSelectPlannedOuting,
   onOpenParticipants,
+  onOpenActivities,
 }) => {
   const timeline = useOutingPlannedOutings(outing.id, {
     plannedOutings: propPlannedOutings,
@@ -106,6 +109,18 @@ export const OutingEditForm: React.FC<OutingEditFormProps> = ({
             onPress={onOpenParticipants}
             style={styles.participantsButton}
             testID="btn-open-participants"
+          />
+        ) : null}
+
+        {onOpenActivities ? (
+          <Button
+            title="Activités & votes"
+            variant="secondary"
+            size="sm"
+            leftIcon="thumbs-up-outline"
+            onPress={onOpenActivities}
+            style={styles.participantsButton}
+            testID="btn-open-activities"
           />
         ) : null}
 

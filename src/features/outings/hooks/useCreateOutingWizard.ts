@@ -21,6 +21,7 @@ const PLACE_STEP_DURATION_MIN = 60;
 export const useCreateOutingWizard = (
   onCreated: (outingId: string) => void,
   place: WizardPlace | null = null,
+  initialTitle?: string,
 ) => {
   const { user } = useAuth();
   // The wizard renders every draft field, so it subscribes to the whole draft (shallow-compared).
@@ -49,6 +50,14 @@ export const useCreateOutingWizard = (
     reset();
     setTitle(placeName ?? '');
   }, [placeId, placeName]);
+
+  // Opened with a ready-made name: start a fresh draft with it.
+  useEffect(() => {
+    if (!initialTitle) return;
+    const { reset, setTitle } = useOutingCreationStore.getState();
+    reset();
+    setTitle(initialTitle);
+  }, [initialTitle]);
 
   const canContinue = (() => {
     switch (step) {

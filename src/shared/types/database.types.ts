@@ -76,6 +76,119 @@ export type Database = {
           },
         ]
       }
+      outing_activities: {
+        Row: {
+          chosen: boolean
+          created_at: string
+          day: string | null
+          id: string
+          note: string | null
+          outing_id: string
+          place_id: string | null
+          proposed_by: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          chosen?: boolean
+          created_at?: string
+          day?: string | null
+          id?: string
+          note?: string | null
+          outing_id: string
+          place_id?: string | null
+          proposed_by: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          chosen?: boolean
+          created_at?: string
+          day?: string | null
+          id?: string
+          note?: string | null
+          outing_id?: string
+          place_id?: string | null
+          proposed_by?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outing_activities_candidate_day"
+            columns: ["outing_id", "day"]
+            isOneToOne: false
+            referencedRelation: "outing_days"
+            referencedColumns: ["outing_id", "day"]
+          },
+          {
+            foreignKeyName: "outing_activities_outing_id_fkey"
+            columns: ["outing_id"]
+            isOneToOne: false
+            referencedRelation: "outings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outing_activities_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outing_activities_proposed_by_fkey"
+            columns: ["proposed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outing_activity_votes: {
+        Row: {
+          activity_id: string
+          created_at: string
+          id: string
+          outing_id: string
+          updated_at: string
+          user_id: string
+          vote: Database["public"]["Enums"]["activity_vote"]
+        }
+        Insert: {
+          activity_id: string
+          created_at?: string
+          id?: string
+          outing_id: string
+          updated_at?: string
+          user_id: string
+          vote: Database["public"]["Enums"]["activity_vote"]
+        }
+        Update: {
+          activity_id?: string
+          created_at?: string
+          id?: string
+          outing_id?: string
+          updated_at?: string
+          user_id?: string
+          vote?: Database["public"]["Enums"]["activity_vote"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outing_activity_votes_activity_fk"
+            columns: ["activity_id", "outing_id"]
+            isOneToOne: false
+            referencedRelation: "outing_activities"
+            referencedColumns: ["id", "outing_id"]
+          },
+          {
+            foreignKeyName: "outing_activity_votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       outing_answers: {
         Row: {
           activity_type:
@@ -703,6 +816,10 @@ export type Database = {
             Returns: string
           }
       can_view_profile_email: { Args: { p_target: string }; Returns: boolean }
+      choose_outing_activity: {
+        Args: { p_activity_id: string }
+        Returns: undefined
+      }
       create_outing_with_invites: {
         Args: {
           p_days: string[]
@@ -714,6 +831,10 @@ export type Database = {
         Returns: string
       }
       disablelongtransactions: { Args: never; Returns: string }
+      draw_outing_activity: {
+        Args: { p_day?: string; p_outing_id: string }
+        Returns: string
+      }
       dropgeometrycolumn:
         | {
             Args: {
@@ -854,6 +975,7 @@ export type Database = {
         }[]
       }
       gettransactionid: { Args: never; Returns: unknown }
+      is_outing_attendee: { Args: { p_outing_id: string }; Returns: boolean }
       is_outing_member: { Args: { p_outing_id: string }; Returns: boolean }
       is_outing_organizer: {
         Args: { p_outing_id: string; p_user_id: string }
@@ -904,6 +1026,10 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
+      reopen_outing_activities: {
+        Args: { p_day?: string; p_outing_id: string }
+        Returns: undefined
+      }
       replace_outing_availabilities: {
         Args: { p_outing_id: string; p_slots: Json; p_user_id: string }
         Returns: undefined
@@ -951,6 +1077,10 @@ export type Database = {
           full_name: string
           id: string
         }[]
+      }
+      set_chosen_outing_activity: {
+        Args: { p_activity_id: string }
+        Returns: undefined
       }
       st_3dclosestpoint: {
         Args: { geom1: unknown; geom2: unknown }
@@ -1547,6 +1677,7 @@ export type Database = {
       }
     }
     Enums: {
+      activity_vote: "accepted" | "maybe"
       outing_activity_type:
         | "food"
         | "drinks"
@@ -1712,6 +1843,7 @@ export const Constants = {
   },
   public: {
     Enums: {
+      activity_vote: ["accepted", "maybe"],
       outing_activity_type: [
         "food",
         "drinks",

@@ -248,6 +248,18 @@ describe('OutingsScreen (Outings Tab)', () => {
     });
   });
 
+  it('opens the activities and votes from the outing edit form', () => {
+    useOutingsStore.setState({ outings: [mockOuting], selectedOutingId: 'out-1' });
+    const { getByTestId } = render(<OutingsScreen />);
+
+    fireEvent.press(getByTestId('btn-open-activities'));
+
+    expect(useRouter().push).toHaveBeenCalledWith({
+      pathname: '/outing/[id]/activities',
+      params: { id: 'out-1' },
+    });
+  });
+
   it('opens the participants recap from the outing edit form', () => {
     useOutingsStore.setState({ outings: [mockOuting], selectedOutingId: 'out-1' });
     const { getByTestId } = render(<OutingsScreen />);

@@ -44,6 +44,14 @@ describe('CreateOutingWizard', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('démarre avec le nom donné (activité transformée en sortie)', () => {
+    useOutingCreationStore.getState().setTitle('ancien brouillon');
+    const { getByTestId } = render(
+      <CreateOutingWizard onCreated={onCreated} onClose={onClose} initialTitle="Bowling" />,
+    );
+    expect(getByTestId('input-outing-name').props.value).toBe('Bowling');
+  });
+
   it('bloque le passage à l’étape suivante sans nom', () => {
     const { getByTestId } = renderWizard();
     fireEvent.press(getByTestId('btn-wizard-next'));
