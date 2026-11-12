@@ -1,12 +1,11 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { View } from 'react-native';
-import { AppText, Button, EmptyState, Loader, Screen, SectionHeader } from '@/shared/components';
+import { AppText, Button, EmptyState, Loader, Screen } from '@/shared/components';
 import { spacing } from '@/shared/constants/theme';
 import { useAuth } from '@/features/auth';
 import { useActivityVotes } from '../../hooks/useActivityVotes';
 import { ActivityResult } from '../../types/activities';
-import { ActivityGroupSection } from './ActivityGroupSection';
-import { ProposeActivityForm } from './ProposeActivityForm';
+import { ActivityVotesContent } from './ActivityVotesContent';
 
 export interface ActivityVotesProps {
   outingId: string;
@@ -31,10 +30,6 @@ export const ActivityVotes: React.FC<ActivityVotesProps> = ({
 }) => {
   const { user } = useAuth();
   const votes = useActivityVotes(outingId);
-  const memberNames = useMemo(
-    () => Object.fromEntries(votes.members.map((m) => [m.userId, m.displayName])),
-    [votes.members],
-  );
 
   if (votes.loadFailed) {
     return (
@@ -90,37 +85,12 @@ export const ActivityVotes: React.FC<ActivityVotesProps> = ({
         Propose des idées et vote : « Partant » vaut 2 points, « Peut-être » 1 point. Les résultats
         se mettent à jour en direct.
       </AppText>
-      {votes.groups.map((group) => (
-        <ActivityGroupSection
-          key={group.day ?? 'any'}
-          group={group}
-          memberNames={memberNames}
-          currentUserId={user?.id ?? null}
-          canVote={votes.canVote}
-          isOrganizer={votes.isOrganizer}
-          onVote={votes.toggleVote}
-          onChoose={votes.choose}
-          onRemove={votes.remove}
-          onReopen={votes.reopen}
-          onOpenTie={onOpenTie}
-          onConvert={onConvert}
-        />
-      ))}
-      {votes.canVote ? (
-        <>
-          <SectionHeader title="Nouvelle proposition" />
-          <ProposeActivityForm
-            days={votes.days}
-            userId={user?.id ?? null}
-            onSubmit={votes.propose}
-            isSaving={votes.isSaving}
-          />
-        </>
-      ) : (
-        <AppText color="muted" testID="activities-cannot-vote">
-          Rejoins la sortie pour proposer et voter.
-        </AppText>
-      )}
+      <ActivityVotesContent
+        votes={votes}
+        userId={user?.id ?? null}
+        onOpenTie={onOpenTie}
+        onConvert={onConvert}
+      />
     </Screen>
   );
 };

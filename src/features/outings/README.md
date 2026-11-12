@@ -21,13 +21,15 @@ src/features/outings/
 │   ├── TimelineStep.tsx           # Une étape de la timeline (nœud, segments, carte)
 │   ├── hub/                       # Outing hub: one screen for creation and edition
 │   │   ├── CreateOutingScreen.tsx # « On sort ! »: name only, creates the outing, opens the hub
-│   │   ├── OutingHub.tsx          # Name + « Quand ? » / « Qui ? » / « Comment ? » rows
+│   │   ├── OutingHub.tsx          # Name + « Quand ? » / « Qui ? » / « Quoi ? » rows
 │   │   ├── OutingHubTitle.tsx     # Name, renamed in place by the organizer (saved on blur)
 │   │   ├── HubSectionRow.tsx      # One row: emoji, title, visual summary, chevron
-│   │   ├── WhenSummaryView.tsx, HowSummaryView.tsx
+│   │   ├── WhenSummaryView.tsx, WhatSummaryView.tsx
 │   │   ├── WhenPanel.tsx          # « Quand ? » slide-over panel: days, my slots, recap, day choice
 │   │   ├── MySlotsEditor.tsx      # « Mes dispos »: available or not per day + slot
 │   │   ├── MyAnswerSection.tsx    # « Ma réponse »: Je viens / Peut-être / Je ne viens pas
+│   │   ├── WhatPanel.tsx          # « Quoi ? » slide-over panel, made of the what/ sections
+│   │   └── what/                  # WhatQuestionsSection, WhatActivitiesSection, WhatDetailsSection, WhatStepsSection
 │   │   └── WhoPanel.tsx           # « Qui ? » slide-over panel: my answer, members, invite friends
 │   └── scheduling/                # Creation workflow (steps 1–3 of the outing journey)
 │       ├── CreateOutingWizard.tsx # « On sort ! » → « Quel genre ? » → « Avec qui ? » → « Quand ? » → « Mes dispos »
@@ -188,7 +190,13 @@ The outing is created as soon as it has a name, then completed from a single scr
   - Drafts are reset from the saved data each time the panel opens; results are shown in the panel (`InlineAlert`).
 - **Qui ?** summary: `ParticipantAvatars` (« 1 participant · 1 en attente »). The row opens `WhoPanel`, an `AppModal` `slideOver` panel (full page, slides in from the right): members with their answer and, for the organizer, « Inviter des amis » (accepted friends who are not members yet, or who declined) through `invite_to_outing` (`useOutingSchedulingStore.inviteFriends`, `useInviteFriends`). The result is shown in the panel (`InlineAlert`), since a toast would stay under the modal.
   - **Ma réponse** (members only, not the organizer, `useMyAnswer`): « Je viens » / « Peut-être » / « Je ne viens pas » through `respond_to_outing_invitation`. A pending invitee answers the invitation here; a member changes their answer at any time. The member's current slots are sent again with the answer, because the RPC replaces them (a « Je ne viens pas » deletes them). Once they come, the member gives their slots in « Quand ? ».
-- **Comment ?** summary (`summarizeHow`): type, « n/m ont répondu aux questions » (attendees who answered for the type), retained activities (« ✅ Karting ») or the number of proposals. The row still opens the questions route until its panel exists.
+- **Quoi ?** summary (`summarizeWhat`): type, « n/m ont répondu aux questions » (attendees who answered for the type), retained activities (« ✅ Karting ») or the number of proposals. The row opens `WhatPanel`, one scrolling `slideOver` page with four sections:
+  - **Type et questions** (`WhatQuestionsSection`, `useOutingQuestions`): the organizer picks the type (`OutingTypeStep`) or « Changer » it; everyone fills the questions of the type (`OutingQuestionsFields`, shared with the legacy questions screen) and « Enregistrer mes réponses ». `submit` now resolves with `'saved' | 'invalid' | 'failed'` so the panel can show the outcome.
+  - **Activités** (`WhatActivitiesSection`, `useActivityVotes`): proposals, live votes, « Retenir » (`ActivityVotesContent`, shared with the legacy activities screen).
+  - **Détails** (`WhatDetailsSection`): description and status, edited by the organizer (« Enregistrer les détails »), read by the members.
+  - **Programme** (`WhatStepsSection`): the steps timeline; a new or tapped step opens `PlannedOutingEditForm` in a nested `slideOver` page; « Planifier la journée » opens the planning route. The section selects the outing in `useOutingsStore` while it is shown (the store keeps the steps of the selected outing only) and releases it when it unmounts.
+  - Screens opened from the panel (tie-break, planning, map, « En faire une sortie ») close the panel first, because a screen pushed under a modal stays hidden.
+  - Known limit: errors reported by toasts from the reused hooks (vote, proposal, type change) are drawn under the modal; the outcome of the panel's own save buttons is shown inline.
 - `useOutingHub(outingId)` combines `useOutingScheduling` (realtime on participants, candidate days and availabilities) with the answers and activities, reloaded each time the hub gets the focus (`useFocusEffect`).
 
 ## 🗓️ Outing creation workflow (invitations & availability)

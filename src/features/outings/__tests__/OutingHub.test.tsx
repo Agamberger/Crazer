@@ -57,9 +57,20 @@ const fetchActivities = jest.fn();
 const fetchFriendsList = jest.fn();
 const onClose = jest.fn();
 
-const onOpenHow = jest.fn();
+const onOpenTie = jest.fn();
+const onConvert = jest.fn();
+const onOpenPlanning = jest.fn();
 
-const renderHub = () => render(<OutingHub outingId="o1" onClose={onClose} onOpenHow={onOpenHow} />);
+const renderHub = () =>
+  render(
+    <OutingHub
+      outingId="o1"
+      onClose={onClose}
+      onOpenTie={onOpenTie}
+      onConvert={onConvert}
+      onOpenPlanning={onOpenPlanning}
+    />,
+  );
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -91,9 +102,9 @@ describe('OutingHub', () => {
     await waitFor(() => expect(getByTestId('hub-when-days')).toBeTruthy());
     expect(getByText('1 jour avec un créneau commun')).toBeTruthy();
     expect(getByLabelText('1 participant · 1 en attente')).toBeTruthy();
-    expect(getByTestId('hub-how-type')).toHaveTextContent('☀️ Une journée');
-    expect(getByTestId('hub-how-answers')).toHaveTextContent('0/1 ont répondu aux questions');
-    expect(getByTestId('hub-how-activities')).toHaveTextContent('Aucune activité proposée');
+    expect(getByTestId('hub-what-type')).toHaveTextContent('☀️ Une journée');
+    expect(getByTestId('hub-what-answers')).toHaveTextContent('0/1 ont répondu aux questions');
+    expect(getByTestId('hub-what-activities')).toHaveTextContent('Aucune activité proposée');
     expect(fetchAnswers).toHaveBeenCalledWith('o1');
     expect(fetchActivities).toHaveBeenCalledWith('o1');
   });
@@ -104,12 +115,9 @@ describe('OutingHub', () => {
     expect(await findByTestId('hub-when-date')).toBeTruthy();
   });
 
-  it('ouvre Comment ? et se ferme', async () => {
+  it('se ferme depuis l’en-tête', () => {
     const { getByTestId } = renderHub();
-    await waitFor(() => expect(service.fetchMembers).toHaveBeenCalled());
-    fireEvent.press(getByTestId('hub-row-how'));
     fireEvent.press(getByTestId('btn-hub-close'));
-    expect(onOpenHow).toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
   });
 

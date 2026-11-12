@@ -140,13 +140,22 @@ describe('outing routes', () => {
     });
   });
 
-  it('hub : passe l’id et ouvre Comment ? (questions)', () => {
+  it('hub : passe l’id et ouvre l’égalité, le planning et une nouvelle sortie', () => {
     const { getByText } = render(<OutingHubRoute />);
     expect(getByText('hub:o1')).toBeTruthy();
-    fireEvent.press(getByText('onOpenHow'));
+    fireEvent.press(getByText('onOpenPlanning'));
     expect(router.push).toHaveBeenCalledWith({
-      pathname: '/outing/[id]/questions',
+      pathname: '/outing/[id]/planning',
       params: { id: 'o1' },
+    });
+    fireEvent.press(getByText('onConvert'));
+    expect(router.push).toHaveBeenCalledWith(
+      expect.objectContaining({ pathname: '/outing/create' }),
+    );
+    fireEvent.press(getByText('onOpenTie'));
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/outing/[id]/tie',
+      params: { id: 'o1', day: 'new-outing' },
     });
   });
 

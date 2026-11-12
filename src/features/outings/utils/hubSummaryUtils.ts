@@ -1,6 +1,6 @@
 import { OutingRow } from '@/shared/types';
 import { OutingActivities } from '../types/activities';
-import { HowSummary, WhenSummary } from '../types/hub';
+import { WhatSummary, WhenSummary } from '../types/hub';
 import { MemberAnswers } from '../types/questions';
 import { DayRecap, OutingMember } from '../types/scheduling';
 import { hasAnswersFor } from './answersUtils';
@@ -38,19 +38,19 @@ export const summarizeWhen = (
 };
 
 /**
- * Summary of the « Comment ? » section.
+ * Summary of the « Quoi ? » section.
  * @param outing the outing (its type).
  * @param members participants of the outing (attendees answer the questions).
  * @param answers saved answers of the group.
  * @param activities proposed activities, `null` while not loaded.
  * @returns type, answers progress, number of proposals and retained activities.
  */
-export const summarizeHow = (
+export const summarizeWhat = (
   outing: Pick<OutingRow, 'outing_type'>,
   members: ReadonlyArray<OutingMember>,
   answers: ReadonlyArray<MemberAnswers>,
   activities: OutingActivities | null,
-): HowSummary => {
+): WhatSummary => {
   const outingType = outing.outing_type ?? null;
   const attendingIds = new Set(attendingMembers(members).map((member) => member.userId));
   const answeredCount = outingType

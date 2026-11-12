@@ -8,6 +8,9 @@ import { useOutingAnswersStore } from '../store/useOutingAnswersStore';
 import { OutingAnswers } from '../types/questions';
 import { EMPTY_ANSWERS, hasAnswersFor, validateAnswers } from '../utils/answersUtils';
 
+/** Outcome of « Enregistrer mes réponses »: `invalid` keeps the validation error in the form. */
+export type SubmitAnswersResult = 'saved' | 'invalid' | 'failed';
+
 /**
  * State of the guided-questions step: the outing type (chosen by the organizer),
  * the current user's draft answers and the group's progress.
@@ -30,7 +33,10 @@ export const useOutingQuestions = (outingId: string, onDone: () => void) => {
   const [attendingIds, setAttendingIds] = useState<ReadonlyArray<string>>([]);
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  const groupAnswers = useMemo(() => answersByOutingId[outingId] ?? [], [answersByOutingId, outingId]);
+  const groupAnswers = useMemo(
+    () => answersByOutingId[outingId] ?? [],
+    [answersByOutingId, outingId],
+  );
   const isOrganizer = !!userId && outing?.created_by === userId;
   const outingType = outing?.outing_type ?? null;
 
@@ -78,24 +84,27 @@ export const useOutingQuestions = (outingId: string, onDone: () => void) => {
     [outingId, setOutingType],
   );
 
-  const submit = useCallback(async () => {
-    if (!outingType || !userId) return;
+  const submit = useCallback(async (): Promise<SubmitAnswersResult> => {
+    if (!outingType || !userId) return 'invalid';
     const problem = validateAnswers(outingType, draft);
     if (problem) {
       setValidationError(problem);
-      return;
+      return 'invalid';
     }
     try {
       await saveMyAnswers(outingId, userId, draft);
       toast.success('Tes réponses sont enregistrées.');
       onDone();
+      return 'saved';
     } catch {
       toast.error('Impossible d’enregistrer tes réponses.', { title: 'Erreur' });
+      return 'failed';
     }
   }, [outingType, userId, draft, saveMyAnswers, outingId, onDone]);
 
   const answeredCount = outingType
-    ? groupAnswers.filter((a) => attendingIds.includes(a.userId) && hasAnswersFor(outingType, a)).length
+    ? groupAnswers.filter((a) => attendingIds.includes(a.userId) && hasAnswersFor(outingType, a))
+        .length
     : 0;
 
   return {

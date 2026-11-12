@@ -5,7 +5,8 @@ import { spacing } from '@/shared/constants/theme';
 import { useOutingHub } from '../../hooks/useOutingHub';
 import { HubSection } from '../../types/hub';
 import { ParticipantAvatars } from '../scheduling/ParticipantAvatars';
-import { HowSummaryView } from './HowSummaryView';
+import { WhatPanel } from './WhatPanel';
+import { WhatSummaryView } from './WhatSummaryView';
 import { HubSectionRow } from './HubSectionRow';
 import { OutingHubTitle } from './OutingHubTitle';
 import { WhenPanel } from './WhenPanel';
@@ -15,15 +16,25 @@ import { WhoPanel } from './WhoPanel';
 export interface OutingHubProps {
   outingId: string;
   onClose: () => void;
-  /** Opens the « Comment ? » screen (type, questions, activities). */
-  onOpenHow: () => void;
+  /** Opens the tie-break of a day group of activities (`null` = « any day »). */
+  onOpenTie: (day: string | null) => void;
+  /** Creates a new outing named after a not retained activity. */
+  onConvert: (title: string) => void;
+  /** Opens the planning of the day. */
+  onOpenPlanning: () => void;
 }
 
 /**
  * Main screen of an outing, for its creation and its edition: the name at the top, then the
- * « Quand ? », « Qui ? » and « Comment ? » sections, each with a visual summary of its content.
+ * « Quand ? », « Qui ? » and « Quoi ? » sections, each with a visual summary of its content.
  */
-export const OutingHub: React.FC<OutingHubProps> = ({ outingId, onClose, onOpenHow }) => {
+export const OutingHub: React.FC<OutingHubProps> = ({
+  outingId,
+  onClose,
+  onOpenTie,
+  onConvert,
+  onOpenPlanning,
+}) => {
   const hub = useOutingHub(outingId);
   const [openSection, setOpenSection] = useState<HubSection | null>(null);
   const { outing } = hub;
@@ -80,12 +91,12 @@ export const OutingHub: React.FC<OutingHubProps> = ({ outingId, onClose, onOpenH
         </HubSectionRow>
         <HubSectionRow
           emoji="🎯"
-          title="Comment ?"
-          onPress={onOpenHow}
-          accessibilityLabel="Ouvrir Comment ?"
-          testID="hub-row-how"
+          title="Quoi ?"
+          onPress={() => setOpenSection('what')}
+          accessibilityLabel="Ouvrir Quoi ?"
+          testID="hub-row-what"
         >
-          <HowSummaryView summary={hub.how} />
+          <WhatSummaryView summary={hub.what} />
         </HubSectionRow>
       </View>
       <WhenPanel
@@ -97,6 +108,16 @@ export const OutingHub: React.FC<OutingHubProps> = ({ outingId, onClose, onOpenH
         pendingCount={hub.pendingCount}
         userId={hub.userId}
         isOrganizer={hub.isOrganizer}
+      />
+      <WhatPanel
+        visible={openSection === 'what'}
+        onClose={() => setOpenSection(null)}
+        outing={outing}
+        userId={hub.userId}
+        isOrganizer={hub.isOrganizer}
+        onOpenTie={onOpenTie}
+        onConvert={onConvert}
+        onOpenPlanning={onOpenPlanning}
       />
       <WhoPanel
         visible={openSection === 'who'}

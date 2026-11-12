@@ -2,7 +2,7 @@ import { OutingActivity } from '../types/activities';
 import { MemberAnswers } from '../types/questions';
 import { DayRecap, OutingMember } from '../types/scheduling';
 import { EMPTY_ANSWERS } from '../utils/answersUtils';
-import { formatOutingDate, summarizeHow, summarizeWhen } from '../utils/hubSummaryUtils';
+import { formatOutingDate, summarizeWhat, summarizeWhen } from '../utils/hubSummaryUtils';
 
 const member = (userId: string, status: OutingMember['status']): OutingMember => ({
   userId,
@@ -58,7 +58,7 @@ describe('formatOutingDate', () => {
   });
 });
 
-describe('summarizeHow', () => {
+describe('summarizeWhat', () => {
   const members = [
     member('alice', 'accepted'),
     member('bob', 'maybe'),
@@ -71,7 +71,7 @@ describe('summarizeHow', () => {
   ];
 
   it('counts the attendees who answered for the outing type', () => {
-    const summary = summarizeHow({ outing_type: 'one_day' }, members, answers, null);
+    const summary = summarizeWhat({ outing_type: 'one_day' }, members, answers, null);
     expect(summary).toEqual({
       outingType: 'one_day',
       answeredCount: 1,
@@ -82,11 +82,11 @@ describe('summarizeHow', () => {
   });
 
   it('counts nobody as answered while the type is not chosen', () => {
-    expect(summarizeHow({ outing_type: null }, members, answers, null).answeredCount).toBe(0);
+    expect(summarizeWhat({ outing_type: null }, members, answers, null).answeredCount).toBe(0);
   });
 
   it('lists the proposals and the retained activities', () => {
-    const summary = summarizeHow({ outing_type: 'precise' }, members, [], {
+    const summary = summarizeWhat({ outing_type: 'precise' }, members, [], {
       activities: [activity('a1', 'Karting', true), activity('a2', 'Bowling', false)],
       votes: [],
     });

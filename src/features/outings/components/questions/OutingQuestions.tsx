@@ -1,21 +1,10 @@
 import React from 'react';
-import {
-  AppText,
-  Button,
-  InlineAlert,
-  Loader,
-  Screen,
-  SectionHeader,
-} from '@/shared/components';
+import { AppText, Button, InlineAlert, Loader, Screen } from '@/shared/components';
 import { spacing } from '@/shared/constants/theme';
-import { OutingType } from '@/shared/types';
 import { useOutingQuestions } from '../../hooks/useOutingQuestions';
 import { OUTING_TYPE_LABELS } from '../../questionOptions';
-import { QuestionsFormProps } from './questionProps';
-import { HolidaysQuestions } from './HolidaysQuestions';
-import { OneDayQuestions } from './OneDayQuestions';
+import { OutingQuestionsFields } from './OutingQuestionsFields';
 import { OutingTypeStep } from './OutingTypeStep';
-import { PreciseQuestions } from './PreciseQuestions';
 
 export interface OutingQuestionsProps {
   outingId: string;
@@ -25,12 +14,6 @@ export interface OutingQuestionsProps {
 }
 
 const CONTENT_STYLE = { gap: spacing.md } as const;
-
-const FORM_BY_TYPE: Record<OutingType, React.FC<QuestionsFormProps>> = {
-  precise: PreciseQuestions,
-  one_day: OneDayQuestions,
-  holidays: HolidaysQuestions,
-};
 
 /** Step 4 of the outing journey: type of outing (organizer) then guided questions. */
 export const OutingQuestions: React.FC<OutingQuestionsProps> = ({ outingId, onDone, onClose }) => {
@@ -43,7 +26,13 @@ export const OutingQuestions: React.FC<OutingQuestionsProps> = ({ outingId, onDo
           tone="error"
           message="Impossible de charger les questions. Réessaie plus tard."
         />
-        <Button title="Fermer" variant="ghost" fullWidth onPress={onClose} testID="btn-questions-close" />
+        <Button
+          title="Fermer"
+          variant="ghost"
+          fullWidth
+          onPress={onClose}
+          testID="btn-questions-close"
+        />
       </Screen>
     );
   }
@@ -57,12 +46,23 @@ export const OutingQuestions: React.FC<OutingQuestionsProps> = ({ outingId, onDo
   }
 
   const closeButton = (
-    <Button title="Fermer" variant="ghost" fullWidth onPress={onClose} testID="btn-questions-close" />
+    <Button
+      title="Fermer"
+      variant="ghost"
+      fullWidth
+      onPress={onClose}
+      testID="btn-questions-close"
+    />
   );
 
   if (!questions.outingType) {
     return (
-      <Screen scrollable contentStyle={CONTENT_STYLE} footer={closeButton} testID="outing-type-step">
+      <Screen
+        scrollable
+        contentStyle={CONTENT_STYLE}
+        footer={closeButton}
+        testID="outing-type-step"
+      >
         {questions.isOrganizer ? (
           <OutingTypeStep onSelect={questions.chooseType} disabled={questions.isSaving} />
         ) : (
@@ -76,8 +76,6 @@ export const OutingQuestions: React.FC<OutingQuestionsProps> = ({ outingId, onDo
     );
   }
 
-  const Form = FORM_BY_TYPE[questions.outingType];
-
   return (
     <Screen
       scrollable
@@ -89,7 +87,7 @@ export const OutingQuestions: React.FC<OutingQuestionsProps> = ({ outingId, onDo
             title="Enregistrer mes réponses"
             fullWidth
             loading={questions.isSaving}
-            onPress={questions.submit}
+            onPress={() => void questions.submit()}
             testID="btn-questions-save"
           />
           {questions.isOrganizer ? (
@@ -110,14 +108,14 @@ export const OutingQuestions: React.FC<OutingQuestionsProps> = ({ outingId, onDo
       <AppText color="secondary" testID="questions-type-label">
         {OUTING_TYPE_LABELS[questions.outingType]}
       </AppText>
-      <Form answers={questions.draft} onChange={questions.updateDraft} />
-      {questions.validationError ? (
-        <InlineAlert tone="error" message={questions.validationError} testID="questions-error" />
-      ) : null}
-      <SectionHeader title="Réponses du groupe" />
-      <AppText color="secondary" testID="questions-progress">
-        {questions.answeredCount} / {questions.attendingCount} ont répondu.
-      </AppText>
+      <OutingQuestionsFields
+        outingType={questions.outingType}
+        draft={questions.draft}
+        onChange={questions.updateDraft}
+        validationError={questions.validationError}
+        answeredCount={questions.answeredCount}
+        attendingCount={questions.attendingCount}
+      />
     </Screen>
   );
 };

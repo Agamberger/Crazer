@@ -55,7 +55,7 @@ export * from './store/useOutingPlanningStore';
 export * from './hooks/useOutingPlanning';
 export * from './components/planning/OutingPlanning';
 
-// Outing hub: creation from a name, then « Quand ? » / « Qui ? » / « Comment ? »
+// Outing hub: creation from a name, then « Quand ? » / « Qui ? » / « Quoi ? »
 export * from './types/hub';
 export * from './utils/hubSummaryUtils';
 export * from './hooks/useCreateOuting';

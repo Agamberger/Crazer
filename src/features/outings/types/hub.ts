@@ -2,7 +2,7 @@ import { OutingType } from '@/shared/types';
 import { DayKey } from './scheduling';
 
 /** Sections of the outing hub, each opened as a full-page panel. */
-export type HubSection = 'when' | 'who' | 'how';
+export type HubSection = 'when' | 'who' | 'what';
 
 /** What the « Quand ? » row shows. */
 export type WhenSummary =
@@ -10,8 +10,8 @@ export type WhenSummary =
   | { kind: 'days'; days: DayKey[]; daysWithCommonSlot: number }
   | { kind: 'empty' };
 
-/** What the « Comment ? » row shows. */
-export interface HowSummary {
+/** What the « Quoi ? » row shows. */
+export interface WhatSummary {
   outingType: OutingType | null;
   answeredCount: number;
   attendingCount: number;

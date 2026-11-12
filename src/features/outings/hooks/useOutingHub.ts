@@ -6,9 +6,9 @@ import { OutingRow } from '@/shared/types';
 import { useActivityVotesStore } from '../store/useActivityVotesStore';
 import { useOutingAnswersStore } from '../store/useOutingAnswersStore';
 import { useOutingsStore } from '../store/useOutingsStore';
-import { HowSummary, WhenSummary } from '../types/hub';
+import { WhatSummary, WhenSummary } from '../types/hub';
 import { DayRecap, OutingMember, OutingScheduling } from '../types/scheduling';
-import { summarizeHow, summarizeWhen } from '../utils/hubSummaryUtils';
+import { summarizeWhat, summarizeWhen } from '../utils/hubSummaryUtils';
 import { useOutingScheduling } from './useOutingScheduling';
 
 export interface UseOutingHubResult {
@@ -20,7 +20,7 @@ export interface UseOutingHubResult {
   pendingCount: number;
   members: OutingMember[];
   when: WhenSummary;
-  how: HowSummary | null;
+  what: WhatSummary | null;
   isLoading: boolean;
   error: string | null;
   /** Renames the outing (organizer); resolves with `true` on success. */
@@ -54,8 +54,8 @@ export const useOutingHub = (outingId: string): UseOutingHubResult => {
     () => (outing ? summarizeWhen(outing, recaps) : { kind: 'empty' }),
     [outing, recaps],
   );
-  const how = useMemo(
-    () => (outing ? summarizeHow(outing, members, answers ?? [], activities ?? null) : null),
+  const what = useMemo(
+    () => (outing ? summarizeWhat(outing, members, answers ?? [], activities ?? null) : null),
     [outing, members, answers, activities],
   );
 
@@ -79,7 +79,7 @@ export const useOutingHub = (outingId: string): UseOutingHubResult => {
     pendingCount,
     members,
     when,
-    how,
+    what,
     isLoading: isLoading && !scheduling,
     error,
     rename,
