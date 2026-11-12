@@ -122,3 +122,21 @@ VALUES (
   'drinks', 'Vue sur Paris', '19:30', FALSE
 )
 ON CONFLICT (outing_id, user_id) DO NOTHING;
+
+-- 8. ACTIVITÉS PROPOSÉES ET VOTES (étape 5)
+-- Apéro rooftop : deux propositions pour le premier jour, Alice vote pour la première.
+INSERT INTO public.outing_activities (id, outing_id, day, title, note, proposed_by, place_id)
+VALUES
+  ('f1111111-1111-1111-1111-111111111111', 'c2222222-2222-2222-2222-222222222222',
+   CURRENT_DATE + 5, 'Rooftop avec vue', 'Réservation possible à 19h',
+   '11111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111111'),
+  ('f2222222-2222-2222-2222-222222222222', 'c2222222-2222-2222-2222-222222222222',
+   CURRENT_DATE + 5, 'Bar à jeux', NULL,
+   '11111111-1111-1111-1111-111111111111', NULL)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.outing_activity_votes (activity_id, outing_id, user_id, vote)
+VALUES
+  ('f1111111-1111-1111-1111-111111111111', 'c2222222-2222-2222-2222-222222222222',
+   '11111111-1111-1111-1111-111111111111', 'accepted')
+ON CONFLICT (activity_id, user_id) DO NOTHING;

@@ -35,3 +35,14 @@ export * from './services/outingAnswersService';
 export * from './store/useOutingAnswersStore';
 export * from './hooks/useOutingQuestions';
 export * from './components/questions/OutingQuestions';
+
+// Activity proposals, votes and tie-break (step 5)
+export * from './types/activities';
+export * from './utils/activityUtils';
+export * from './services/activityVotesService';
+export * from './services/activityPlacesService';
+export * from './types/activityPlaces';
+export * from './store/useActivityVotesStore';
+export * from './hooks/useActivityVotes';
+export * from './components/activities/ActivityVotes';
+export * from './components/activities/ActivityTieBreak';

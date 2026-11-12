@@ -14,6 +14,8 @@ export interface CreateOutingWizardProps {
   onClose: () => void;
   /** Place the outing is created around: added as its first step. */
   place?: WizardPlace | null;
+  /** Name the draft starts with (e.g. a not retained activity turned into an outing). */
+  initialTitle?: string;
 }
 
 /** Step 1 of the outing journey: name, type, invitees, days, my availability. */
@@ -21,8 +23,9 @@ export const CreateOutingWizard: React.FC<CreateOutingWizardProps> = ({
   onCreated,
   onClose,
   place = null,
+  initialTitle,
 }) => {
-  const wizard = useCreateOutingWizard(onCreated, place);
+  const wizard = useCreateOutingWizard(onCreated, place, initialTitle);
   const { draft, step } = wizard;
 
   const footer = (

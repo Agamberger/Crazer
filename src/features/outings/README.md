@@ -28,6 +28,12 @@ src/features/outings/
 │       ├── DayRecapRow.tsx, MembersList.tsx
 │       ├── InvitationCard.tsx, PendingInvitationsSection.tsx
 │       └── ParticipantAvatars.tsx # Avatars + « n participants · m en attente »
+│   ├── activities/                # Activity proposals, votes and tie-break (step 5)
+│   │   ├── ActivityVotes.tsx      # Screen: groups per day, live results, « Nouvelle proposition »
+│   │   ├── ActivityGroupSection.tsx, ActivityVoteCard.tsx, ProposeActivityForm.tsx
+│   │   ├── ActivityPlacePicker.tsx # Link a Crazer / Google Maps place to a proposal
+│   │   ├── ActivityTieBreak.tsx   # Tie screen: choose by hand or random draw
+│   │   └── DrawRoulette.tsx       # Tie-break mini-game (animated roulette)
 │   └── questions/                 # Outing type + guided questions (step 4)
 │       ├── OutingQuestions.tsx    # Screen: type picker (organizer) then the form of the type
 │       ├── OutingTypeStep.tsx     # « Quel genre de sortie ? » (precise / one_day / holidays)
@@ -214,3 +220,18 @@ Design choices (simplest option, easy to refine later):
 - « Budget » is a 3-level scale (`low`, `medium`, `high`), not an amount.
 - Answers of an unused type are kept in the row when the type is changed, but ignored by the UI.
 - Saving is update-then-insert (`outingAnswersService.saveMyAnswers`) because `outing_id` / `user_id` are not updatable columns, so `upsert` would be refused; a unique violation from a concurrent save is retried as an update. The outing type is changed through `useOutingsStore.updateOuting`.
+
+---
+
+## 🗳️ Activity proposals, votes and tie-break (step 5)
+
+Routes: `app/outing/[id]/activities.tsx` (`ActivityVotes`) and `app/outing/[id]/tie.tsx` (`ActivityTieBreak`, `?day=YYYY-MM-DD`, no `day` = « any day » group). Journey: questions → « Enregistrer mes réponses » → **activities & votes** → « Terminer » → Sorties tab. The screen is also reachable from the outing edit form (« Activités & votes »). Data: `activityVotesService`, `useActivityVotesStore`, hooks `useActivityVotes` / `useActivityTieBreak`; pure ranking in `utils/activityUtils.ts`.
+
+- **Proposals**: any attendee (organizer, `accepted` or `maybe` participant) proposes an activity (title ≤ 120, optional note ≤ 300) **for a candidate day** or « Peu importe » (day `NULL`). Activities are grouped by day; days without a proposal stay listed so that someone can fill them. The author or the organizer can delete a proposal while the group is open.
+- **Place of an activity**: a proposal can be linked to a place (`outing_activities.place_id` → `places`, `ON DELETE SET NULL`). `ActivityPlacePicker` searches **both** the saved Crazer places (`searchPlaces` RPC) and **Google Maps** (Places autocomplete) with a debounce (`useActivityPlaceSearch`, `activityPlacesService`); a failing source is ignored. Picking a Google result fetches its details and stores it in `places` through `ensurePlaceExists` (same import as the map), so the activity always references a stored place. The title is prefilled with the place name (editable), and the card shows « 📍 name · address ».
+- **Votes**: « Partant » (`accepted`, 2 points) or « Peut-être » (`maybe`, 1 point); no row = no vote; pressing the current vote again removes it. Results (score, who voted what) are **live** through the realtime subscription on `outing_activities` and `outing_activity_votes` (`subscribeToActivities`, cleaned up on unmount).
+- **Decision (open question of the note — simplest option)**: *the organizer decides* when several options remain. A group is in the state `voting` (one leader), `tie` (≥ 2 activities share the best **positive** score; nobody voted = no tie), or `decided` (the organizer retained one activity: « Retenir »). The organizer can retain an activity at any time, with or without a tie, and « Rouvrir le vote ». A decided group closes the votes in the UI.
+- **Tie screen**: everyone sees the tied activities; members get a waiting message and see the decision appear live. The organizer chooses by hand or taps **« 🎲 Tirer au sort »**: the server draws (`draw_outing_activity`, `random()` among the best scored activities of the group, so the result is shared and tamper-proof), then `DrawRoulette` replays an animated roulette (`buildDrawSequence` / `drawStepDelay`) that slows down and stops on the winner. The candidates are frozen when the draw starts because the realtime refresh already contains the winner.
+- **Order of the activities (open question of the note)**: not decided here. Activities are only ranked by vote score; *placing* them in the day (using everyone's availability) is lot 5 (planning). A retained activity is not copied to `planned_outings` yet.
+- **Convert a result into a new outing**: once a group is decided, every not retained activity shows **« En faire une sortie »** (also on the tie result). It opens the creation wizard (`/outing/create?title=…`, `CreateOutingWizard` prop `initialTitle`) with the activity title as name; the days, invitees and place are not carried over.
+- Known limit: votes are closed by the UI once a group is decided, not by the database (a direct API call can still change a vote after the decision; the `chosen` flag itself is only writable through the organizer RPCs).

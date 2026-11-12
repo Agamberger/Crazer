@@ -62,6 +62,7 @@ Les données de test sont découpées de manière modulaire dans le dossier `sup
 7. **`outing_days`**: candidate days of an outing, chosen by the organizer (unique per outing).
 8. **`outing_availabilities`**: one time slot (`start_time` < `end_time`) per member and per candidate day; a composite FK guarantees the day is one of the outing's `outing_days`.
 9. **`outing_answers`**: guided answers (step 4), one row per member and outing (`UNIQUE (outing_id, user_id)`) with typed columns; which columns are used depends on `outings.outing_type`.
+10. **`outing_activities`** / **`outing_activity_votes`**: activity proposals and their votes (step 5, see below).
 
 ### Outing type and guided questions (step 4)
 
@@ -69,6 +70,16 @@ Les données de test sont découpées de manière modulaire dans le dossier `sup
 - **`outing_answers`** columns: `precise` → `activity_type` (`outing_activity_type` enum), `place_wish` (free text, ≤ 200), `preferred_time`, `eat_before`; `one_day` → `day_preferences` (text array); `holidays` → `period_start` / `period_end` (end ≥ start), `budget` (`outing_budget` enum), `wishes` (text array). Answers of an unused type are kept when the type changes.
 - RLS: members read every answer of the outing; each member inserts / updates / deletes only their own row, and a member who declined the outing can no longer write. `day_preferences` and `wishes` are restricted to the known values by CHECK constraints. `outing_id` and `user_id` are not updatable (hence the app does update-then-insert instead of `upsert`). `outing_answers` is not in the realtime publication (the app loads the group's answers on screen open).
 - Seeds: the rooftop outing (`c2222…`) is `precise` and Alice has answered; Bob has not. Tests: `supabase/tests/database/outing_type_questions.test.sql`.
+
+### Activity proposals and votes (step 5)
+
+- **`outing_activities`**: activities proposed for an outing, `day` nullable (`NULL` = any day; otherwise a composite FK to `outing_days (outing_id, day)`), `title` (1–120), `note` (≤ 300), `proposed_by`, `place_id` (optional FK to `places`, `ON DELETE SET NULL`: Crazer places and places imported from Google Maps), `chosen`. Partial unique indexes allow **one chosen activity per day group** (and one for the `NULL` day group).
+- **`outing_activity_votes`**: one vote (`activity_vote` enum: `accepted` / `maybe`) per member and activity (`UNIQUE (activity_id, user_id)`; no row = no vote). `outing_id` is denormalized and enforced by the composite FK `(activity_id, outing_id)` → `outing_activities (id, outing_id)` so RLS and realtime filters need no join.
+- Helper `is_outing_attendee(outing_id)` (SECURITY DEFINER): organizer, or participant `accepted` / `maybe` (an invited or declined member cannot propose nor vote).
+- RLS: members read; attendees insert (`proposed_by` / `user_id` = caller, `chosen` must be false); the author or the organizer updates (**only** `title`, `note`) and deletes activities; members insert / update (`vote` only) / delete their own votes. `chosen` is written only by the RPCs below.
+- RPCs (SECURITY DEFINER, `authenticated` only, organizer only): `choose_outing_activity(p_activity_id)` retains an activity and clears the other ones of its day group; `draw_outing_activity(p_outing_id, p_day)` random tie-break among the best scored activities of the group (accepted = 2 points, maybe = 1), retains the winner and returns its id; `reopen_outing_activities(p_outing_id, p_day)` clears the choice. Internal `set_chosen_outing_activity` is not callable by clients.
+- Realtime: both tables are in the `supabase_realtime` publication with `REPLICA IDENTITY FULL` (so DELETE events carry `outing_id` and match the filter).
+- Seeds: two proposals on the rooftop outing's first day (`f1111…`, `f2222…`), Alice voted « Partant » on the first. Tests: `supabase/tests/database/activity_votes.test.sql`.
 
 ### Scheduling RPCs (outing creation workflow)
 
