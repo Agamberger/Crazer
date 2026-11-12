@@ -96,11 +96,15 @@ Les données de test sont découpées de manière modulaire dans le dossier `sup
 
 ### Scheduling RPCs (outing creation workflow)
 
-- **`create_outing_with_invites(p_title, p_days, p_slots, p_invitee_ids, p_outing_type DEFAULT NULL)`**: atomically creates an **undated** `draft` outing (`outings.start_date` is nullable since `outing_without_date`; the candidate days live in `outing_days`), stores the `outing_type` chosen in the wizard (atomically), adds the organizer as an `accepted` participant, its candidate days, the organizer's slots and the invitations. Only accepted friends can be invited; any error rolls everything back.
+- **`create_outing_with_invites(p_title, p_days, p_slots, p_invitee_ids, p_outing_type DEFAULT NULL)`**: atomically creates an **undated** `draft` outing (`outings.start_date` is nullable since `outing_without_date`; the candidate days live in `outing_days`), stores the `outing_type` chosen in the wizard (atomically), adds the organizer as an `accepted` participant, its candidate days, the organizer's slots and the invitations. Only accepted friends can be invited; any error rolls everything back. Since `outing_hub`, `p_days` may be empty: the outing hub creates the outing from its name only.
 - **Undated outings**: `outings.start_date` is `NULL` until a day is chosen. The trigger `check_planned_outing_scheduled_for` only enforces `scheduled_for >= start_date` when the outing has a date; `planned_outings.scheduled_for` stays required (the app defaults it to the outing date, else the first planned step's date, else the first candidate day). Setting a date on an outing moves earlier steps to that date (trigger `outings_align_planned_outings`).
 - **`respond_to_outing_invitation(p_outing_id, p_status, p_slots)`**: an invitee accepts (`accepted` / `maybe`) with their slots, or declines (slots are deleted).
+- **`set_outing_days(p_outing_id, p_days)`** (organizer only, `outing_hub`): replaces the candidate days. A new day cannot be in the past and the day of the chosen date (`start_date`, Europe/Paris) cannot be removed. Slots of a removed day are deleted; its activities move to « Peu importe » (`day = NULL`, `chosen = false`) so that no proposal or vote is lost.
+- **`invite_to_outing(p_outing_id, p_invitee_ids)`** (organizer only, `outing_hub`): invites accepted friends after creation and returns the number of newly invited friends. A friend who declined is invited again; other members are untouched. The friendship check is shared with `create_outing_with_invites` (internal `invite_friends_to_outing`).
+- **`set_my_outing_slots(p_outing_id, p_slots)`** (attendees only, `outing_hub`): replaces all the caller's slots at once (a pending invitee answers with `respond_to_outing_invitation` instead).
 - `p_slots` format: `[{"day": "YYYY-MM-DD", "start": "HH:MM", "end": "HH:MM"}]`.
-- Realtime: `outing_participants` and `outing_availabilities` are in the `supabase_realtime` publication (RLS applies to `postgres_changes`).
+- Tests: `supabase/tests/database/outing_scheduling.test.sql`, `supabase/tests/database/outing_hub.test.sql`.
+- Realtime: `outing_participants`, `outing_days` and `outing_availabilities` are in the `supabase_realtime` publication (RLS applies to `postgres_changes`).
 
 ---
 

@@ -68,6 +68,45 @@ export const outingSchedulingService = {
     if (error) throw new Error(error.message);
   },
 
+  /**
+   * Replaces the candidate days (organizer only). Slots of removed days are deleted and their
+   * activities move to « Peu importe ».
+   * @throws Error when the caller is not the organizer, a new day is past or the chosen day is removed.
+   */
+  setOutingDays: async (outingId: string, days: DayKey[]): Promise<void> => {
+    const { error } = await supabase.rpc('set_outing_days', {
+      p_outing_id: outingId,
+      p_days: days,
+    });
+    if (error) throw new Error(error.message);
+  },
+
+  /**
+   * Invites accepted friends to an existing outing (organizer only); a friend who declined is invited again.
+   * @returns the number of newly invited friends.
+   * @throws Error when the caller is not the organizer or an invitee is not an accepted friend.
+   */
+  inviteToOuting: async (outingId: string, inviteeIds: string[]): Promise<number> => {
+    const { data, error } = await supabase.rpc('invite_to_outing', {
+      p_outing_id: outingId,
+      p_invitee_ids: inviteeIds,
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /**
+   * Replaces all the slots of the current attendee.
+   * @throws Error when the caller does not attend the outing or a slot targets a non candidate day.
+   */
+  setMySlots: async (outingId: string, slots: AvailabilitySlot[]): Promise<void> => {
+    const { error } = await supabase.rpc('set_my_outing_slots', {
+      p_outing_id: outingId,
+      p_slots: slots.map(({ day, start, end }) => ({ day, start, end })),
+    });
+    if (error) throw new Error(error.message);
+  },
+
   fetchOutingDays: async (outingId: string): Promise<DayKey[]> => {
     const { data, error } = await supabase
       .from('outing_days')
@@ -145,13 +184,22 @@ export const outingSchedulingService = {
     return (data ?? []).map((row) => row.outing_id);
   },
 
-  /** Live updates of participants and availabilities. Returns the unsubscribe function. */
+  /** Live updates of participants, candidate days and availabilities. Returns the unsubscribe function. */
   subscribeToOutingScheduling: (outingId: string, onChange: () => void): (() => void) => {
     const filter = `outing_id=eq.${outingId}`;
     subscriptionCounter += 1;
     const channel = supabase
       .channel(`outing-scheduling-${outingId}-${subscriptionCounter}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'outing_participants', filter }, onChange)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'outing_participants', filter },
+        onChange,
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'outing_days', filter },
+        onChange,
+      )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'outing_availabilities', filter },

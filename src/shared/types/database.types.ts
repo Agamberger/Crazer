@@ -989,6 +989,18 @@ export type Database = {
         }[]
       }
       gettransactionid: { Args: never; Returns: unknown }
+      invite_friends_to_outing: {
+        Args: {
+          p_invitee_ids: string[]
+          p_inviter_id: string
+          p_outing_id: string
+        }
+        Returns: number
+      }
+      invite_to_outing: {
+        Args: { p_invitee_ids: string[]; p_outing_id: string }
+        Returns: number
+      }
       is_outing_attendee: { Args: { p_outing_id: string }; Returns: boolean }
       is_outing_member: { Args: { p_outing_id: string }; Returns: boolean }
       is_outing_organizer: {
@@ -1119,6 +1131,14 @@ export type Database = {
           p_outing_id: string
           p_start: string
         }
+        Returns: undefined
+      }
+      set_my_outing_slots: {
+        Args: { p_outing_id: string; p_slots: Json }
+        Returns: undefined
+      }
+      set_outing_days: {
+        Args: { p_days: string[]; p_outing_id: string }
         Returns: undefined
       }
       st_3dclosestpoint: {

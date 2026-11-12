@@ -38,7 +38,10 @@ describe('outingSchedulingService', () => {
   });
 
   it('createOutingWithInvites relaie les erreurs', async () => {
-    mockRpc.mockResolvedValue({ data: null, error: { message: 'invitee is not an accepted friend' } });
+    mockRpc.mockResolvedValue({
+      data: null,
+      error: { message: 'invitee is not an accepted friend' },
+    });
     await expect(
       outingSchedulingService.createOutingWithInvites({
         title: 'X',
@@ -62,12 +65,72 @@ describe('outingSchedulingService', () => {
     });
   });
 
+  it('setOutingDays appelle la RPC avec les jours', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: null });
+    await outingSchedulingService.setOutingDays('outing-1', ['2026-11-10', '2026-11-12']);
+    expect(mockRpc).toHaveBeenCalledWith('set_outing_days', {
+      p_outing_id: 'outing-1',
+      p_days: ['2026-11-10', '2026-11-12'],
+    });
+  });
+
+  it('setOutingDays relaie les erreurs', async () => {
+    mockRpc.mockResolvedValue({
+      data: null,
+      error: { message: 'the chosen day cannot be removed' },
+    });
+    await expect(outingSchedulingService.setOutingDays('outing-1', [])).rejects.toThrow(
+      'the chosen day cannot be removed',
+    );
+  });
+
+  it('inviteToOuting renvoie le nombre de nouveaux invités', async () => {
+    mockRpc.mockResolvedValue({ data: 2, error: null });
+    await expect(
+      outingSchedulingService.inviteToOuting('outing-1', ['bob', 'charlie']),
+    ).resolves.toBe(2);
+    expect(mockRpc).toHaveBeenCalledWith('invite_to_outing', {
+      p_outing_id: 'outing-1',
+      p_invitee_ids: ['bob', 'charlie'],
+    });
+  });
+
+  it('inviteToOuting relaie les erreurs', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: { message: 'only the organizer can invite' } });
+    await expect(outingSchedulingService.inviteToOuting('outing-1', ['bob'])).rejects.toThrow(
+      'only the organizer can invite',
+    );
+  });
+
+  it('setMySlots envoie uniquement jour, début et fin', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: null });
+    await outingSchedulingService.setMySlots('outing-1', [
+      { day: '2026-11-10', start: '19:00', end: '22:00' },
+    ]);
+    expect(mockRpc).toHaveBeenCalledWith('set_my_outing_slots', {
+      p_outing_id: 'outing-1',
+      p_slots: [{ day: '2026-11-10', start: '19:00', end: '22:00' }],
+    });
+  });
+
+  it('setMySlots relaie les erreurs', async () => {
+    mockRpc.mockResolvedValue({
+      data: null,
+      error: { message: 'only an attendee can change their availability' },
+    });
+    await expect(outingSchedulingService.setMySlots('outing-1', [])).rejects.toThrow(
+      'only an attendee can change their availability',
+    );
+  });
+
   it('fetchOutingDays retourne les jours triés', async () => {
     const order = jest.fn().mockResolvedValue({ data: [{ day: '2026-11-10' }], error: null });
     const eq = jest.fn(() => ({ order }));
     mockFrom.mockReturnValue({ select: jest.fn(() => ({ eq })) });
 
-    await expect(outingSchedulingService.fetchOutingDays('outing-1')).resolves.toEqual(['2026-11-10']);
+    await expect(outingSchedulingService.fetchOutingDays('outing-1')).resolves.toEqual([
+      '2026-11-10',
+    ]);
     expect(mockFrom).toHaveBeenCalledWith('outing_days');
     expect(eq).toHaveBeenCalledWith('outing_id', 'outing-1');
   });
@@ -105,8 +168,20 @@ describe('outingSchedulingService', () => {
 
     expect(mockRpc).toHaveBeenCalledWith('get_profiles', { p_ids: ['bob', 'alice'] });
     expect(members).toEqual([
-      { userId: 'alice', displayName: 'Alice', avatarUrl: null, status: 'accepted', isOrganizer: true },
-      { userId: 'bob', displayName: 'bob', avatarUrl: 'b.png', status: 'invited', isOrganizer: false },
+      {
+        userId: 'alice',
+        displayName: 'Alice',
+        avatarUrl: null,
+        status: 'accepted',
+        isOrganizer: true,
+      },
+      {
+        userId: 'bob',
+        displayName: 'bob',
+        avatarUrl: 'b.png',
+        status: 'invited',
+        isOrganizer: false,
+      },
     ]);
   });
 
@@ -131,9 +206,7 @@ describe('outingSchedulingService', () => {
 
     expect(eqUser).toHaveBeenCalledWith('user_id', 'bob');
     expect(eqStatus).toHaveBeenCalledWith('status', 'invited');
-    expect(invitations).toEqual([
-      { outing, organizerName: 'Alice', invitedAt: '2026-11-01' },
-    ]);
+    expect(invitations).toEqual([{ outing, organizerName: 'Alice', invitedAt: '2026-11-01' }]);
   });
 
   it('fetchMyNonAttendingOutingIds retourne les sorties invitées ou refusées', async () => {
@@ -165,7 +238,7 @@ describe('outingSchedulingService', () => {
     expect(first).not.toBe(second);
   });
 
-  it('subscribeToOutingScheduling écoute les deux tables et se désabonne', () => {
+  it('subscribeToOutingScheduling écoute les trois tables et se désabonne', () => {
     const channel = { on: jest.fn(), subscribe: jest.fn() };
     channel.on.mockReturnValue(channel);
     channel.subscribe.mockReturnValue(channel);
@@ -174,10 +247,17 @@ describe('outingSchedulingService', () => {
 
     const unsubscribe = outingSchedulingService.subscribeToOutingScheduling('outing-1', onChange);
 
-    expect(supabase.channel).toHaveBeenCalledWith(expect.stringMatching(/^outing-scheduling-outing-1-/));
+    expect(supabase.channel).toHaveBeenCalledWith(
+      expect.stringMatching(/^outing-scheduling-outing-1-/),
+    );
     expect(channel.on).toHaveBeenCalledWith(
       'postgres_changes',
       expect.objectContaining({ table: 'outing_participants', filter: 'outing_id=eq.outing-1' }),
+      onChange,
+    );
+    expect(channel.on).toHaveBeenCalledWith(
+      'postgres_changes',
+      expect.objectContaining({ table: 'outing_days', filter: 'outing_id=eq.outing-1' }),
       onChange,
     );
     expect(channel.on).toHaveBeenCalledWith(
