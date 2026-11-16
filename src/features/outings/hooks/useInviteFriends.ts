@@ -22,10 +22,12 @@ export interface UseInviteFriendsResult {
  * Selection and sending of new invitations for an existing outing (organizer).
  * @param outing the outing to invite to (`null` while loading).
  * @param members current participants, to leave out the friends already invited.
+ * @param enabled loads the friends list only when true (the organizer opened « Qui ? »).
  */
 export const useInviteFriends = (
   outing: Pick<OutingRow, 'id' | 'created_by'> | null,
   members: ReadonlyArray<OutingMember>,
+  enabled: boolean,
 ): UseInviteFriendsResult => {
   const { user } = useAuth();
   const friends = useFriendsStore((state) => state.friends);
@@ -37,8 +39,8 @@ export const useInviteFriends = (
   const [feedback, setFeedback] = useState<PanelFeedback | null>(null);
 
   useEffect(() => {
-    if (user?.id) void fetchFriendsList(user.id);
-  }, [user?.id, fetchFriendsList]);
+    if (enabled && user?.id) void fetchFriendsList(user.id);
+  }, [enabled, user?.id, fetchFriendsList]);
 
   const invitableFriends = useMemo(() => {
     const blockedIds = new Set(

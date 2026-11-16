@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { useAuth } from '@/features/auth';
 import { toast } from '@/shared/store/useToastStore';
@@ -30,6 +30,9 @@ export interface UseOutingHubResult {
 /**
  * Data of the outing hub: the outing, its members and the summary of each section, kept live
  * (scheduling through realtime, answers and activities reloaded each time the hub gets focus).
+ * The outing is selected in the outings store (with its steps) each time the hub gets focus, so a
+ * hub shown again on top of the stack takes the selection back; on unmount, the hub releases the
+ * selection only if it still holds it.
  * @param outingId id of the outing shown by the hub.
  */
 export const useOutingHub = (outingId: string): UseOutingHubResult => {
@@ -37,16 +40,27 @@ export const useOutingHub = (outingId: string): UseOutingHubResult => {
   const { outing, scheduling, recaps, pendingCount, isLoading, error } =
     useOutingScheduling(outingId);
   const updateOuting = useOutingsStore((state) => state.updateOuting);
+  const selectOuting = useOutingsStore((state) => state.selectOuting);
+  const fetchPlannedOutings = useOutingsStore((state) => state.fetchPlannedOutings);
   const answers = useOutingAnswersStore((state) => state.answersByOutingId[outingId]);
   const fetchAnswers = useOutingAnswersStore((state) => state.fetchAnswers);
   const activities = useActivityVotesStore((state) => state.activitiesByOutingId[outingId]);
   const fetchActivities = useActivityVotesStore((state) => state.fetchActivities);
 
+  useEffect(
+    () => () => {
+      if (useOutingsStore.getState().selectedOutingId === outingId) selectOuting(null);
+    },
+    [outingId, selectOuting],
+  );
+
   useFocusEffect(
     useCallback(() => {
+      selectOuting(outingId);
+      void fetchPlannedOutings(outingId);
       void fetchAnswers(outingId);
       void fetchActivities(outingId);
-    }, [outingId, fetchAnswers, fetchActivities]),
+    }, [outingId, selectOuting, fetchPlannedOutings, fetchAnswers, fetchActivities]),
   );
 
   const members = useMemo(() => scheduling?.members ?? [], [scheduling]);

@@ -53,11 +53,19 @@ export const useJoinOutingFlow = (outingId: string, onDeclined: () => void) => {
   };
 
   const canContinue =
-    stage === 'days' ? days.length > 0 : stage === 'availability' ? areSlotsValid(days, slots) : true;
+    stage === 'days'
+      ? days.length > 0
+      : stage === 'availability'
+        ? areSlotsValid(days, slots)
+        : true;
 
+  const candidateDays = scheduling?.days ?? [];
+
+  /** Without candidate days yet, accepting skips « Quel jour ? » and « Dispos » (given later in the hub). */
   const next = () => {
     if (!canContinue) return;
-    if (stage === 'invite') setStage('days');
+    if (stage === 'invite' && candidateDays.length === 0) void submitAvailability();
+    else if (stage === 'invite') setStage('days');
     else if (stage === 'days') setStage('availability');
     else if (stage === 'availability') void submitAvailability();
   };
@@ -69,7 +77,7 @@ export const useJoinOutingFlow = (outingId: string, onDeclined: () => void) => {
 
   return {
     outing,
-    candidateDays: scheduling?.days ?? [],
+    candidateDays,
     members,
     organizerName,
     myStatus,

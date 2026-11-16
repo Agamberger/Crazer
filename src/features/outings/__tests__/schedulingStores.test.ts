@@ -1,6 +1,5 @@
 import { resetUserScopedStores } from '@/shared/store/sessionReset';
 import { outingSchedulingService } from '../services/outingSchedulingService';
-import { useOutingCreationStore } from '../store/useOutingCreationStore';
 import { useOutingSchedulingStore } from '../store/useOutingSchedulingStore';
 import { useOutingsStore } from '../store/useOutingsStore';
 import { DEFAULT_TIME_RANGE } from '../utils/availabilityUtils';
@@ -22,42 +21,6 @@ jest.mock('../services/outingSchedulingService', () => ({
 }));
 
 const service = outingSchedulingService as jest.Mocked<typeof outingSchedulingService>;
-
-describe('useOutingCreationStore', () => {
-  beforeEach(() => useOutingCreationStore.getState().reset());
-
-  it('garde les créneaux des jours conservés et ajoute le créneau par défaut', () => {
-    const store = useOutingCreationStore.getState();
-    store.setDays(['2026-11-11', '2026-11-10']);
-    store.setSlot('2026-11-10', { start: '12:00', end: '21:00' });
-    useOutingCreationStore.getState().setDays(['2026-11-10', '2026-11-12']);
-
-    const { days, slots } = useOutingCreationStore.getState();
-    expect(days).toEqual(['2026-11-10', '2026-11-12']);
-    expect(slots).toEqual({
-      '2026-11-10': { start: '12:00', end: '21:00' },
-      '2026-11-12': DEFAULT_TIME_RANGE,
-    });
-  });
-
-  it('borne la navigation entre les étapes et se réinitialise', () => {
-    const store = useOutingCreationStore.getState();
-    store.previousStep();
-    expect(useOutingCreationStore.getState().stepIndex).toBe(0);
-    for (let i = 0; i < 10; i += 1) useOutingCreationStore.getState().nextStep();
-    expect(useOutingCreationStore.getState().stepIndex).toBe(4);
-
-    useOutingCreationStore.getState().setTitle('Glouglou');
-    useOutingCreationStore.getState().reset();
-    expect(useOutingCreationStore.getState()).toMatchObject({ stepIndex: 0, title: '', days: [] });
-  });
-
-  it('est vidé à la déconnexion', () => {
-    useOutingCreationStore.getState().setTitle('Brouillon');
-    resetUserScopedStores();
-    expect(useOutingCreationStore.getState().title).toBe('');
-  });
-});
 
 describe('useOutingSchedulingStore', () => {
   const fetchOutingById = jest.fn();

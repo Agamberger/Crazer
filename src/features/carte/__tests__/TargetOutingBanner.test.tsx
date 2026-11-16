@@ -13,6 +13,14 @@ describe('TargetOutingBanner', () => {
     expect(getByText('Soirée bowling')).toBeTruthy();
   });
 
+  it('announces an activity proposal in activity mode', () => {
+    const { getByText } = render(
+      <TargetOutingBanner outingTitle="Soirée bowling" kind="activity" onClear={jest.fn()} />,
+    );
+
+    expect(getByText('💡 Proposer une activité pour')).toBeTruthy();
+  });
+
   it('leaves the add mode from the close button', () => {
     const onClear = jest.fn();
     const { getByLabelText } = render(

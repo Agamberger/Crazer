@@ -24,6 +24,8 @@ export interface UseWhenPanelParams {
 }
 
 export interface UseWhenPanelResult {
+  /** First day that can be proposed, refreshed each time the panel opens. */
+  today: Date;
   /** Candidate days shown: the organizer's draft, the saved days for the others. */
   days: DayKey[];
   /** The organizer edits the days while no day is chosen. */
@@ -48,7 +50,8 @@ const areRangesValid = (slots: Record<DayKey, TimeRange>): boolean =>
 
 /**
  * State of the « Quand ? » panel: candidate days (organizer), my slots per day and the choice
- * of the day. Drafts are reset from the saved data each time the panel opens.
+ * of the day. Drafts follow the saved data until the user edits them (data loaded after the
+ * panel opened included), and are reset each time the panel opens.
  */
 export const useWhenPanel = ({
   visible,
@@ -62,6 +65,7 @@ export const useWhenPanel = ({
   const saveMySlots = useOutingSchedulingStore((state) => state.saveMySlots);
   const isSaving = useOutingSchedulingStore((state) => state.isSubmitting);
   const [feedback, setFeedback] = useState<PanelFeedback | null>(null);
+  const [today, setToday] = useState(() => new Date());
 
   const savedDays = useMemo(() => scheduling?.days ?? [], [scheduling]);
   const savedSlots = useMemo(
@@ -72,13 +76,18 @@ export const useWhenPanel = ({
   const [draftSlots, setDraftSlots] = useState<Record<DayKey, TimeRange>>(savedSlots);
 
   const wasVisible = useRef(visible);
+  const isEdited = useRef(false);
   useEffect(() => {
     const isOpening = visible && !wasVisible.current;
     wasVisible.current = visible;
-    if (!isOpening) return;
+    if (isOpening) {
+      isEdited.current = false;
+      setFeedback(null);
+      setToday(new Date());
+    }
+    if (!visible || isEdited.current) return;
     setDraftDays(savedDays);
     setDraftSlots(savedSlots);
-    setFeedback(null);
   }, [visible, savedDays, savedSlots]);
 
   const dayChoice = useDayChoice(
@@ -86,6 +95,7 @@ export const useWhenPanel = ({
     pendingCount,
     () => setFeedback({ tone: 'success', message: 'La sortie est planifiée.' }),
     false,
+    () => setFeedback({ tone: 'error', message: 'Impossible de planifier la sortie.' }),
   );
 
   const canEditDays = isOrganizer && !outing.start_date;
@@ -99,6 +109,7 @@ export const useWhenPanel = ({
 
   /** A day the organizer adds is a day they are available, with the default slot (editable). */
   const setDays = (next: DayKey[]) => {
+    isEdited.current = true;
     setFeedback(null);
     const sorted = [...next].sort();
     const added = sorted.filter((day) => !draftDays.includes(day));
@@ -110,6 +121,7 @@ export const useWhenPanel = ({
   };
 
   const setAvailable = (day: DayKey, available: boolean) => {
+    isEdited.current = true;
     setFeedback(null);
     setDraftSlots((current) => {
       const { [day]: removed, ...others } = current;
@@ -118,6 +130,7 @@ export const useWhenPanel = ({
   };
 
   const setSlot = (day: DayKey, range: TimeRange) => {
+    isEdited.current = true;
     setFeedback(null);
     setDraftSlots((current) => ({ ...current, [day]: range }));
   };
@@ -147,6 +160,7 @@ export const useWhenPanel = ({
   };
 
   return {
+    today,
     days,
     canEditDays,
     setDays,
@@ -154,7 +168,11 @@ export const useWhenPanel = ({
     mySlots: draftSlots,
     setAvailable,
     setSlot,
-    canSave: (daysChanged || slotsChanged) && areRangesValid(draftSlots) && !isSaving,
+    canSave:
+      scheduling !== null &&
+      (daysChanged || slotsChanged) &&
+      areRangesValid(draftSlots) &&
+      !isSaving,
     isSaving,
     save,
     feedback,

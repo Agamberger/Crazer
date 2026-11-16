@@ -4,13 +4,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import CreateOutingRoute from '../create';
 import OutingHubRoute from '../[id]/index';
 import JoinOutingRoute from '../[id]/join';
-import OutingRecapRoute from '../[id]/recap';
-import OutingQuestionsRoute from '../[id]/questions';
-import OutingActivitiesRoute from '../[id]/activities';
 import OutingTieRoute from '../[id]/tie';
 import OutingPlanningRoute from '../[id]/planning';
-
-const mockSelectOuting = jest.fn();
 
 /** Each feature screen renders one pressable text per callback so the route wiring can be tested. */
 jest.mock('@/features/outings', () => {
@@ -47,13 +42,8 @@ jest.mock('@/features/outings', () => {
       return (place ? `${place.id}|${place.name}` : 'no-place') + title;
     }),
     JoinOutingFlow: screen('join', (props) => String(props.outingId)),
-    AvailabilityRecap: screen('recap', (props) => String(props.outingId)),
-    OutingQuestions: screen('questions', (props) => String(props.outingId)),
-    ActivityVotes: screen('activities', (props) => String(props.outingId)),
     OutingPlanning: screen('planning', (props) => String(props.outingId)),
     ActivityTieBreak: screen('tie', (props) => `${String(props.outingId)}|${String(props.day)}`),
-    useOutingsStore: (selector: (state: { selectOuting: jest.Mock }) => unknown) =>
-      selector({ selectOuting: mockSelectOuting }),
   };
 });
 
@@ -91,53 +81,16 @@ describe('outing routes', () => {
     expect(router.back).toHaveBeenCalled();
   });
 
-  it('join : passe l’id et mène au récap après avoir rejoint', () => {
+  it('join : passe l’id et mène au hub après avoir rejoint', () => {
     const { getByText } = render(<JoinOutingRoute />);
     expect(getByText('join:o1')).toBeTruthy();
     fireEvent.press(getByText('onJoined'));
     expect(router.replace).toHaveBeenCalledWith({
-      pathname: '/outing/[id]/recap',
+      pathname: '/outing/[id]',
       params: { id: 'o1' },
     });
     fireEvent.press(getByText('onDeclined'));
     expect(router.back).toHaveBeenCalled();
-  });
-
-  it('recap : planifier sélectionne la sortie et ouvre l’onglet Sorties', () => {
-    const { getByText } = render(<OutingRecapRoute />);
-    expect(getByText('recap:o1')).toBeTruthy();
-    fireEvent.press(getByText('onPlanned'));
-    expect(mockSelectOuting).toHaveBeenCalledWith('o1');
-    expect(router.replace).toHaveBeenCalledWith('/(tabs)/sorties');
-  });
-
-  it('recap : continuer enchaîne vers les questions de la sortie sans la planifier', () => {
-    const { getByText } = render(<OutingRecapRoute />);
-    fireEvent.press(getByText('onContinue'));
-    expect(router.push).toHaveBeenCalledWith({
-      pathname: '/outing/[id]/questions',
-      params: { id: 'o1' },
-    });
-    expect(mockSelectOuting).not.toHaveBeenCalled();
-  });
-
-  it('recap : un membre peut répondre aux questions', () => {
-    const { getByText } = render(<OutingRecapRoute />);
-    fireEvent.press(getByText('onAnswerQuestions'));
-    expect(router.push).toHaveBeenCalledWith({
-      pathname: '/outing/[id]/questions',
-      params: { id: 'o1' },
-    });
-  });
-
-  it('questions : une fois les réponses enregistrées, ouvre les activités et votes', () => {
-    const { getByText } = render(<OutingQuestionsRoute />);
-    expect(getByText('questions:o1')).toBeTruthy();
-    fireEvent.press(getByText('onDone'));
-    expect(router.replace).toHaveBeenCalledWith({
-      pathname: '/outing/[id]/activities',
-      params: { id: 'o1' },
-    });
   });
 
   it('hub : passe l’id et ouvre l’égalité, le planning et une nouvelle sortie', () => {
@@ -175,23 +128,6 @@ describe('outing routes', () => {
     expect(getByText('create:no-place|title:Bowling')).toBeTruthy();
   });
 
-  it('activities : terminer ouvre la sortie dans l’onglet Sorties', () => {
-    const { getByText } = render(<OutingActivitiesRoute />);
-    expect(getByText('activities:o1')).toBeTruthy();
-    fireEvent.press(getByText('onClose'));
-    expect(mockSelectOuting).toHaveBeenCalledWith('o1');
-    expect(router.replace).toHaveBeenCalledWith('/(tabs)/sorties');
-  });
-
-  it('activities : ouvre l’écran d’égalité du groupe', () => {
-    const { getByText } = render(<OutingActivitiesRoute />);
-    fireEvent.press(getByText('onOpenTie'));
-    expect(router.push).toHaveBeenCalledWith({
-      pathname: '/outing/[id]/tie',
-      params: { id: 'o1', day: 'new-outing' },
-    });
-  });
-
   it('tie : passe le jour (ou null) et revient en arrière', () => {
     (useLocalSearchParams as jest.Mock).mockReturnValue({ id: 'o1', day: '2026-11-10' });
     const { getByText, rerender } = render(<OutingTieRoute />);
@@ -203,7 +139,7 @@ describe('outing routes', () => {
     expect(getByText('tie:o1|null')).toBeTruthy();
   });
 
-  it('tie : transformer une activité ouvre l’assistant avec son titre', () => {
+  it('tie : transformer une activité ouvre l’écran de création avec son titre', () => {
     (useLocalSearchParams as jest.Mock).mockReturnValue({ id: 'o1' });
     const { getByText } = render(<OutingTieRoute />);
     fireEvent.press(getByText('onConvert'));
@@ -213,43 +149,21 @@ describe('outing routes', () => {
     });
   });
 
-  it('activities : transformer une activité ouvre l’assistant avec son titre', () => {
-    const { getByText } = render(<OutingActivitiesRoute />);
-    fireEvent.press(getByText('onConvert'));
-    expect(router.push).toHaveBeenCalledWith({
-      pathname: '/outing/create',
-      params: { title: 'Bowling' },
-    });
-  });
-
-  it('questions : fermer sans historique ramène à l’onglet Sorties', () => {
-    router.canGoBack.mockReturnValueOnce(false);
-    const { getByText } = render(<OutingQuestionsRoute />);
-    fireEvent.press(getByText('onClose'));
-    expect(router.replace).toHaveBeenCalledWith('/(tabs)/sorties');
-  });
-
-  it('recap : fermer sans historique ramène à l’onglet Sorties', () => {
-    router.canGoBack.mockReturnValueOnce(false);
-    const { getByText } = render(<OutingRecapRoute />);
-    fireEvent.press(getByText('onClose'));
-    expect(router.replace).toHaveBeenCalledWith('/(tabs)/sorties');
-  });
-
-  it('activities : « Planifier la journée » ouvre le planning de la sortie', () => {
-    const { getByText } = render(<OutingActivitiesRoute />);
-    fireEvent.press(getByText('onOpenPlanning'));
-    expect(router.push).toHaveBeenCalledWith({
-      pathname: '/outing/[id]/planning',
-      params: { id: 'o1' },
-    });
-  });
-
-  it('planning : terminer ouvre la sortie dans l’onglet Sorties', () => {
+  it('planning : terminer revient au hub, ou l’ouvre sans historique', () => {
     const { getByText } = render(<OutingPlanningRoute />);
     expect(getByText('planning:o1')).toBeTruthy();
     fireEvent.press(getByText('onClose'));
-    expect(mockSelectOuting).toHaveBeenCalledWith('o1');
-    expect(router.replace).toHaveBeenCalledWith('/(tabs)/sorties');
+    expect(router.back).toHaveBeenCalled();
+
+    router.canGoBack.mockReturnValueOnce(false);
+    fireEvent.press(getByText('onClose'));
+    expect(router.replace).toHaveBeenCalledWith({ pathname: '/outing/[id]', params: { id: 'o1' } });
+  });
+
+  it('tie : fermer sans historique ouvre le hub', () => {
+    router.canGoBack.mockReturnValueOnce(false);
+    const { getByText } = render(<OutingTieRoute />);
+    fireEvent.press(getByText('onClose'));
+    expect(router.replace).toHaveBeenCalledWith({ pathname: '/outing/[id]', params: { id: 'o1' } });
   });
 });

@@ -30,12 +30,6 @@ export const OUTING_TYPE_OPTIONS: ReadonlyArray<OutingTypeOption> = [
   },
 ];
 
-export const OUTING_TYPE_LABELS: Record<OutingType, string> = {
-  precise: 'Sortie précise',
-  one_day: 'Une journée',
-  holidays: 'Vacances',
-};
-
 export const YES_NO_OPTIONS: ReadonlyArray<ChipOption<'yes' | 'no'>> = [
   { value: 'yes', label: 'Oui', emoji: '👍' },
   { value: 'no', label: 'Non', emoji: '👎' },

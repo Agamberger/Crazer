@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { AppModal, Button } from '@/shared/components';
 import { PlannedOutingUpdate } from '@/shared/types';
 import { useOutingPlannedOutings } from '../../../hooks/useOutingPlannedOutings';
@@ -16,8 +16,8 @@ export interface WhatStepsSectionProps {
 
 /**
  * Steps of the outing (timeline): add one (custom or from the map), edit or delete it in a
- * slide-over page, or open the planning of the day. The outing is selected in the outings store
- * while the section is shown, because the store keeps the steps of the selected outing only.
+ * slide-over page, or open the planning of the day. The hub keeps its outing selected in the
+ * outings store, which holds the steps of the selected outing only.
  */
 export const WhatStepsSection: React.FC<WhatStepsSectionProps> = ({
   outingId,
@@ -25,18 +25,12 @@ export const WhatStepsSection: React.FC<WhatStepsSectionProps> = ({
   onLeave,
   onOpenPlanning,
 }) => {
-  const selectOuting = useOutingsStore((state) => state.selectOuting);
   const editedStepId = useOutingsStore((state) => state.selectedPlannedOutingId);
   const setEditedStepId = useOutingsStore((state) => state.setSelectedPlannedOutingId);
   const updatePlannedOuting = useOutingsStore((state) => state.updatePlannedOuting);
   const deletePlannedOuting = useOutingsStore((state) => state.deletePlannedOuting);
   const isSavingStep = useOutingsStore((state) => state.isLoadingPlannedOutings);
   const storeError = useOutingsStore((state) => state.error);
-
-  useEffect(() => {
-    selectOuting(outingId);
-    return () => selectOuting(null);
-  }, [outingId, selectOuting]);
 
   const timeline = useOutingPlannedOutings(outingId, {
     onSelectPlannedOuting: (step) => setEditedStepId(step.id),

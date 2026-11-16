@@ -1,7 +1,6 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useOutingsStore } from '@/features/outings';
 import { colors } from '@/shared/constants/theme';
 
 export default function TabLayout() {
@@ -28,12 +27,6 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="sorties"
-        listeners={{
-          tabPress: () => {
-            useOutingsStore.getState().selectPlannedOuting(null);
-            useOutingsStore.getState().selectOuting(null);
-          },
-        }}
         options={{
           title: 'Sorties',
           tabBarIcon: ({ color, focused, size }) => (

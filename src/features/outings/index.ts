@@ -4,28 +4,20 @@ export * from './components/OutingCard';
 export * from './components/PlannedOutingCard';
 export * from './components/PlannedOutingEditForm';
 export * from './components/PlannedOutingsTimeline';
-export * from './components/OutingEditForm';
-export * from './components/OutingEditScreen';
-export * from './components/PlannedOutingEditScreen';
-export * from './hooks/useOutingEditing';
 
-// Scheduling workflow: creation wizard, invitations, availabilities, live recap
+// Scheduling: invitations, availabilities, live recap
 export * from './types/scheduling';
 export * from './utils/availabilityUtils';
 export * from './services/outingSchedulingService';
-export * from './store/useOutingCreationStore';
 export * from './store/useOutingSchedulingStore';
 export * from './hooks/useOutingScheduling';
-export * from './components/scheduling/CreateOutingWizard';
 export * from './components/scheduling/JoinOutingFlow';
-export * from './components/scheduling/AvailabilityRecap';
 export * from './components/scheduling/PendingInvitationsSection';
 export * from './hooks/useVisibleOutings';
 export * from './hooks/useStepBaseDate';
 export * from './services/stepBaseDate';
 export * from './hooks/useOutingMembers';
 export * from './components/scheduling/ParticipantAvatars';
-export type { WizardPlace } from './hooks/useCreateOutingWizard';
 
 // Outing type and guided questions (step 4)
 export * from './types/questions';
@@ -34,18 +26,16 @@ export * from './utils/answersUtils';
 export * from './services/outingAnswersService';
 export * from './store/useOutingAnswersStore';
 export * from './hooks/useOutingQuestions';
-export * from './components/questions/OutingQuestions';
 
 // Activity proposals, votes and tie-break (step 5)
 export * from './types/activities';
 export * from './utils/activityUtils';
 export * from './services/activityVotesService';
-export * from './services/activityPlacesService';
-export * from './types/activityPlaces';
 export * from './store/useActivityVotesStore';
 export * from './hooks/useActivityVotes';
-export * from './components/activities/ActivityVotes';
 export * from './components/activities/ActivityTieBreak';
+export * from './components/activities/ProposePlaceActivityModal';
+export type { ProposalPlace } from './components/activities/ProposeActivityForm';
 
 // Planning of the day (step 6)
 export * from './types/planning';

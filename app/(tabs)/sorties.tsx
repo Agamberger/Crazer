@@ -1,16 +1,12 @@
 import React, { useEffect, useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useNavigation, useRouter } from 'expo-router';
-import type { NavigationProp, NavigationState, ParamListBase } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { AppText, Button, List, Screen } from '@/shared/components';
 import { useAuth } from '@/features/auth';
 import {
   OutingCard,
-  OutingEditScreen,
   OutingInvitation,
   PendingInvitationsSection,
-  PlannedOutingEditScreen,
-  useOutingEditing,
   useOutingSchedulingStore,
   useOutingsStore,
   useVisibleOutings,
@@ -19,44 +15,16 @@ import { OUTINGS_SCREEN_EDGES } from '@/features/outings/constants';
 import { useFriends, PendingFriendRequestsBanner } from '@/features/profil';
 import { spacing } from '@/shared/constants/theme';
 
-/** Navigation de l'onglet, avec l'événement `tabPress` du navigateur à onglets. */
-type TabNavigation = NavigationProp<
-  ParamListBase,
-  string,
-  undefined,
-  NavigationState,
-  object,
-  { tabPress: { data: undefined; canPreventDefault: true } }
->;
-
+/** Sorties tab: pending invitations and my outings; an outing opens its hub. */
 export default function SortiesScreen() {
   const { user } = useAuth();
-  const navigation = useNavigation<TabNavigation>();
   const router = useRouter();
 
-  // Outings store state
-  const outings = useOutingsStore((state) => state.outings);
   const visibleOutings = useVisibleOutings();
   const isLoading = useOutingsStore((state) => state.isLoading);
-  const error = useOutingsStore((state) => state.error);
   const fetchOutings = useOutingsStore((state) => state.fetchOutings);
   const invitations = useOutingSchedulingStore((state) => state.invitations);
   const fetchInvitations = useOutingSchedulingStore((state) => state.fetchInvitations);
-
-  // Outing / step edition
-  const {
-    selectedOutingId,
-    selectedPlannedOutingId,
-    plannedOutings,
-    isLoadingPlannedOutings,
-    selectOuting,
-    selectPlannedOuting,
-    handleUpdateOuting,
-    handleCancelEdit,
-    handleUpdatePlannedOuting,
-    handleDeletePlannedOuting,
-    handleCancelPlannedEdit,
-  } = useOutingEditing();
 
   const { pendingRequests, fetchFriendsList, acceptFriendRequest, removeFriendship } = useFriends();
 
@@ -76,15 +44,6 @@ export default function SortiesScreen() {
     if (user?.id) fetchInvitations(user.id);
   }, [user?.id, fetchInvitations]);
 
-  useEffect(() => {
-    // Un nouvel appui sur l'onglet ramène à la liste des sorties
-    const unsubscribe = navigation?.addListener?.('tabPress', () => {
-      selectOuting(null);
-      selectPlannedOuting(null);
-    });
-    return unsubscribe;
-  }, [navigation, selectOuting, selectPlannedOuting]);
-
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -98,12 +57,8 @@ export default function SortiesScreen() {
     }
   }, [fetchOutings, fetchFriendsList, fetchInvitations, user]);
 
-  const handleSelectOuting = (id: string) => {
-    selectOuting(id);
-  };
-
-  const handleSelectPlannedOuting = (id: string) => {
-    selectPlannedOuting(id);
+  const handleOpenOuting = (id: string) => {
+    router.push({ pathname: '/outing/[id]', params: { id } });
   };
 
   const handleCreateOuting = () => {
@@ -114,46 +69,6 @@ export default function SortiesScreen() {
     router.push({ pathname: '/outing/[id]/join', params: { id: invitation.outing.id } });
   };
 
-  // Case 1: Editing a selected planned outing
-  if (selectedPlannedOutingId) {
-    return (
-      <PlannedOutingEditScreen
-        plannedOuting={plannedOutings.find((p) => p.id === selectedPlannedOutingId)}
-        parentOutingTitle={outings.find((o) => o.id === selectedOutingId)?.title}
-        isLoading={isLoadingPlannedOutings}
-        error={error}
-        onSubmit={handleUpdatePlannedOuting}
-        onDelete={handleDeletePlannedOuting}
-        onCancel={handleCancelPlannedEdit}
-      />
-    );
-  }
-
-  // Case 2: Editing a selected outing
-  if (selectedOutingId) {
-    return (
-      <OutingEditScreen
-        outing={outings.find((o) => o.id === selectedOutingId)}
-        isLoading={isLoading}
-        error={error}
-        plannedOutings={plannedOutings}
-        onSubmit={handleUpdateOuting}
-        onCancel={handleCancelEdit}
-        onSelectPlannedOuting={(po) => handleSelectPlannedOuting(po.id)}
-        onOpenParticipants={() =>
-          router.push({ pathname: '/outing/[id]/recap', params: { id: selectedOutingId } })
-        }
-        onOpenActivities={() =>
-          router.push({ pathname: '/outing/[id]/activities', params: { id: selectedOutingId } })
-        }
-        onOpenPlanning={() =>
-          router.push({ pathname: '/outing/[id]/planning', params: { id: selectedOutingId } })
-        }
-      />
-    );
-  }
-
-  // Case 3: Outings list
   return (
     <Screen edges={OUTINGS_SCREEN_EDGES} padded={false}>
       <PendingFriendRequestsBanner
@@ -181,7 +96,7 @@ export default function SortiesScreen() {
         data={visibleOutings}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <OutingCard outing={item} onPress={() => handleSelectOuting(item.id)} />
+          <OutingCard outing={item} onPress={() => handleOpenOuting(item.id)} />
         )}
         contentContainerStyle={styles.listContent}
         loading={isLoading}

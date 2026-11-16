@@ -76,7 +76,12 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockUserId = 'alice';
   useOutingSchedulingStore.setState(useOutingSchedulingStore.getInitialState(), true);
-  useOutingsStore.setState({ outings: [OUTING], updateOuting, fetchOutingById: jest.fn() });
+  useOutingsStore.setState({
+    outings: [OUTING],
+    updateOuting,
+    fetchOutingById: jest.fn(),
+    fetchPlannedOutings: jest.fn(),
+  });
   useOutingAnswersStore.setState({ answersByOutingId: {}, fetchAnswers });
   useActivityVotesStore.setState({ activitiesByOutingId: {}, fetchActivities });
   useFriendsStore.setState({
@@ -256,6 +261,45 @@ describe('OutingHub', () => {
     expect(getByTestId('my-answer-feedback')).toHaveTextContent(
       /Impossible d’enregistrer ta réponse/,
     );
+  });
+
+  it('garde la sortie sélectionnée tant que le hub est ouvert et se désabonne à la fermeture', async () => {
+    const unsubscribe = jest.fn();
+    service.subscribeToOutingScheduling.mockReturnValue(unsubscribe);
+    const { unmount } = renderHub();
+    await waitFor(() => expect(service.subscribeToOutingScheduling).toHaveBeenCalled());
+    expect(useOutingsStore.getState().selectedOutingId).toBe('o1');
+
+    unmount();
+    expect(useOutingsStore.getState().selectedOutingId).toBeNull();
+    expect(unsubscribe).toHaveBeenCalled();
+  });
+
+  it('ne laisse pas la sélection d’un autre hub à la fermeture', async () => {
+    const { unmount } = renderHub();
+    await waitFor(() => expect(useOutingsStore.getState().selectedOutingId).toBe('o1'));
+    act(() => useOutingsStore.getState().selectOuting('o2'));
+    unmount();
+    expect(useOutingsStore.getState().selectedOutingId).toBe('o2');
+  });
+
+  it('ne charge les amis qu’à l’ouverture de « Qui ? » par l’organisateur', async () => {
+    const { getByTestId } = renderHub();
+    await waitFor(() => expect(service.fetchMembers).toHaveBeenCalled());
+    expect(fetchFriendsList).not.toHaveBeenCalled();
+    fireEvent.press(getByTestId('hub-row-who'));
+    expect(fetchFriendsList).toHaveBeenCalledWith('alice');
+  });
+
+  it('Entrée puis perte du focus ne renomment qu’une fois', async () => {
+    updateOuting.mockResolvedValue({ ...OUTING, title: 'Bowling' });
+    const { getByTestId } = renderHub();
+    fireEvent.changeText(getByTestId('hub-title-input'), 'Bowling');
+    await act(async () => {
+      fireEvent(getByTestId('hub-title-input'), 'submitEditing');
+      fireEvent(getByTestId('hub-title-input'), 'blur');
+    });
+    expect(updateOuting).toHaveBeenCalledTimes(1);
   });
 
   it('affiche un chargement tant que la sortie n’est pas connue', () => {

@@ -1,255 +1,65 @@
 # 📅 Feature: Outings (Sorties)
 
-Module de gestion des sorties entre amis pour l'application **Crazer**, connecté directement à la base de données Supabase.
+Outings between friends in **Crazer**: creation, invitations, availabilities, outing type and guided questions, activity votes, steps and planning of the day. Data lives in Supabase (RPCs + RLS, realtime).
 
 ---
 
-## 🏗️ Structure du Module
+## 🧭 Journey
 
-```
-src/features/outings/
-├── components/
-│   ├── DurationField.tsx          # Durée d'une étape : presets (ChipGroup) + saisie libre
-│   ├── OutingCard.tsx             # Carte d'affichage d'une sortie (Card cliquable + Badge)
-│   ├── OutingEditForm.tsx         # Formulaire d'édition d'une sortie avec timeline intégrée
-│   ├── OutingEditScreen.tsx       # Onglet Sorties : chargement / introuvable / OutingEditForm
-│   ├── PlannedOutingCard.tsx      # Carte d'affichage d'une étape planifiée (Planned Outing)
-│   ├── PlannedOutingsTimeline.tsx  # Timeline chronologique + choix du type d'étape (AppModal sheet)
-│   ├── PlannedOutingEditForm.tsx  # Formulaire d'édition d'une étape, suppression via ConfirmDialog
-│   ├── PlannedOutingFormActions.tsx # Boutons Annuler / Enregistrer / Supprimer d'une étape
-│   ├── PlannedOutingEditScreen.tsx # Onglet Sorties : chargement / introuvable / PlannedOutingEditForm
-│   ├── TimelineStep.tsx           # Une étape de la timeline (nœud, segments, carte)
-│   ├── hub/                       # Outing hub: one screen for creation and edition
-│   │   ├── CreateOutingScreen.tsx # « On sort ! »: name only, creates the outing, opens the hub
-│   │   ├── OutingHub.tsx          # Name + « Quand ? » / « Qui ? » / « Quoi ? » rows
-│   │   ├── OutingHubTitle.tsx     # Name, renamed in place by the organizer (saved on blur)
-│   │   ├── HubSectionRow.tsx      # One row: emoji, title, visual summary, chevron
-│   │   ├── WhenSummaryView.tsx, WhatSummaryView.tsx
-│   │   ├── WhenPanel.tsx          # « Quand ? » slide-over panel: days, my slots, recap, day choice
-│   │   ├── MySlotsEditor.tsx      # « Mes dispos »: available or not per day + slot
-│   │   ├── MyAnswerSection.tsx    # « Ma réponse »: Je viens / Peut-être / Je ne viens pas
-│   │   ├── WhatPanel.tsx          # « Quoi ? » slide-over panel, made of the what/ sections
-│   │   └── what/                  # WhatQuestionsSection, WhatActivitiesSection, WhatDetailsSection, WhatStepsSection
-│   │   └── WhoPanel.tsx           # « Qui ? » slide-over panel: my answer, members, invite friends
-│   └── scheduling/                # Creation workflow (steps 1–3 of the outing journey)
-│       ├── CreateOutingWizard.tsx # « On sort ! » → « Quel genre ? » → « Avec qui ? » → « Quand ? » → « Mes dispos »
-│       ├── WizardHeader.tsx       # Back / close + « Étape x/n »
-│       ├── OutingNameStep.tsx, OutingDaysStep.tsx, AvailabilityStep.tsx, InviteFriendsStep.tsx
-│       ├── JoinOutingFlow.tsx     # Invitee: Rejoindre ? → Quel jour ? → Dispos → Qui vient ?
-│       ├── AvailabilityRecap.tsx  # Live recap: common slot per day, pending answers, « Choisir ce jour »
-│       ├── DayRecapRow.tsx, MembersList.tsx
-│       ├── InvitationCard.tsx, PendingInvitationsSection.tsx
-│       └── ParticipantAvatars.tsx # Avatars + « n participants · m en attente »
-│   ├── activities/                # Activity proposals, votes and tie-break (step 5)
-│   │   ├── ActivityVotes.tsx      # Screen: groups per day, live results, « Nouvelle proposition »
-│   │   ├── ActivityGroupSection.tsx, ActivityVoteCard.tsx, ProposeActivityForm.tsx
-│   │   ├── ActivityPlacePicker.tsx # Link a Crazer / Google Maps place to a proposal
-│   │   ├── ActivityTieBreak.tsx   # Tie screen: choose by hand or random draw
-│   │   └── DrawRoulette.tsx       # Tie-break mini-game (animated roulette)
-│   ├── planning/                  # Planning of the day (step 6)
-│   │   ├── OutingPlanning.tsx     # Screen: day picker, travel time, « Proposer des horaires », steps, my slot
-│   │   ├── PlanningStepCard.tsx   # Times, who comes (StepAttendanceList), warnings, ↑ ↓ / « Durée »
-│   │   ├── PlanningGapRow.tsx     # Travel / waiting segment or overlap warning between two steps
-│   │   ├── StepAttendanceList.tsx, StepDurationModal.tsx
-│   │   ├── UnplacedActivitiesSection.tsx # Retained activities not placed yet (« Placer »)
-│   │   └── MyAvailabilityCard.tsx # Late arrival / early departure of the current user
-│   └── questions/                 # Outing type + guided questions (step 4)
-│       ├── OutingQuestions.tsx    # Screen: type picker (organizer) then the form of the type
-│       ├── OutingTypeStep.tsx     # « Quel genre de sortie ? » (precise / one_day / holidays)
-│       ├── PreciseQuestions.tsx, OneDayQuestions.tsx, HolidaysQuestions.tsx
-│       └── questionProps.ts       # Props shared by the three forms
-├── constants.ts                   # DURATION_PRESETS, PLANNED_STATUS_OPTIONS (partagés avec carte), OUTING_STATUS_OPTIONS, OUTINGS_SCREEN_EDGES
-├── hooks/
-│   ├── useOutings.ts              # Chargement / création / mise à jour des sorties
-│   ├── useOutingEditing.ts        # Onglet Sorties : sélection, chargement des étapes, enregistrer / supprimer / annuler
-│   ├── useOutingPlannedOutings.ts # Étapes d'une sortie éditée (store ou props du parent, ajout depuis la carte)
-│   ├── usePlannedOutingEditForm.ts # Champs, validation, enregistrement et suppression d'une étape
-│   ├── useOutingScheduling.ts     # Days + availabilities + members of an outing, kept live (realtime)
-│   ├── useCreateOutingWizard.ts   # Wizard validation and submission
-│   ├── useJoinOutingFlow.ts       # Invitee flow (accept / decline, days, slots)
-│   ├── useAvailabilityRecap.ts    # Recap + organizer's day choice (« continuer sans tout le monde ? »)
-│   ├── useVisibleOutings.ts       # My outings minus pending invitations and declined outings
-│   └── useOutingMembers.ts        # Participants of one outing (loaded once)
-├── services/
-│   ├── outingService.ts           # Requêtes Supabase (outings & planned_outings CRUD)
-│   ├── outingSchedulingService.ts # Scheduling RPCs, days, availabilities, members, invitations, realtime
-│   └── outingAnswersService.ts    # Guided answers (fetch / save) and outing type
-├── store/
-│   ├── useOutingsStore.ts         # Store Zustand réactif gérant l'état des sorties et étapes
-│   ├── useOutingCreationStore.ts  # Wizard draft (title, days, slots, invitees, step)
-│   ├── useOutingSchedulingStore.ts # Invitations, scheduling per outing, create / respond actions
-│   └── useOutingAnswersStore.ts   # Guided answers per outing, save answers, set outing type
-├── questionOptions.ts             # Labels / emojis of the types, activities, budgets, wishes…
-├── types/questions.ts             # OutingAnswers, MemberAnswers, DayPreference, HolidayWish
-├── types/scheduling.ts            # DayKey, AvailabilitySlot, OutingMember, DayRecap, OutingInvitation…
-├── utils/answersUtils.ts          # Row ↔ answers mapping, period helpers, per-type validation
-├── utils/availabilityUtils.ts     # Pure helpers: candidate days, common slot per day, payloads
-├── __tests__/                     # Tests unitaires et composants
-│   ├── DurationField.test.tsx
-│   ├── OutingCard.test.tsx
-│   ├── OutingEditForm.test.tsx
-│   ├── PlannedOutingCard.test.tsx
-│   ├── PlannedOutingsTimeline.test.tsx
-│   ├── PlannedOutingEditForm.test.tsx
-│   ├── PlannedOutingFormActions.test.tsx
-│   ├── OutingEditScreen.test.tsx
-│   ├── PlannedOutingEditScreen.test.tsx
-│   ├── useOutingEditing.test.ts
-│   ├── useOutingPlannedOutings.test.ts
-│   ├── usePlannedOutingEditForm.test.ts
-│   ├── constants.test.ts
-│   ├── outingService.test.ts
-│   └── useOutingsStore.test.ts
-└── index.ts                       # Point d'entrée du module (barrel export)
-```
-
----
-
-## ⚡ Utilisation
-
-### Récupération, Création et Modification de Sorties
-
-```typescript
-import { useOutingsStore, OutingEditForm } from '@/features/outings';
-
-function MyScreen() {
-  const outings = useOutingsStore((state) => state.outings);
-  const selectedOutingId = useOutingsStore((state) => state.selectedOutingId);
-  const fetchOutings = useOutingsStore((state) => state.fetchOutings);
-  const createOuting = useOutingsStore((state) => state.createOuting);
-  const updateOuting = useOutingsStore((state) => state.updateOuting);
-  const selectOuting = useOutingsStore((state) => state.selectOuting);
-
-  useEffect(() => {
-    fetchOutings();
-  }, [fetchOutings]);
-
-  const handleCreate = async () => {
-    await createOuting();
-  };
-
-  const handleUpdate = async (id: string, updates: OutingUpdate) => {
-    await updateOuting(id, updates);
-  };
-}
-```
-
-### Édition d'une Étape Planifiée (`PlannedOutingEditForm`)
-
-L'accès à l'édition d'un `Planned Outing` se fait en cliquant sur une carte d'étape dans la timeline de la sortie :
-
-```typescript
-import { useOutingsStore, PlannedOutingEditForm } from '@/features/outings';
-
-function EditPlannedOutingScreen() {
-  const selectedPlannedOutingId = useOutingsStore((state) => state.selectedPlannedOutingId);
-  const plannedOutings = useOutingsStore((state) => state.plannedOutings);
-  const updatePlannedOuting = useOutingsStore((state) => state.updatePlannedOuting);
-  const deletePlannedOuting = useOutingsStore((state) => state.deletePlannedOuting);
-  const selectPlannedOuting = useOutingsStore((state) => state.selectPlannedOuting);
-
-  const plannedOuting = plannedOutings.find((p) => p.id === selectedPlannedOutingId);
-
-  if (!plannedOuting) return null;
-
-  return (
-    <PlannedOutingEditForm
-      plannedOuting={plannedOuting}
-      onSubmit={async (updates) => {
-        await updatePlannedOuting(plannedOuting.id, updates);
-        selectPlannedOuting(null);
-      }}
-      onDelete={async () => {
-        await deletePlannedOuting(plannedOuting.id);
-        selectPlannedOuting(null);
-      }}
-      onCancel={() => selectPlannedOuting(null)}
-    />
-  );
-}
-```
-
----
-
-### Gestion des erreurs d'enregistrement
-`updateOuting`, `updatePlannedOuting` et `deletePlannedOuting` ne lèvent pas d'exception : ils renvoient `null` / `false` et placent le message dans `error`. L'écran Sorties (`app/(tabs)/sorties.tsx`) ne referme donc le formulaire **que si l'opération a réussi**, pour ne pas perdre la saisie. Un échec de création de sortie ou de suppression d'étape est signalé par un toast.
-
-## 🧭 Outing hub (creation and edition)
-
-The outing is created as soon as it has a name, then completed from a single screen, the **hub** (`app/outing/[id]/index.tsx`, `OutingHub`). Work in progress (feature/outing-creation-rework):
+An outing is created **as soon as it has a name**, then completed from a single screen, the **outing hub**. Creation and edition are the same screen.
 
 | Route | Screen | Purpose |
 | :--- | :--- | :--- |
-| `/outing/create` (modal) | `CreateOutingScreen` | « On sort ! »: name only (prefilled by `?placeName=` or `?title=`). Calls `create_outing_with_invites` with no day, type nor invitee, then **replaces** itself with the hub. From a place, the place is added as a `pending` 60 min step dated now (the trigger `outings_align_planned_outings` moves it once a date is set). |
-| `/outing/[id]` | `OutingHub` | Name at the top (organizer renames in place, saved on blur), then one row per section with a visual summary. |
+| `/outing/create` (modal) | `CreateOutingScreen` | « On sort ! »: name only, then **replaces** itself with the hub. |
+| `/outing/[id]` | `OutingHub` | Name at the top, then the rows « Quand ? », « Qui ? », « Quoi ? », each with a visual summary; each row opens a full-page panel sliding in from the right (`AppModal` `slideOver`). |
+| `/outing/[id]/join` (modal) | `JoinOutingFlow` | Invitee: accept or decline, days, slots (`respond_to_outing_invitation`), then the hub. |
+| `/outing/[id]/tie` | `ActivityTieBreak` | Tie of a day group (`?day=YYYY-MM-DD`, none = « any day »): choose by hand or random draw. |
+| `/outing/[id]/planning` | `OutingPlanning` | Planning of the day; closing it goes back to the hub. |
 
-- **Quand ?** summary (`summarizeWhen`): the chosen date (« sam. 15 nov. · 14:00 »), else the candidate days as chips (3 max + « +n ») and how many days have a common slot, else « Aucun jour proposé ». The row opens `WhenPanel` (`useWhenPanel`), a `slideOver` panel saved with « Enregistrer »:
-  - **Jours possibles**: the organizer picks them in a month calendar while no day is chosen (`set_outing_days` through `useOutingSchedulingStore.saveDays`); an added day is ticked in the organizer's own slots with the default 18:00–23:00. Others see the days as chips.
-  - **Mes dispos** (`MySlotsEditor`): for each day, available or not, and the slot (`set_my_outing_slots` through `saveMySlots`). Organizer and members who said yes / « peut-être » only; a pending invitee is asked to answer the invitation first.
-  - **Créneau commun par jour**: the live recap (`DayRecapRow`). The organizer taps « Choisir ce jour » (confirmation « Continuer sans tout le monde ? » while answers are missing, `useDayChoice`, shared with the legacy recap screen): `start_date` = day + common slot start, status `planned`. Once a date is chosen, « Changer de jour » clears it (status back to `draft`) so that the days can be edited again — the database also refuses to remove the chosen day.
-  - Drafts are reset from the saved data each time the panel opens; results are shown in the panel (`InlineAlert`).
-- **Qui ?** summary: `ParticipantAvatars` (« 1 participant · 1 en attente »). The row opens `WhoPanel`, an `AppModal` `slideOver` panel (full page, slides in from the right): members with their answer and, for the organizer, « Inviter des amis » (accepted friends who are not members yet, or who declined) through `invite_to_outing` (`useOutingSchedulingStore.inviteFriends`, `useInviteFriends`). The result is shown in the panel (`InlineAlert`), since a toast would stay under the modal.
-  - **Ma réponse** (members only, not the organizer, `useMyAnswer`): « Je viens » / « Peut-être » / « Je ne viens pas » through `respond_to_outing_invitation`. A pending invitee answers the invitation here; a member changes their answer at any time. The member's current slots are sent again with the answer, because the RPC replaces them (a « Je ne viens pas » deletes them). Once they come, the member gives their slots in « Quand ? ».
-- **Quoi ?** summary (`summarizeWhat`): type, « n/m ont répondu aux questions » (attendees who answered for the type), retained activities (« ✅ Karting ») or the number of proposals. The row opens `WhatPanel`, one scrolling `slideOver` page with four sections:
-  - **Type et questions** (`WhatQuestionsSection`, `useOutingQuestions`): the organizer picks the type (`OutingTypeStep`) or « Changer » it; everyone fills the questions of the type (`OutingQuestionsFields`, shared with the legacy questions screen) and « Enregistrer mes réponses ». `submit` now resolves with `'saved' | 'invalid' | 'failed'` so the panel can show the outcome.
-  - **Activités** (`WhatActivitiesSection`, `useActivityVotes`): proposals, live votes, « Retenir » (`ActivityVotesContent`, shared with the legacy activities screen).
-  - **Détails** (`WhatDetailsSection`): description and status, edited by the organizer (« Enregistrer les détails »), read by the members.
-  - **Programme** (`WhatStepsSection`): the steps timeline; a new or tapped step opens `PlannedOutingEditForm` in a nested `slideOver` page; « Planifier la journée » opens the planning route. The section selects the outing in `useOutingsStore` while it is shown (the store keeps the steps of the selected outing only) and releases it when it unmounts.
-  - Screens opened from the panel (tie-break, planning, map, « En faire une sortie ») close the panel first, because a screen pushed under a modal stays hidden.
-  - Known limit: errors reported by toasts from the reused hooks (vote, proposal, type change) are drawn under the modal; the outcome of the panel's own save buttons is shown inline.
-- `useOutingHub(outingId)` combines `useOutingScheduling` (realtime on participants, candidate days and availabilities) with the answers and activities, reloaded each time the hub gets the focus (`useFocusEffect`).
+Entry points:
+- « Organiser une sortie » (home quick action, home empty state, Sorties tab) and the map (« + Créer une nouvelle sortie », with a place) open `/outing/create`.
+- An outing card (home « Prochaine sortie » / « À venir », Sorties tab list) opens its hub. « Voir tout » opens the Sorties tab list.
+- A pending invitation (home, Sorties tab, `PendingInvitationsSection`) opens the join flow; when the outing has no candidate day yet, « Rejoindre » accepts directly (days and slots are given later in the hub). A pending invitee can also answer from the hub (« Qui ? » › « Ma réponse »).
+- « Choisir un lieu sur la carte » (hub › « Quoi ? » › Programme) opens the map in **step** mode; after « Ajouter à la sortie », the app goes back to the hub (`router.navigate`).
+- « 🗺️ Chercher sur la carte » (hub › « Quoi ? » › Activités) opens the map in **activity** mode (`useMapStore.setTargetOutingId(id, 'activity')`): the banner reads « 💡 Proposer une activité pour … », the place card button « + Proposer comme activité » saves the place (`ensurePlaceExists`) and opens `ProposePlaceActivityModal` (title prefilled, 📍 place, day, note); once proposed, the app goes back to the hub.
 
-## 🗓️ Outing creation workflow (invitations & availability)
+### Creation (`CreateOutingScreen`, `useCreateOuting`)
+- Name prefilled by `?placeName=` (map) or `?title=` (« En faire une sortie » from a not retained activity).
+- Calls `create_outing_with_invites` with no day, type nor invitee (an undated `draft` outing; the organizer is an `accepted` participant).
+- From a place, the place becomes a `pending` 60 min step dated now (the trigger `outings_align_planned_outings` moves it once a date is chosen). If the step cannot be added, the outing is still created and a warning toast says so. The place must already be saved (`ensurePlaceExists`, done by the map).
 
-Implements steps 1 to 3 of the « Parcours complet d'une sortie » note. Routes live in `app/outing/`:
+### Hub (`OutingHub`, `useOutingHub`)
+- The organizer renames the outing in place (`OutingHubTitle`, saved on blur); members see the name.
+- `useOutingHub(outingId)` combines `useOutingScheduling` (realtime on participants, candidate days and availabilities) with the answers and activities, reloaded each time the hub gets the focus (`useFocusEffect`). While the hub is open, its outing is **selected** in `useOutingsStore` (that store keeps the steps of the selected outing only, and the planning refreshes them for it).
+- Panels show the result of their own actions inline (`PanelFeedback` + `InlineAlert`), because a toast is drawn under an open modal. Screens opened from a panel (tie-break, planning, map, new outing) close the panel first, because a screen pushed under a modal stays hidden.
+- Known limit: errors reported by toasts from reused hooks (vote, proposal, type change) are drawn under the modal.
 
-| Route | Screen | Purpose |
-| :--- | :--- | :--- |
-| `/outing/create` (modal) | `CreateOutingWizard` | Name, candidate days (any future day, picked in a month calendar), my slot per day, friends to invite. Calls the `create_outing_with_invites` RPC (atomic). |
-| `/outing/[id]/join` (modal) | `JoinOutingFlow` | Invitee accepts or declines, picks among the outing's candidate days (chips) and gives slots (`respond_to_outing_invitation`). |
-| `/outing/[id]/recap` | `AvailabilityRecap` | Live recap per day: who is available and the common slot (`computeDayRecaps`). The organizer either picks a day (outing becomes `planned` with `start_date` = day + common slot start) or presses **« Continuer »** to open the outing in the Sorties tab edit form without any date. « Fermer » is secondary. |
+### « Quand ? » (`WhenPanel`, `useWhenPanel`)
+Summary (`summarizeWhen`): the chosen date (« sam. 15 nov. · 14:00 »), else the candidate days as chips (3 max + « +n ») and how many days have a common slot, else « Aucun jour proposé ». Saved with « Enregistrer »:
+- **Jours possibles**: the organizer picks them in a month calendar while no day is chosen (`set_outing_days` through `useOutingSchedulingStore.saveDays`); an added day is ticked in the organizer's own slots with the default 18:00–23:00. Others see the days as chips.
+- **Mes dispos** (`MySlotsEditor`): for each day, available or not, and the slot (`set_my_outing_slots` through `saveMySlots`). Organizer and members who said yes / « peut-être » only; a pending invitee is asked to answer the invitation first.
+- **Créneau commun par jour**: live recap (`computeDayRecaps`, `DayRecapRow`). Dates are never voted: the app intersects the slots of `accepted` / `maybe` members per day. The organizer taps « Choisir ce jour » (`useDayChoice`, with « Continuer sans tout le monde ? » while invitees have not answered): `start_date` = day + common slot start, status `planned`. « Changer de jour » clears the date (status back to `draft`) so that the days can be edited again — the database refuses any change of the days while a date is chosen, and the removal of a day whose activity is placed in the planning.
+- Drafts follow the saved data until the user edits them (so data loaded after the panel opened is not mistaken for « no day »), and are reset each time the panel opens. A failed « Choisir ce jour » is reported in the panel.
 
-- Entry points: « Organiser une sortie » (home, Sorties tab) opens the wizard; pending invitations are listed on the home screen and the Sorties tab (`PendingInvitationsSection`); the outing edit form has a « Participants & dispos » button.
-- Dates are never voted: the app computes the intersection of the slots of `accepted` / `maybe` members per day. Invitees who have not answered are counted as pending, and the organizer can « continuer sans tout le monde ».
-- `useOutingScheduling(outingId)` subscribes to `outing_participants` and `outing_availabilities` changes and refetches, so the recap updates live.
-- `createOutingWithInvites` and `respondToInvitation` throw on failure (screens show a toast and keep the draft); fetch actions store the message in `error`.
-- **From a place** (map « + sortie » → « + Créer une nouvelle sortie »): `/outing/create?placeId=…&placeName=…` opens the wizard with the title prefilled and the place announced as the first step. After the outing is created, the place is added as a `pending` 60 min step at the start of the organizer's first slot (`getFirstStepDate`). If that step cannot be added, the outing is still created and a warning toast says so. The place must already be saved (`ensurePlaceExists`, done by the map).
-- **Outings the user does not attend**: `useOutingSchedulingStore.nonAttendingOutingIds` lists the outings where the user's participation is `invited` or `declined` (loaded with the invitations, updated by `respondToInvitation`). `useVisibleOutings()` removes them from every « my outings » list (home, Sorties tab, map outing picker), so a pending invitation only appears in the invitations section.
-- `useOutingMembers(outing)` loads an outing's participants once (home « Prochaine sortie »), and `ParticipantAvatars` shows who is coming (« 3 participants · 1 en attente »).
-- The legacy one-tap `createOuting` store action is no longer used by any screen.
+### « Qui ? » (`WhoPanel`)
+Summary: `ParticipantAvatars` (« 1 participant · 1 en attente »).
+- **Ma réponse** (members only, `useMyAnswer`, `MyAnswerSection`): « Je viens » / « Peut-être » / « Je ne viens pas » through `respond_to_outing_invitation`. The member's current slots are sent again with the answer, because the RPC replaces them (« Je ne viens pas » deletes them).
+- Members with their answer (`MembersList`).
+- **Inviter des amis** (organizer, `useInviteFriends`): accepted friends who are not members yet, or who declined, through `invite_to_outing` (`useOutingSchedulingStore.inviteFriends`).
 
-## 🧪 Tests
-
-Exécuter la suite de tests dédiée au module :
-```bash
-npm test -- --testPathPattern="outings"
-```
-
----
-
-## 🧩 Composants UI partagés
-
-Les formulaires utilisent le kit `@/shared/components` : `TextField` (variante `title` et
-`multiline`), `DateTimeField`, `ChipGroup`, `InlineAlert`, `ConfirmDialog`, `AppModal`.
-La suppression d'une étape demande une confirmation via `ConfirmDialog`
-(`testID` : `confirm-delete-planned`) au lieu de `Alert.alert`.
-
-## Outings without a date
-
-`outings.start_date` is nullable: the wizard creates an undated `draft` outing (candidate days are in `outing_days`).
-- `OutingCard` and the Home « À venir » list show « Date à définir ».
-- `OutingEditForm` offers « Définir la date » / « Retirer la date »; saving without a date is allowed.
-- Default date of a new step (`resolveStepBaseDate` / `useStepBaseDate`, used by `createPlannedOuting` and the carte « Ajouter à une sortie » modal): the outing's `start_date`; for an undated outing, the first planned step's date, else the first candidate day at 18:00, else now. The DB requires `scheduled_for` but only checks it against `start_date` when one exists. The wizard's first step (opened from a place) uses the first candidate day at the start of the organizer's slot.
-- `fetchMyOutings` orders by `start_date` descending with undated outings first.
+### « Quoi ? » (`WhatPanel`)
+Summary (`summarizeWhat`): type, « n/m ont répondu aux questions » (attendees who answered for the type), retained activities (« ✅ Karting ») or the number of proposals. One scrolling page with four sections (`components/hub/what/`):
+- **Type et questions** (`WhatQuestionsSection`, `useOutingQuestions`): see below. `submit` resolves with `'saved' | 'invalid' | 'failed'`.
+- **Détails** (`WhatDetailsSection`): description and status, edited by the organizer (« Enregistrer les détails »), read by the members.
+- **Activités** (`WhatActivitiesSection`, `useActivityVotes`, `ActivityVotesContent`): see below.
+- **Programme** (`WhatStepsSection`): the steps timeline (`PlannedOutingsTimeline`); a new or tapped step opens `PlannedOutingEditForm` in a nested `slideOver` page; « Planifier la journée » opens the planning.
 
 ---
 
-## 🧭 Outing type and guided questions (step 4)
+## 🧭 Outing type and guided questions
 
-Route `app/outing/[id]/questions.tsx` renders `OutingQuestions`. Journey: recap → **« Continuer »** (organizer) → questions → « Enregistrer mes réponses » → Sorties tab. Members reach the same screen from the recap through **« Répondre aux questions »**, shown once the organizer has chosen the type.
-
-1. **Type** (organizer only): `precise`, `one_day` or `holidays`, stored in `outings.outing_type`. It is chosen at creation, as step 2 of the wizard (name → type → who comes → days → my availability → recap → questions → steps), and saved atomically with the outing by `create_outing_with_invites` (`p_outing_type`); the questions screen only offers the picker again if the organizer resets the type. « Changer le type de sortie » resets it to `NULL`. A member opening the screen before the choice sees a waiting message.
-2. **Questions** per type, stored per member in `outing_answers`:
+1. **Type** (organizer only): `precise`, `one_day` or `holidays`, stored in `outings.outing_type` (`OutingTypeStep`). « Changer » resets it to `NULL`; a member sees a waiting message until it is chosen.
+2. **Questions** per type, stored per member in `outing_answers` (`OutingQuestionsFields`):
 
 | Type | Questions | Required to save |
 | :--- | :--- | :--- |
@@ -258,46 +68,93 @@ Route `app/outing/[id]/questions.tsx` renders `OutingQuestions`. Journey: recap 
 | `holidays` | Période · budget · envies | period |
 
 Design choices (simplest option, easy to refine later):
-- Answers are **per member** (not a single organizer answer): preferences are individual. The screen shows « n / m ont répondu » (answers saved by accepted or « peut-être » participants / those participants); a single-choice answer is cleared by pressing it again, and a failed loading shows an error instead of a blank form. There is no vote or aggregation of answers yet.
-- « Heure » is a set of preset start times (`PREFERRED_TIME_OPTIONS`), « lieu » is a free-text wish (≤ 200 characters), not a link to a `places` row.
-- « Période » uses the shared `MultiDateCalendar`: the first and last picked days are the period bounds.
-- « Budget » is a 3-level scale (`low`, `medium`, `high`), not an amount.
+- Answers are **per member**: « n / m ont répondu » counts answers saved by accepted or « peut-être » participants. A single-choice answer is cleared by pressing it again; a failed loading shows an error instead of a blank form. There is no aggregation of answers yet.
+- « Heure » is a set of preset start times (`PREFERRED_TIME_OPTIONS`), « lieu » a free-text wish (≤ 200 characters). « Période » uses the shared `MultiDateCalendar` (first and last picked days). « Budget » is a 3-level scale.
 - Answers of an unused type are kept in the row when the type is changed, but ignored by the UI.
-- Saving is update-then-insert (`outingAnswersService.saveMyAnswers`) because `outing_id` / `user_id` are not updatable columns, so `upsert` would be refused; a unique violation from a concurrent save is retried as an update. The outing type is changed through `useOutingsStore.updateOuting`.
+- Saving is update-then-insert (`outingAnswersService.saveMyAnswers`) because `outing_id` / `user_id` are not updatable columns; a unique violation from a concurrent save is retried as an update.
+
+## 🗳️ Activity proposals, votes and tie-break
+
+Data: `activityVotesService`, `useActivityVotesStore`, hooks `useActivityVotes` / `useActivityTieBreak`; pure ranking in `utils/activityUtils.ts`.
+
+- **Proposals**: any attendee adds an activity with **« + Activité perso »** (`ProposeActivityForm` in a `slideOver` page: title ≤ 120, optional note ≤ 300, day) or **« 🗺️ Chercher sur la carte »** (a place picked on the map, see the entry points). Each is proposed for a candidate day or « Peu importe » (day `NULL`). Days without a proposal stay listed. The author or the organizer can delete a proposal while the group is open. When the organizer removes a candidate day, its activities move to « Peu importe » (votes kept, not retained any more).
+- **Place of an activity**: only a proposal made from the map is linked to a place (`outing_activities.place_id`, stored through `ensurePlaceExists`); a custom activity has no place. The card shows « 📍 name · address ».
+- **Votes**: « Partant » (2 points) or « Peut-être » (1 point); pressing the current vote again removes it. Results are live (`subscribeToActivities`).
+- **Decision**: the organizer decides. A group is `voting`, `tie` (≥ 2 activities share the best positive score) or `decided` (« Retenir »); « Rouvrir le vote » reopens it.
+- **Tie screen**: the organizer chooses by hand or « 🎲 Tirer au sort » (server draw `draw_outing_activity`, replayed by `DrawRoulette`); members see the decision live.
+- **« En faire une sortie »**: a not retained activity of a decided group opens `/outing/create?title=…`.
+- Known limit: votes are closed by the UI once a group is decided, not by the database.
+
+## 🕒 Planning of the day
+
+`OutingPlanning` (`useOutingPlanning`, `useOutingPlanningStore`, `outingPlanningService`, pure logic in `utils/planningUtils.ts`).
+
+- The planning *is* the outing's `planned_outings` of the selected day (the « Programme » steps). A retained activity becomes a step through `place_outing_activity`; manual steps appear too; cancelled steps are left out.
+- Suggested start: the earliest slot start at which more than half of the attendees of the day are available (`suggestStartTime`), 18:00 when nobody gave a slot.
+- Who comes to each step (`computeAttendance`): present, arrives late, leaves early or not available, with a warning per step.
+- The organizer orders (« ✨ Proposer des horaires », ↑ / ↓, « Durée », « Placer »); everything is saved in one transaction (`apply_outing_planning`).
+- Late arrival: each attendee sets « Mes horaires ce jour-là » (`set_my_outing_availability`).
+- Live through realtime on `planned_outings`, `outing_activities`, `outing_availabilities` and `outing_participants`.
+
+## 📆 Outings without a date
+
+`outings.start_date` is `NULL` until a day is chosen (candidate days are in `outing_days`).
+- `OutingCard` and the home « À venir » list show « Date à définir »; `fetchMyOutings` lists undated outings first.
+- Default date of a new step (`resolveStepBaseDate` / `useStepBaseDate`): the outing's `start_date`; for an undated outing, the first planned step's date, else the first candidate day at 18:00, else now.
+
+## 👀 Outings the user does not attend
+
+`useOutingSchedulingStore.nonAttendingOutingIds` lists the outings where the user's participation is `invited` or `declined`. `useVisibleOutings()` removes them from every « my outings » list (home, Sorties tab, map outing picker), so a pending invitation only appears in the invitations section.
 
 ---
 
-## 🗳️ Activity proposals, votes and tie-break (step 5)
+## 🏗️ Structure
 
-Routes: `app/outing/[id]/activities.tsx` (`ActivityVotes`) and `app/outing/[id]/tie.tsx` (`ActivityTieBreak`, `?day=YYYY-MM-DD`, no `day` = « any day » group). Journey: questions → « Enregistrer mes réponses » → **activities & votes** → « Terminer » → Sorties tab. The screen is also reachable from the outing edit form (« Activités & votes »). Data: `activityVotesService`, `useActivityVotesStore`, hooks `useActivityVotes` / `useActivityTieBreak`; pure ranking in `utils/activityUtils.ts`.
+```
+src/features/outings/
+├── components/
+│   ├── hub/                       # Outing hub (creation and edition)
+│   │   ├── CreateOutingScreen.tsx # « On sort ! »: name only
+│   │   ├── OutingHub.tsx, OutingHubTitle.tsx, HubSectionRow.tsx
+│   │   ├── WhenSummaryView.tsx, WhatSummaryView.tsx
+│   │   ├── WhenPanel.tsx, MySlotsEditor.tsx
+│   │   ├── WhoPanel.tsx, MyAnswerSection.tsx
+│   │   ├── WhatPanel.tsx
+│   │   └── what/                  # WhatQuestionsSection, WhatActivitiesSection, WhatDetailsSection, WhatStepsSection
+│   ├── scheduling/                # Invitations, days, availabilities
+│   │   ├── JoinOutingFlow.tsx     # Invitee: Rejoindre ? → Quel jour ? → Dispos → Qui vient ?
+│   │   ├── OutingNameStep.tsx, OutingDaysStep.tsx, AvailabilityStep.tsx, InviteFriendsStep.tsx, WizardHeader.tsx
+│   │   ├── DayRecapRow.tsx, MembersList.tsx, ParticipantAvatars.tsx
+│   │   └── InvitationCard.tsx, PendingInvitationsSection.tsx
+│   ├── questions/                 # OutingTypeStep, OutingQuestionsFields, Precise/OneDay/HolidaysQuestions
+│   ├── activities/                # ActivityVotesContent, ActivityGroupSection, ActivityVoteCard, ProposeActivityForm,
+│   │                              # ProposePlaceActivityModal (map), ActivityTieBreak, DrawRoulette
+│   ├── planning/                  # OutingPlanning and its cards
+│   ├── OutingCard.tsx, PlannedOutingCard.tsx, PlannedOutingsTimeline.tsx, TimelineStep.tsx
+│   └── PlannedOutingEditForm.tsx, PlannedOutingFormActions.tsx, DurationField.tsx
+├── hooks/                         # useOutingHub, useCreateOuting, useWhenPanel, useDayChoice, useMyAnswer,
+│                                  # useInviteFriends, useOutingScheduling, useJoinOutingFlow, useOutingQuestions,
+│                                  # useActivityVotes, useOutingPlanning, useOutingPlannedOutings, …
+├── services/                      # outingService, outingSchedulingService, outingAnswersService,
+│                                  # activityVotesService, activityPlacesService, outingPlanningService, stepBaseDate
+├── store/                         # useOutingsStore, useOutingSchedulingStore, useOutingAnswersStore,
+│                                  # useActivityVotesStore, useOutingPlanningStore
+├── types/                         # hub, scheduling, questions, activities, planning
+├── utils/                         # hubSummaryUtils, availabilityUtils, answersUtils, activityUtils, planningUtils
+├── constants.ts, questionOptions.ts
+├── __tests__/
+└── index.ts                       # Public API (barrel)
+```
 
-- **Proposals**: any attendee (organizer, `accepted` or `maybe` participant) proposes an activity (title ≤ 120, optional note ≤ 300) **for a candidate day** or « Peu importe » (day `NULL`). Activities are grouped by day; days without a proposal stay listed so that someone can fill them. The author or the organizer can delete a proposal while the group is open.
-- **Place of an activity**: a proposal can be linked to a place (`outing_activities.place_id` → `places`, `ON DELETE SET NULL`). `ActivityPlacePicker` searches **both** the saved Crazer places (`searchPlaces` RPC) and **Google Maps** (Places autocomplete) with a debounce (`useActivityPlaceSearch`, `activityPlacesService`); a failing source is ignored. Picking a Google result fetches its details and stores it in `places` through `ensurePlaceExists` (same import as the map), so the activity always references a stored place. The title is prefilled with the place name (editable), and the card shows « 📍 name · address ».
-- **Votes**: « Partant » (`accepted`, 2 points) or « Peut-être » (`maybe`, 1 point); no row = no vote; pressing the current vote again removes it. Results (score, who voted what) are **live** through the realtime subscription on `outing_activities` and `outing_activity_votes` (`subscribeToActivities`, cleaned up on unmount).
-- **Decision (open question of the note — simplest option)**: *the organizer decides* when several options remain. A group is in the state `voting` (one leader), `tie` (≥ 2 activities share the best **positive** score; nobody voted = no tie), or `decided` (the organizer retained one activity: « Retenir »). The organizer can retain an activity at any time, with or without a tie, and « Rouvrir le vote ». A decided group closes the votes in the UI.
-- **Tie screen**: everyone sees the tied activities; members get a waiting message and see the decision appear live. The organizer chooses by hand or taps **« 🎲 Tirer au sort »**: the server draws (`draw_outing_activity`, `random()` among the best scored activities of the group, so the result is shared and tamper-proof), then `DrawRoulette` replays an animated roulette (`buildDrawSequence` / `drawStepDelay`) that slows down and stops on the winner. The candidates are frozen when the draw starts because the realtime refresh already contains the winner.
-- **Order of the activities (open question of the note)**: settled in step 6 (planning of the day, below): the app suggests times, the organizer orders the steps. Vote scores only rank activities inside a group.
-- **Convert a result into a new outing**: once a group is decided, every not retained activity shows **« En faire une sortie »** (also on the tie result). It opens the creation wizard (`/outing/create?title=…`, `CreateOutingWizard` prop `initialTitle`) with the activity title as name; the days, invitees and place are not carried over.
-- Known limit: votes are closed by the UI once a group is decided, not by the database (a direct API call can still change a vote after the decision; the `chosen` flag itself is only writable through the organizer RPCs).
+## 🧩 Shared UI kit
 
----
+Screens use `@/shared/components`: `AppModal` (`slideOver` for the hub panels, `sheet`, `center`), `TextField`, `ChipGroup`, `MultiDateCalendar`, `TimeRangeField`, `Checkbox`, `InlineAlert`, `ConfirmDialog`, `Card`, `Button`. Deleting a step asks for a confirmation through `ConfirmDialog` (`confirm-delete-planned`).
 
-## 🕒 Planning of the day (step 6)
+## 🧪 Tests
 
-Route `app/outing/[id]/planning.tsx` renders `OutingPlanning`. Journey: activities & votes → **« Planifier la journée »** → planning → « Terminer » → Sorties tab. Also reachable from the outing edit form (« Planning de la journée »). Data: `outingPlanningService` (`apply_outing_planning` in one transaction, `set_my_outing_availability`, realtime on `planned_outings` + `outing_activities`), `useOutingPlanningStore` (steps and activities per outing — no votes —, `applyChanges`, `setMyAvailability`), hook `useOutingPlanning`; pure logic in `utils/planningUtils.ts`.
+```bash
+npm test -- --testPathPattern="outings"
+npm run db:test   # pgTAP: supabase/tests/database/*.test.sql (local stack)
+```
 
-- **One model**: the planning *is* the outing's `planned_outings` of the selected day (the same steps as the Sorties tab timeline). A retained activity becomes a step through `place_outing_activity` (`activity_id` links them, title / note / place are copied). Manual steps (« Ajouter une étape ») appear in the planning too. Cancelled steps are left out, and cancelling a step frees its activity (it is back in « à placer »).
-- **Days**: candidate days plus days that already have a step; the outing's date is opened first.
-- **Times**: each step shows `start – end` (default duration 60 min). Between two steps a **segment** shows the travel / waiting time, or « ⚠️ Chevauchement » when they overlap.
-- **Suggested start**: the earliest slot start at which **more than half** of the attendees who gave a slot that day are available (`suggestStartTime`), so one late person does not delay the group; 18:00 when nobody gave a slot.
-- **Who comes to each step** (`computeAttendance`, from `outing_availabilities`): ✅ present for the whole step, ⏰ arrives late (« arrive à 20:00 »), 🚪 leaves early, ❌ not available. Every step that is not fully covered for someone shows a warning « Hors des dispos de : … ».
-- **Organizer (decision of the note's open question — simplest option)**: *the app suggests, the organizer orders, everyone sees it live.*
-  - « ✨ Proposer des horaires » keeps the current order, appends the retained activities not placed yet, and packs everything from the suggested start with the chosen travel time (Aucun / 15 / 30 / 45 min, default 15).
-  - ↑ / ↓ swaps two steps and « Durée » changes a step's duration; both re-pack the day from its first step's start (manual gaps are replaced by the travel time).
-  - « Placer » puts one retained activity after the last step.
-  - Re-packing never goes past 23:59 (later steps start at 23:59 and show as overlaps) so every step stays on the planned day.
-  - All the times and placements are saved in one transaction by `apply_outing_planning`; if a step moves before the outing's `start_date`, the start date follows.
-- **Late arrival (open question of the note — e.g. D at 20h)**: a member's arrival is simply their own availability of the day. On the planning, each attendee has « Mes horaires ce jour-là » (`set_my_outing_availability`) to say « j'arrive à 20h » / « je pars à 22h »; the attendance and warnings of every step update live for everyone. Steps are not moved automatically: the organizer decides whether to reorder (e.g. put the restaurant after 20:00). The organizer cannot change someone else's slot.
-- **Live**: `useOutingPlanning` subscribes to `planned_outings` and `outing_activities` (one debounced reload, 300 ms, per burst of changes) and to `outing_availabilities` / `outing_participants` through `useOutingScheduling`. The hours being edited in « Mes horaires » are only reset when the saved slot itself changes.
-- Known limits: at most one retained activity per day group (lot 4 rule: one per day + one « any day »), other steps are added by hand; a step crossing midnight is shown on its start day; times are the device's local time (like the availabilities).
-
+Store actions `updateOuting`, `updatePlannedOuting` and `deletePlannedOuting` do not throw: they return `null` / `false` and keep the message in `error`. Scheduling, answers and votes actions throw on failure.

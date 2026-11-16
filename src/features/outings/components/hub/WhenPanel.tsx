@@ -30,8 +30,6 @@ export interface WhenPanelProps {
   isOrganizer: boolean;
 }
 
-const TODAY = new Date();
-
 const pendingMessage = (count: number): string =>
   `En attente de ${count} réponse${count > 1 ? 's' : ''}.`;
 
@@ -95,7 +93,7 @@ export const WhenPanel: React.FC<WhenPanelProps> = (props) => {
           <MultiDateCalendar
             values={panel.days}
             onChange={panel.setDays}
-            minDate={TODAY}
+            minDate={panel.today}
             testID="when-calendar"
           />
         ) : (

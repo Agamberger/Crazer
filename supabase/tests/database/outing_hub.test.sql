@@ -6,13 +6,14 @@
 -- Charlie 3333… (pending friend request from Alice).
 -- Outing c2222… (Alice) : date on +5, days today+5/6/7, Alice slots on +5 and +6, Bob invited,
 --   activities f1111… / f2222… on day +5, Alice voted for f1111….
--- Outing c4444… (Alice) : one day today+3 = chosen date, Bob and Charlie accepted.
+-- Outing c4444… (Alice) : one day today+3 = chosen date, Bob and Charlie accepted,
+--   retained activity Karting (f5555…) placed as a step on that day.
 -- ============================================================
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET search_path = public, extensions;
 
-SELECT plan(20);
+SELECT plan(22);
 
 CREATE FUNCTION pg_temp.login(p_user UUID) RETURNS VOID LANGUAGE sql AS $$
   SELECT set_config('request.jwt.claims',
@@ -69,7 +70,21 @@ SELECT throws_ok(
 SELECT throws_ok(
   format($$ SELECT public.set_outing_days('c4444444-4444-4444-4444-444444444444',
        ARRAY['%s']::DATE[]) $$, CURRENT_DATE + 4),
-  '22023', NULL, 'days : the day of the chosen date cannot be removed'
+  '22023', NULL, 'days : a day cannot be removed while a day is chosen'
+);
+
+SELECT throws_ok(
+  format($$ SELECT public.set_outing_days('c4444444-4444-4444-4444-444444444444',
+       ARRAY['%s', '%s']::DATE[]) $$, CURRENT_DATE + 3, CURRENT_DATE + 4),
+  '22023', NULL, 'days : a day cannot be added while a day is chosen'
+);
+
+UPDATE public.outings SET start_date = NULL WHERE id = 'c4444444-4444-4444-4444-444444444444';
+
+SELECT throws_ok(
+  format($$ SELECT public.set_outing_days('c4444444-4444-4444-4444-444444444444',
+       ARRAY['%s']::DATE[]) $$, CURRENT_DATE + 4),
+  '22023', NULL, 'days : a day with an activity placed in the planning cannot be removed'
 );
 
 -- « Retirer la date » first: the seed date of c2222… is on day +5.

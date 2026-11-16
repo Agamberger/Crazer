@@ -9,7 +9,7 @@ export default function OutingTieRoute() {
 
   const close = () => {
     if (router.canGoBack()) router.back();
-    else router.replace({ pathname: '/outing/[id]/activities', params: { id } });
+    else router.replace({ pathname: '/outing/[id]', params: { id } });
   };
 
   return (

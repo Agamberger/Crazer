@@ -73,7 +73,7 @@ describe('HomeScreen (Accueil)', () => {
     expect(mockFetchOutings).toHaveBeenCalled();
   });
 
-  test('met en avant la prochaine sortie et ouvre son détail dans Sorties', () => {
+  test('met en avant la prochaine sortie et ouvre son hub', () => {
     useOutingsStore.setState({
       outings: [
         makeOuting({ id: 'later', title: 'Ciné', start_date: inDays(10) }),
@@ -90,22 +90,19 @@ describe('HomeScreen (Accueil)', () => {
 
     fireEvent.press(getByTestId('home-next-outing-card'));
 
-    expect(useOutingsStore.getState().selectedOutingId).toBe('next');
-    expect(useOutingsStore.getState().selectedPlannedOutingId).toBeNull();
-    expect(router.push).toHaveBeenCalledWith('/(tabs)/sorties');
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/outing/[id]', params: { id: 'next' } });
   });
 
-  test('« Voir tout » ouvre la liste des sorties sans sélection', () => {
-    useOutingsStore.setState({ outings: [makeOuting({ id: 'next' })], selectedOutingId: 'old' });
+  test('« Voir tout » ouvre la liste des sorties', () => {
+    useOutingsStore.setState({ outings: [makeOuting({ id: 'next' })] });
     const { getByText } = render(<HomeScreen />);
 
     fireEvent.press(getByText('Voir tout'));
 
-    expect(useOutingsStore.getState().selectedOutingId).toBeNull();
     expect(router.push).toHaveBeenCalledWith('/(tabs)/sorties');
   });
 
-  test("l'état vide ouvre l'assistant de création de sortie", () => {
+  test("l'état vide ouvre l'écran de création de sortie", () => {
     const { getByTestId } = render(<HomeScreen />);
 
     const emptyState = getByTestId('home-next-outing-empty');
@@ -115,7 +112,7 @@ describe('HomeScreen (Accueil)', () => {
     expect(mockCreateOuting).not.toHaveBeenCalled();
   });
 
-  test("le raccourci « Organiser une sortie » ouvre l'assistant sans créer de sortie", () => {
+  test("le raccourci « Organiser une sortie » ouvre l'écran de création sans créer de sortie", () => {
     const { getByTestId } = render(<HomeScreen />);
 
     fireEvent.press(getByTestId('home-action-create-outing'));
@@ -158,11 +155,10 @@ describe('HomeScreen (Accueil)', () => {
 
     fireEvent.press(getByTestId('home-upcoming-later'));
 
-    expect(useOutingsStore.getState().selectedOutingId).toBe('later');
-    expect(router.push).toHaveBeenCalledWith('/(tabs)/sorties');
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/outing/[id]', params: { id: 'later' } });
   });
 
-  test('« + Sortie » ouvre l’assistant de création', () => {
+  test('« + Sortie » ouvre l’écran de création', () => {
     useOutingsStore.setState({
       outings: [
         makeOuting({ id: 'next', start_date: inDays(1) }),

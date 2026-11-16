@@ -2,7 +2,7 @@ import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { useToastStore } from '@/shared/store/useToastStore';
 import { OutingRow } from '@/shared/types';
-import { OutingQuestions } from '../components/questions/OutingQuestions';
+import { WhatQuestionsSection } from '../components/hub/what/WhatQuestionsSection';
 import { outingAnswersService } from '../services/outingAnswersService';
 import { outingService } from '../services/outingService';
 import { useOutingAnswersStore } from '../store/useOutingAnswersStore';
@@ -42,9 +42,7 @@ const OUTING: OutingRow = {
   updated_at: '2026-11-01T00:00:00Z',
 };
 
-const callbacks = { onDone: jest.fn(), onClose: jest.fn() };
-
-const renderQuestions = () => render(<OutingQuestions outingId="o1" {...callbacks} />);
+const renderQuestions = () => render(<WhatQuestionsSection outingId="o1" />);
 
 const setOutingType = (outing_type: OutingRow['outing_type']) =>
   useOutingsStore.setState({ outings: [{ ...OUTING, outing_type }] });
@@ -60,7 +58,7 @@ beforeEach(() => {
   answersService.saveMyAnswers.mockResolvedValue();
 });
 
-describe('OutingQuestions — choix du type', () => {
+describe('WhatQuestionsSection — choix du type', () => {
   it('l’organisateur choisit le type de sortie', async () => {
     outings.updateOuting.mockResolvedValue({ ...OUTING, outing_type: 'holidays' });
     const { findByTestId } = renderQuestions();
@@ -68,13 +66,13 @@ describe('OutingQuestions — choix du type', () => {
     fireEvent.press(await findByTestId('outing-type-holidays'));
 
     await waitFor(() => expect(outings.updateOuting).toHaveBeenCalledWith('o1', { outing_type: 'holidays' }));
-    expect(await findByTestId('outing-questions')).toBeTruthy();
+    expect(await findByTestId('what-type-label')).toBeTruthy();
   });
 
   it('un membre attend que l’organisateur ait choisi le type', async () => {
     mockUserId = 'bob';
     const { findByTestId, queryByTestId } = renderQuestions();
-    expect(await findByTestId('questions-waiting-type')).toBeTruthy();
+    expect(await findByTestId('what-waiting-type')).toBeTruthy();
     expect(queryByTestId('outing-type-precise')).toBeNull();
   });
 
@@ -91,19 +89,19 @@ describe('OutingQuestions — choix du type', () => {
     setOutingType('precise');
     outings.updateOuting.mockResolvedValue({ ...OUTING, outing_type: null });
     const { findByTestId } = renderQuestions();
-    fireEvent.press(await findByTestId('btn-questions-change-type'));
+    fireEvent.press(await findByTestId('btn-what-change-type'));
     await waitFor(() => expect(outings.updateOuting).toHaveBeenCalledWith('o1', { outing_type: null }));
-    expect(await findByTestId('outing-type-step')).toBeTruthy();
+    expect(await findByTestId('outing-type-precise')).toBeTruthy();
   });
 });
 
-describe('OutingQuestions — sortie précise', () => {
+describe('WhatQuestionsSection — sortie précise', () => {
   beforeEach(() => setOutingType('precise'));
 
   it('permet d’enregistrer sans répondre à aucune question', async () => {
     const { findByTestId } = renderQuestions();
-    fireEvent.press(await findByTestId('btn-questions-save'));
-    await waitFor(() => expect(callbacks.onDone).toHaveBeenCalled());
+    fireEvent.press(await findByTestId('btn-what-save-answers'));
+    await waitFor(() => expect(answersService.saveMyAnswers).toHaveBeenCalled());
   });
 
   it('enregistre les réponses puis termine', async () => {
@@ -112,9 +110,9 @@ describe('OutingQuestions — sortie précise', () => {
     fireEvent.press(await findByTestId('question-time-19:00'));
     fireEvent.press(await findByTestId('question-eat-before-no'));
     fireEvent.changeText(await findByTestId('question-place'), 'Un rooftop');
-    fireEvent.press(await findByTestId('btn-questions-save'));
+    fireEvent.press(await findByTestId('btn-what-save-answers'));
 
-    await waitFor(() => expect(callbacks.onDone).toHaveBeenCalled());
+    await waitFor(() => expect(answersService.saveMyAnswers).toHaveBeenCalled());
     expect(answersService.saveMyAnswers).toHaveBeenCalledWith(
       'o1',
       'alice',
@@ -136,36 +134,36 @@ describe('OutingQuestions — sortie précise', () => {
     ]);
     const { findByTestId } = renderQuestions();
     expect((await findByTestId('questions-progress')).props.children.join('')).toContain('1 / 2');
-    fireEvent.press(await findByTestId('btn-questions-save'));
-    await waitFor(() => expect(callbacks.onDone).toHaveBeenCalled());
+    fireEvent.press(await findByTestId('btn-what-save-answers'));
+    await waitFor(() => expect(answersService.saveMyAnswers).toHaveBeenCalled());
   });
 
   it('prévient quand l’enregistrement échoue', async () => {
     answersService.saveMyAnswers.mockRejectedValue(new Error('denied'));
     const { findByTestId } = renderQuestions();
-    fireEvent.press(await findByTestId('btn-questions-save'));
+    fireEvent.press(await findByTestId('btn-what-save-answers'));
     await waitFor(() =>
       expect(useToastStore.getState().queue).toContainEqual(expect.objectContaining({ tone: 'error' })),
     );
-    expect(callbacks.onDone).not.toHaveBeenCalled();
+    expect(await findByTestId('what-answers-feedback')).toHaveTextContent(/Impossible/);
   });
 
   it('un membre ne peut pas changer le type', async () => {
     mockUserId = 'bob';
     const { findByTestId, queryByTestId } = renderQuestions();
-    await findByTestId('btn-questions-save');
-    expect(queryByTestId('btn-questions-change-type')).toBeNull();
+    await findByTestId('btn-what-save-answers');
+    expect(queryByTestId('btn-what-change-type')).toBeNull();
   });
 });
 
-describe('OutingQuestions — robustesse', () => {
+describe('WhatQuestionsSection — robustesse', () => {
   beforeEach(() => setOutingType('precise'));
 
   it('n’affiche pas de formulaire vierge quand le chargement des réponses échoue', async () => {
     answersService.fetchAnswers.mockRejectedValue(new Error('boom'));
     const { findByTestId, queryByTestId } = renderQuestions();
-    expect(await findByTestId('questions-load-failed')).toBeTruthy();
-    expect(queryByTestId('btn-questions-save')).toBeNull();
+    expect(await findByTestId('what-questions-load-failed')).toBeTruthy();
+    expect(queryByTestId('btn-what-save-answers')).toBeNull();
   });
 
   it('ne compte que les réponses des participants attendus', async () => {
@@ -195,7 +193,7 @@ describe('OutingQuestions — robustesse', () => {
     const { findByTestId } = renderQuestions();
     fireEvent.press(await findByTestId('question-eat-before-yes'));
     fireEvent.press(await findByTestId('question-eat-before-yes'));
-    fireEvent.press(await findByTestId('btn-questions-save'));
+    fireEvent.press(await findByTestId('btn-what-save-answers'));
     await waitFor(() =>
       expect(answersService.saveMyAnswers).toHaveBeenCalledWith(
         'o1',
@@ -206,18 +204,18 @@ describe('OutingQuestions — robustesse', () => {
   });
 });
 
-describe('OutingQuestions — une journée et vacances', () => {
+describe('WhatQuestionsSection — une journée et vacances', () => {
   it('une journée : exige au moins une préférence', async () => {
     setOutingType('one_day');
     const { findByTestId } = renderQuestions();
-    fireEvent.press(await findByTestId('btn-questions-save'));
+    fireEvent.press(await findByTestId('btn-what-save-answers'));
     expect(await findByTestId('questions-error')).toBeTruthy();
 
     fireEvent.press(await findByTestId('question-day-preferences-outdoor'));
     fireEvent.press(await findByTestId('question-day-preferences-morning'));
-    fireEvent.press(await findByTestId('btn-questions-save'));
+    fireEvent.press(await findByTestId('btn-what-save-answers'));
 
-    await waitFor(() => expect(callbacks.onDone).toHaveBeenCalled());
+    await waitFor(() => expect(answersService.saveMyAnswers).toHaveBeenCalled());
     expect(answersService.saveMyAnswers).toHaveBeenCalledWith(
       'o1',
       'alice',
@@ -241,7 +239,7 @@ describe('OutingQuestions — une journée et vacances', () => {
 
     it('exige une période', async () => {
       const { findByTestId } = renderQuestions();
-      fireEvent.press(await findByTestId('btn-questions-save'));
+      fireEvent.press(await findByTestId('btn-what-save-answers'));
       expect(await findByTestId('questions-error')).toBeTruthy();
       expect(answersService.saveMyAnswers).not.toHaveBeenCalled();
     });
@@ -252,9 +250,9 @@ describe('OutingQuestions — une journée et vacances', () => {
       fireEvent.press(await findByTestId('day-cell-10'));
       fireEvent.press(await findByTestId('question-budget-medium'));
       fireEvent.press(await findByTestId('question-wishes-beach'));
-      fireEvent.press(await findByTestId('btn-questions-save'));
+      fireEvent.press(await findByTestId('btn-what-save-answers'));
 
-      await waitFor(() => expect(callbacks.onDone).toHaveBeenCalled());
+      await waitFor(() => expect(answersService.saveMyAnswers).toHaveBeenCalled());
       expect(answersService.saveMyAnswers).toHaveBeenCalledWith(
         'o1',
         'alice',

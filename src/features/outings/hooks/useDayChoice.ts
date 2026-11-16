@@ -23,12 +23,14 @@ export interface UseDayChoiceResult {
  * @param pendingCount invitees who have not answered yet.
  * @param onPlanned called once a day is saved.
  * @param notify shows the result as toasts (off inside a modal, where a toast stays hidden).
+ * @param onFailed called when the day could not be saved.
  */
 export const useDayChoice = (
   outingId: string,
   pendingCount: number,
   onPlanned: () => void,
   notify = true,
+  onFailed?: () => void,
 ): UseDayChoiceResult => {
   const updateOuting = useOutingsStore((state) => state.updateOuting);
   const [pendingChoice, setPendingChoice] = useState<DayRecap | null>(null);
@@ -46,8 +48,9 @@ export const useDayChoice = (
     if (updated) {
       if (notify) toast.success('La sortie est planifiée.', { title: updated.title });
       onPlanned();
-    } else if (notify) {
-      toast.error('Impossible de planifier la sortie.', { title: 'Erreur' });
+    } else {
+      if (notify) toast.error('Impossible de planifier la sortie.', { title: 'Erreur' });
+      onFailed?.();
     }
   };
 

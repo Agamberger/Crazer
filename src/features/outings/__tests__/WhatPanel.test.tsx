@@ -43,13 +43,6 @@ jest.mock('../services/activityVotesService', () => ({
     subscribeToActivities: jest.fn(),
   },
 }));
-jest.mock('../services/activityPlacesService', () => ({
-  activityPlacesService: { searchSuggestions: jest.fn(), resolveSuggestion: jest.fn() },
-}));
-jest.mock('@/features/carte/hooks/usePlacesSessionToken', () => {
-  const session = { getToken: () => 'token', endSession: () => undefined };
-  return { usePlacesSessionToken: () => session };
-});
 jest.mock('../services/outingSchedulingService', () => ({
   outingSchedulingService: {
     fetchOutingDays: jest.fn(),
@@ -164,7 +157,6 @@ describe('WhatPanel', () => {
     expect(await findByText('Bowling')).toBeTruthy();
     expect(getByTestId('input-what-description').props.value).toBe('Rendez-vous au métro');
     expect(await findByText('Karting')).toBeTruthy();
-    expect(useOutingsStore.getState().selectedOutingId).toBe('o1');
   });
 
   it('l’organisateur choisit le type quand il n’est pas encore choisi', async () => {
@@ -249,12 +241,5 @@ describe('WhatPanel', () => {
     fireEvent.press(getByTestId('btn-what-planning'));
     expect(onClose).toHaveBeenCalled();
     expect(onOpenPlanning).toHaveBeenCalled();
-  });
-
-  it('libère la sortie sélectionnée quand le panneau se ferme', async () => {
-    const { findByText, unmount } = renderPanel();
-    await findByText('Karting');
-    unmount();
-    expect(useOutingsStore.getState().selectedOutingId).toBeNull();
   });
 });

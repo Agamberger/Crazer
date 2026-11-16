@@ -33,7 +33,7 @@ export const WhoPanel: React.FC<WhoPanelProps> = ({
   userId,
   isOrganizer,
 }) => {
-  const invitation = useInviteFriends(outing, members);
+  const invitation = useInviteFriends(outing, members, visible && isOrganizer);
   const myAnswer = useMyAnswer(outing, scheduling, userId, isOrganizer);
   const count = invitation.selectedIds.length;
 

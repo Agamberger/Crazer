@@ -3,8 +3,7 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { useToastStore } from '@/shared/store/useToastStore';
 import { OutingRow } from '@/shared/types';
 import { ActivityTieBreak } from '../components/activities/ActivityTieBreak';
-import { ActivityVotes } from '../components/activities/ActivityVotes';
-import { activityPlacesService } from '../services/activityPlacesService';
+import { WhatActivitiesSection } from '../components/hub/what/WhatActivitiesSection';
 import { activityVotesService } from '../services/activityVotesService';
 import { outingSchedulingService } from '../services/outingSchedulingService';
 import { useActivityVotesStore } from '../store/useActivityVotesStore';
@@ -36,13 +35,6 @@ jest.mock('../services/activityVotesService', () => ({
     subscribeToActivities: jest.fn(),
   },
 }));
-jest.mock('../services/activityPlacesService', () => ({
-  activityPlacesService: { searchSuggestions: jest.fn(), resolveSuggestion: jest.fn() },
-}));
-jest.mock('@/features/carte/hooks/usePlacesSessionToken', () => {
-  const session = { getToken: () => 'token', endSession: () => undefined };
-  return { usePlacesSessionToken: () => session };
-});
 jest.mock('../services/outingSchedulingService', () => ({
   outingSchedulingService: {
     fetchOutingDays: jest.fn(),
@@ -52,23 +44,49 @@ jest.mock('../services/outingSchedulingService', () => ({
 }));
 
 const service = activityVotesService as jest.Mocked<typeof activityVotesService>;
-const places = activityPlacesService as jest.Mocked<typeof activityPlacesService>;
 const scheduling = outingSchedulingService as jest.Mocked<typeof outingSchedulingService>;
 
 const DAY = '2026-11-10';
 const OUTING: OutingRow = {
-  id: 'o1', title: 'Glouglou', description: null, start_date: null, created_by: 'alice',
-  status: 'draft', cover_image: null, outing_type: 'precise',
-  created_at: '2026-11-01T00:00:00Z', updated_at: '2026-11-01T00:00:00Z',
+  id: 'o1',
+  title: 'Glouglou',
+  description: null,
+  start_date: null,
+  created_by: 'alice',
+  status: 'draft',
+  cover_image: null,
+  outing_type: 'precise',
+  created_at: '2026-11-01T00:00:00Z',
+  updated_at: '2026-11-01T00:00:00Z',
 };
 
-const member = (userId: string, displayName: string, status: OutingMember['status']): OutingMember => ({
-  userId, displayName, avatarUrl: null, status, isOrganizer: userId === 'alice',
+const member = (
+  userId: string,
+  displayName: string,
+  status: OutingMember['status'],
+): OutingMember => ({
+  userId,
+  displayName,
+  avatarUrl: null,
+  status,
+  isOrganizer: userId === 'alice',
 });
 
-const activity = (id: string, title: string, overrides: Partial<OutingActivity> = {}): OutingActivity => ({
-  id, outingId: 'o1', day: DAY, title, note: null, proposedBy: 'alice', place: null, chosen: false,
-  createdAt: `2026-11-01T10:00:0${id.length}Z`, ...overrides,
+const activity = (
+  id: string,
+  title: string,
+  overrides: Partial<OutingActivity> = {},
+): OutingActivity => ({
+  id,
+  outingId: 'o1',
+  day: DAY,
+  title,
+  note: null,
+  proposedBy: 'alice',
+  place: null,
+  chosen: false,
+  createdAt: `2026-11-01T10:00:0${id.length}Z`,
+  ...overrides,
 });
 
 let activities: OutingActivity[];
@@ -87,9 +105,23 @@ const setup = () => {
   ]);
 };
 
-const callbacks = { onOpenTie: jest.fn(), onConvert: jest.fn(), onClose: jest.fn() };
+const callbacks = {
+  onOpenTie: jest.fn(),
+  onConvert: jest.fn(),
+  onClose: jest.fn(),
+  onSearchOnMap: jest.fn(),
+};
 
-const renderVotes = () => render(<ActivityVotes outingId="o1" {...callbacks} />);
+const renderVotes = () =>
+  render(
+    <WhatActivitiesSection
+      outingId="o1"
+      userId={mockUserId}
+      onOpenTie={callbacks.onOpenTie}
+      onConvert={callbacks.onConvert}
+      onSearchOnMap={callbacks.onSearchOnMap}
+    />,
+  );
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -103,18 +135,7 @@ beforeEach(() => {
   setup();
 });
 
-describe('ActivityVotes', () => {
-  it('« Planifier la journée » ouvre le planning quand il est proposé', async () => {
-    const onOpenPlanning = jest.fn();
-    const { findByTestId, queryByTestId, rerender } = render(
-      <ActivityVotes outingId="o1" {...callbacks} onOpenPlanning={onOpenPlanning} />,
-    );
-    fireEvent.press(await findByTestId('btn-activities-planning'));
-    expect(onOpenPlanning).toHaveBeenCalled();
-    rerender(<ActivityVotes outingId="o1" {...callbacks} />);
-    expect(queryByTestId('btn-activities-planning')).toBeNull();
-  });
-
+describe('WhatActivitiesSection', () => {
   it('affiche les propositions du jour avec leur score en direct', async () => {
     votes = [{ activityId: 'a', userId: 'bob', vote: 'accepted' }];
     const { findByTestId, getByTestId } = renderVotes();
@@ -128,7 +149,9 @@ describe('ActivityVotes', () => {
     service.castVote.mockResolvedValue();
     const { findByTestId } = renderVotes();
     fireEvent.press(await findByTestId('btn-vote-accepted-a'));
-    await waitFor(() => expect(service.castVote).toHaveBeenCalledWith('o1', 'a', 'alice', 'accepted'));
+    await waitFor(() =>
+      expect(service.castVote).toHaveBeenCalledWith('o1', 'a', 'alice', 'accepted'),
+    );
     expect(service.fetchActivities.mock.calls.length).toBeGreaterThan(1);
   });
 
@@ -140,9 +163,10 @@ describe('ActivityVotes', () => {
     await waitFor(() => expect(service.removeVote).toHaveBeenCalledWith('a', 'alice'));
   });
 
-  it('propose une activité pour un jour et vide le formulaire', async () => {
+  it('« + Activité perso » propose une activité pour un jour et vide le formulaire', async () => {
     service.proposeActivity.mockResolvedValue(activity('c', 'Resto'));
     const { findByTestId, getByTestId } = renderVotes();
+    fireEvent.press(await findByTestId('btn-custom-activity'));
     fireEvent.changeText(await findByTestId('input-activity-title'), ' Resto ');
     fireEvent.press(getByTestId(`chips-activity-day-${DAY}`));
     fireEvent.press(getByTestId('btn-propose-activity'));
@@ -154,47 +178,17 @@ describe('ActivityVotes', () => {
     await waitFor(() => expect(getByTestId('input-activity-title').props.value).toBe(''));
   });
 
-  it('propose une activité trouvée sur Google Maps : lieu importé, titre prérempli', async () => {
-    places.searchSuggestions.mockResolvedValue([
-      { key: 'g1', source: 'google', name: 'Bowling Strike', subtitle: 'Paris' },
-    ]);
-    places.resolveSuggestion.mockResolvedValue({ id: 'place-1', name: 'Bowling Strike' });
-    service.proposeActivity.mockResolvedValue(activity('c', 'Bowling Strike'));
-    const { findByTestId, getByTestId } = renderVotes();
-    fireEvent.changeText(await findByTestId('input-activity-place'), 'bowling');
-    fireEvent.press(await findByTestId('place-suggestion-google-g1'));
-    expect(await findByTestId('activity-place-chip')).toBeTruthy();
-    expect(places.resolveSuggestion).toHaveBeenCalledWith(
-      expect.objectContaining({ key: 'g1' }),
-      'alice',
-      'token',
-    );
-    expect(getByTestId('input-activity-title').props.value).toBe('Bowling Strike');
-    fireEvent.press(getByTestId('btn-propose-activity'));
-    await waitFor(() =>
-      expect(service.proposeActivity).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'Bowling Strike', placeId: 'place-1' }),
-      ),
-    );
-    await waitFor(() => expect(getByTestId('input-activity-place')).toBeTruthy());
-  });
-
-  it('le lieu choisi peut être retiré', async () => {
-    places.searchSuggestions.mockResolvedValue([
-      { key: 'p1', source: 'crazer', name: 'Burger', subtitle: null },
-    ]);
-    places.resolveSuggestion.mockResolvedValue({ id: 'p1', name: 'Burger' });
-    const { findByTestId, getByTestId, queryByTestId } = renderVotes();
-    fireEvent.changeText(await findByTestId('input-activity-place'), 'bur');
-    fireEvent.press(await findByTestId('place-suggestion-crazer-p1'));
-    await findByTestId('activity-place-chip');
-    fireEvent.press(getByTestId('activity-place-chip-remove'));
-    await waitFor(() => expect(queryByTestId('activity-place-chip')).toBeNull());
+  it('« Chercher sur la carte » ouvre la carte', async () => {
+    const { findByTestId } = renderVotes();
+    fireEvent.press(await findByTestId('btn-activity-on-map'));
+    expect(callbacks.onSearchOnMap).toHaveBeenCalled();
   });
 
   it('affiche le lieu d’une activité', async () => {
     activities = [
-      activity('a', 'Bowling', { place: { id: 'p1', name: 'Strike', address: '1 rue X', rating: 4 } }),
+      activity('a', 'Bowling', {
+        place: { id: 'p1', name: 'Strike', address: '1 rue X', rating: 4 },
+      }),
     ];
     const { findByTestId } = renderVotes();
     const label = await findByTestId('activity-place-a');
@@ -203,6 +197,7 @@ describe('ActivityVotes', () => {
 
   it('refuse un titre vide', async () => {
     const { findByTestId } = renderVotes();
+    fireEvent.press(await findByTestId('btn-custom-activity'));
     const button = await findByTestId('btn-propose-activity');
     fireEvent.press(button);
     expect(service.proposeActivity).not.toHaveBeenCalled();
@@ -278,7 +273,7 @@ describe('ActivityVotes', () => {
   it('affiche une erreur quand le chargement échoue', async () => {
     service.fetchActivities.mockRejectedValue(new Error('boom'));
     const { findByTestId } = renderVotes();
-    expect(await findByTestId('activities-load-failed')).toBeTruthy();
+    expect(await findByTestId('what-activities-load-failed')).toBeTruthy();
   });
 });
 
@@ -288,7 +283,14 @@ describe('ActivityTieBreak', () => {
     { activityId: 'bb', userId: 'bob', vote: 'accepted' },
   ];
   const renderTie = () =>
-    render(<ActivityTieBreak outingId="o1" day={DAY} onConvert={callbacks.onConvert} onClose={callbacks.onClose} />);
+    render(
+      <ActivityTieBreak
+        outingId="o1"
+        day={DAY}
+        onConvert={callbacks.onConvert}
+        onClose={callbacks.onClose}
+      />,
+    );
 
   beforeEach(() => {
     votes = tieVotes;

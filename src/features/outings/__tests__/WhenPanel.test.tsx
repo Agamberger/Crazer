@@ -189,6 +189,33 @@ describe('WhenPanel', () => {
     expect(getByTestId('when-feedback')).toHaveTextContent(/La date est retirée/);
   });
 
+  it('reprend les jours chargés après l’ouverture au lieu de les effacer', () => {
+    const props = {
+      onClose,
+      outing: OUTING,
+      recaps: RECAPS,
+      pendingCount: 0,
+      userId: 'alice',
+      isOrganizer: true,
+    };
+    const { getByTestId, rerender } = render(<WhenPanel visible scheduling={null} {...props} />);
+    expect(getByTestId('btn-when-save')).toBeDisabled();
+
+    rerender(<WhenPanel visible scheduling={SCHEDULING} {...props} />);
+
+    expect(getByTestId(`my-slot-${DAY_1}-start`)).toBeTruthy();
+    expect(getByTestId('btn-when-save')).toBeDisabled();
+  });
+
+  it('signale dans le panneau un jour qui n’a pas pu être choisi', async () => {
+    updateOuting.mockResolvedValue(null);
+    const { getByTestId } = renderPanel();
+    await act(async () => {
+      fireEvent.press(getByTestId(`btn-choose-day-${DAY_1}`));
+    });
+    expect(getByTestId('when-feedback')).toHaveTextContent(/Impossible de planifier la sortie/);
+  });
+
   it('repart des données enregistrées à chaque ouverture', () => {
     const { getByTestId, queryByTestId, rerender } = renderPanel();
     fireEvent.press(getByTestId(`my-day-${DAY_2}`));

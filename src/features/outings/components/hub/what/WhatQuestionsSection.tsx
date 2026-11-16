@@ -23,6 +23,7 @@ export const WhatQuestionsSection: React.FC<WhatQuestionsSectionProps> = ({ outi
       <InlineAlert
         tone="error"
         message="Impossible de charger les questions. Réessaie plus tard."
+        testID="what-questions-load-failed"
       />
     );
   }

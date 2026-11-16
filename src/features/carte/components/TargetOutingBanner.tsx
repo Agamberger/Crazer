@@ -2,20 +2,27 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppText, IconButton } from '@/shared/components';
 import { colors, radii, spacing } from '@/shared/constants/theme';
+import { OutingTargetKind } from '../types/carte';
 
 export interface TargetOutingBannerProps {
   /** Title of the outing that places are being added to. */
   outingTitle: string;
+  /** Places become steps (default) or activity proposals. */
+  kind?: OutingTargetKind;
   /** Leaves the "add to this outing" mode. */
   onClear: () => void;
 }
 
 /** Map banner shown while places are being added to a specific outing. */
-export const TargetOutingBanner: React.FC<TargetOutingBannerProps> = ({ outingTitle, onClear }) => (
+export const TargetOutingBanner: React.FC<TargetOutingBannerProps> = ({
+  outingTitle,
+  kind = 'step',
+  onClear,
+}) => (
   <View style={styles.targetBanner} testID="target-outing-banner">
     <View style={styles.targetBannerContent}>
       <AppText variant="caption" color="accent" weight="bold">
-        🎯 Ajout à la sortie
+        {kind === 'activity' ? '💡 Proposer une activité pour' : '🎯 Ajout à la sortie'}
       </AppText>
       <AppText variant="bodySmall" weight="semibold" numberOfLines={1}>
         {outingTitle}

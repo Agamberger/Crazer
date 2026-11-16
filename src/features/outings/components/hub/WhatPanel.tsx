@@ -1,6 +1,8 @@
 import React from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
 import { AppModal, SectionHeader } from '@/shared/components';
+import { useMapStore } from '@/features/carte/store/useMapStore';
 import { spacing } from '@/shared/constants/theme';
 import { OutingRow } from '@/shared/types';
 import { ActivityResult } from '../../types/activities';
@@ -23,8 +25,8 @@ export interface WhatPanelProps {
 }
 
 /**
- * « Quoi ? » panel of the hub: type and guided questions, activity votes, description and
- * status, steps of the outing.
+ * « Quoi ? » panel of the hub: type and guided questions, description and status, activity
+ * votes, steps of the outing.
  */
 export const WhatPanel: React.FC<WhatPanelProps> = ({
   visible,
@@ -36,6 +38,8 @@ export const WhatPanel: React.FC<WhatPanelProps> = ({
   onConvert,
   onOpenPlanning,
 }) => {
+  const router = useRouter();
+
   /** A screen pushed under a modal stays hidden: close the panel first. */
   const leave = (navigate: () => void) => {
     onClose();
@@ -54,16 +58,22 @@ export const WhatPanel: React.FC<WhatPanelProps> = ({
         <SectionHeader title="Type et questions" />
         <WhatQuestionsSection outingId={outing.id} />
 
+        <SectionHeader title="Détails" />
+        <WhatDetailsSection outing={outing} isOrganizer={isOrganizer} />
+
         <SectionHeader title="Activités" />
         <WhatActivitiesSection
           outingId={outing.id}
           userId={userId}
           onOpenTie={(day) => leave(() => onOpenTie(day))}
           onConvert={(result: ActivityResult) => leave(() => onConvert(result.activity.title))}
+          onSearchOnMap={() =>
+            leave(() => {
+              useMapStore.getState().setTargetOutingId(outing.id, 'activity');
+              router.push('/(tabs)/carte');
+            })
+          }
         />
-
-        <SectionHeader title="Détails" />
-        <WhatDetailsSection outing={outing} isOrganizer={isOrganizer} />
 
         <SectionHeader title="Programme" />
         <WhatStepsSection

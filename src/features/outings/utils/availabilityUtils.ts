@@ -45,15 +45,6 @@ export const buildStartDate = (day: DayKey, time: string): string => {
   return date.toISOString();
 };
 
-/** Default `scheduled_for` of the first step added while creating an outing: first selected day at the start of its slot (the outing itself stays undated). */
-export const getFirstStepDate = (
-  days: ReadonlyArray<DayKey>,
-  slots: Record<DayKey, TimeRange>,
-): string => {
-  const firstDay = [...days].sort()[0];
-  return buildStartDate(firstDay, slots[firstDay]?.start ?? '00:00');
-};
-
 /** Intersection of several time ranges, `null` when empty. */
 export const intersectTimeRanges = (ranges: ReadonlyArray<TimeRange>): TimeRange | null => {
   if (ranges.length === 0) return null;

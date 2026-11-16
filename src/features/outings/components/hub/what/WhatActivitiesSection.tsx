@@ -9,6 +9,7 @@ export interface WhatActivitiesSectionProps {
   userId: string | null;
   onOpenTie: (day: string | null) => void;
   onConvert: (result: ActivityResult) => void;
+  onSearchOnMap: () => void;
 }
 
 /** Activity proposals and live votes of the outing. */
@@ -17,6 +18,7 @@ export const WhatActivitiesSection: React.FC<WhatActivitiesSectionProps> = ({
   userId,
   onOpenTie,
   onConvert,
+  onSearchOnMap,
 }) => {
   const votes = useActivityVotes(outingId);
 
@@ -25,6 +27,7 @@ export const WhatActivitiesSection: React.FC<WhatActivitiesSectionProps> = ({
       <InlineAlert
         tone="error"
         message="Impossible de charger les propositions. Réessaie plus tard."
+        testID="what-activities-load-failed"
       />
     );
   }
@@ -36,6 +39,7 @@ export const WhatActivitiesSection: React.FC<WhatActivitiesSectionProps> = ({
       userId={userId}
       onOpenTie={onOpenTie}
       onConvert={onConvert}
+      onSearchOnMap={onSearchOnMap}
     />
   );
 };

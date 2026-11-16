@@ -14,7 +14,7 @@ import {
   ensurePlaceExists,
 } from '@/features/carte';
 import { useAuth } from '@/features/auth';
-import { useOutingsStore } from '@/features/outings';
+import { ProposalPlace, ProposePlaceActivityModal, useOutingsStore } from '@/features/outings';
 import { spacing } from '@/shared/constants/theme';
 import { toast } from '@/shared/store/useToastStore';
 
@@ -29,10 +29,12 @@ export default function CarteScreen() {
   const setCenterRegion = useMapStore((state) => state.setCenterRegion);
   const targetOutingId = useMapStore((state) => state.targetOutingId);
   const setTargetOutingId = useMapStore((state) => state.setTargetOutingId);
+  const targetKind = useMapStore((state) => state.targetKind);
   const outings = useOutingsStore((state) => state.outings);
 
   const [modalPlace, setModalPlace] = useState<PlaceItem | null>(null);
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
+  const [proposalPlace, setProposalPlace] = useState<ProposalPlace | null>(null);
 
   const { requestLocation, loadNearby, loadVisibleArea } = usePlaces();
   const isInitialized = React.useRef(false);
@@ -67,9 +69,27 @@ export default function CarteScreen() {
     });
   };
 
-  const handleAddToOuting = (place: PlaceItem) => {
+  /** In « proposer une activité » mode the place is saved first, then proposed with a day. */
+  const handleAddToOuting = async (place: PlaceItem) => {
+    if (targetOutingId && targetKind === 'activity') {
+      try {
+        const placeId = await ensurePlaceExists(place, user?.id);
+        setProposalPlace({ id: placeId, name: place.title });
+      } catch {
+        toast.error("Impossible d'enregistrer ce lieu.", { title: 'Erreur' });
+      }
+      return;
+    }
     setModalPlace(place);
     setIsAddModalVisible(true);
+  };
+
+  const handleActivityProposed = () => {
+    const outingId = targetOutingId;
+    setProposalPlace(null);
+    setTargetOutingId(null);
+    toast.success('Activité proposée.');
+    if (outingId) router.navigate({ pathname: '/outing/[id]', params: { id: outingId } });
   };
 
   /** « Nouvelle sortie » : le lieu est enregistré, puis l'assistant s'ouvre autour de lui. */
@@ -81,7 +101,7 @@ export default function CarteScreen() {
   const handleAddSuccess = () => {
     if (targetOutingId) {
       setTargetOutingId(null);
-      router.push('/(tabs)/sorties');
+      router.navigate({ pathname: '/outing/[id]', params: { id: targetOutingId } });
     }
   };
 
@@ -120,6 +140,7 @@ export default function CarteScreen() {
         {targetOuting && (
           <TargetOutingBanner
             outingTitle={targetOuting.title}
+            kind={targetKind}
             onClear={() => setTargetOutingId(null)}
           />
         )}
@@ -152,6 +173,13 @@ export default function CarteScreen() {
         }}
         onSuccess={handleAddSuccess}
         onCreateNewOuting={handleCreateOutingWithPlace}
+      />
+
+      <ProposePlaceActivityModal
+        outingId={proposalPlace ? targetOutingId : null}
+        place={proposalPlace}
+        onClose={() => setProposalPlace(null)}
+        onProposed={handleActivityProposed}
       />
     </View>
   );

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AppText, TextField } from '@/shared/components';
 
 export interface OutingHubTitleProps {
@@ -12,6 +12,7 @@ export interface OutingHubTitleProps {
 /** Name of the outing at the top of the hub, renamed in place by the organizer (saved on blur). */
 export const OutingHubTitle: React.FC<OutingHubTitleProps> = ({ title, editable, onRename }) => {
   const [value, setValue] = useState(title);
+  const savingTitle = useRef<string | null>(null);
 
   useEffect(() => setValue(title), [title]);
 
@@ -23,9 +24,13 @@ export const OutingHubTitle: React.FC<OutingHubTitleProps> = ({ title, editable,
     );
   }
 
+  /** Enter then blur both call it: a name already being saved is not sent twice. */
   const save = async () => {
-    if (value.trim() === title) return;
+    const next = value.trim();
+    if (next === title || next === savingTitle.current) return;
+    savingTitle.current = next;
     const saved = await onRename(value);
+    savingTitle.current = null;
     if (!saved) setValue(title);
   };
 
