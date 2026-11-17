@@ -1,5 +1,6 @@
 import { activityVotesService } from '../services/activityVotesService';
 import { useActivityVotesStore } from '../store/useActivityVotesStore';
+import { useOutingsStore } from '../store/useOutingsStore';
 
 jest.mock('@/shared/lib/supabase', () => ({ supabase: {} }));
 jest.mock('../services/activityVotesService', () => ({
@@ -10,9 +11,7 @@ jest.mock('../services/activityVotesService', () => ({
     deleteActivity: jest.fn(),
     castVote: jest.fn(),
     removeVote: jest.fn(),
-    chooseActivity: jest.fn(),
-    drawActivity: jest.fn(),
-    reopenActivities: jest.fn(),
+    placeActivity: jest.fn(),
   },
 }));
 
@@ -52,27 +51,49 @@ describe('useActivityVotesStore', () => {
     expect(service.castVote).not.toHaveBeenCalled();
   });
 
-  it('propose, retient, rouvre et supprime via le service', async () => {
+  it('propose et supprime via le service', async () => {
     const store = useActivityVotesStore.getState();
-    await store.proposeActivity({ outingId: 'o1', userId: 'alice', day: null, title: 'Ciné', note: null, placeId: null });
-    await store.chooseActivity('o1', 'a1');
-    await store.reopenActivities('o1', '2026-11-10');
+    await store.proposeActivity({
+      outingId: 'o1',
+      userId: 'alice',
+      title: 'Ciné',
+      note: null,
+      placeId: null,
+    });
     await store.deleteActivity('o1', 'a1');
     expect(service.proposeActivity).toHaveBeenCalled();
-    expect(service.chooseActivity).toHaveBeenCalledWith('a1');
-    expect(service.reopenActivities).toHaveBeenCalledWith('o1', '2026-11-10');
     expect(service.deleteActivity).toHaveBeenCalledWith('a1');
   });
 
-  it('le tirage renvoie le gagnant', async () => {
-    service.drawActivity.mockResolvedValue('a2');
-    await expect(useActivityVotesStore.getState().drawActivity('o1', null)).resolves.toBe('a2');
+  it('place une activité puis recharge la pool et les étapes', async () => {
+    const fetchPlannedOutings = jest.fn();
+    useOutingsStore.setState({ fetchPlannedOutings });
+    service.placeActivity.mockResolvedValue('step-1');
+
+    await expect(
+      useActivityVotesStore.getState().placeActivity({
+        outingId: 'o1',
+        activityId: 'a1',
+        scheduledFor: '2026-11-20T17:00:00.000Z',
+        durationMin: 60,
+      }),
+    ).resolves.toBe('step-1');
+    expect(service.placeActivity).toHaveBeenCalledWith('a1', '2026-11-20T17:00:00.000Z', 60);
+    expect(service.fetchActivities).toHaveBeenCalledWith('o1');
+    expect(fetchPlannedOutings).toHaveBeenCalledWith('o1');
   });
 
   it('relance l’erreur et garde son message quand une action échoue', async () => {
-    service.chooseActivity.mockRejectedValue(new Error('only the organizer'));
-    await expect(useActivityVotesStore.getState().chooseActivity('o1', 'a1')).rejects.toThrow();
-    expect(useActivityVotesStore.getState().error).toBe('only the organizer');
+    service.placeActivity.mockRejectedValue(new Error('activity already placed'));
+    await expect(
+      useActivityVotesStore.getState().placeActivity({
+        outingId: 'o1',
+        activityId: 'a1',
+        scheduledFor: 't',
+        durationMin: 60,
+      }),
+    ).rejects.toThrow();
+    expect(useActivityVotesStore.getState().error).toBe('activity already placed');
     expect(useActivityVotesStore.getState().isSaving).toBe(false);
     expect(service.fetchActivities).not.toHaveBeenCalled();
   });

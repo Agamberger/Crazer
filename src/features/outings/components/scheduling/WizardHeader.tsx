@@ -13,7 +13,7 @@ export interface WizardHeaderProps {
   onClose: () => void;
 }
 
-/** Header of a multi-step flow: back / close, title and « Étape x/n ». */
+/** Header of a flow: back / close, title and « Étape x/n » (hidden for a single step). */
 export const WizardHeader: React.FC<WizardHeaderProps> = ({
   title,
   stepIndex,
@@ -33,9 +33,11 @@ export const WizardHeader: React.FC<WizardHeaderProps> = ({
       />
       <View style={styles.titles}>
         <AppText variant="h3">{title}</AppText>
-        <AppText variant="caption" color="secondary" testID="wizard-progress">
-          Étape {stepIndex + 1}/{stepCount}
-        </AppText>
+        {stepCount > 1 ? (
+          <AppText variant="caption" color="secondary" testID="wizard-progress">
+            Étape {stepIndex + 1}/{stepCount}
+          </AppText>
+        ) : null}
       </View>
     </View>
   );

@@ -1,0 +1,28 @@
+import { OutingType } from '@/shared/types';
+import { DayKey } from './scheduling';
+
+/** Sections of the outing hub, each opened as a full-page panel. */
+export type HubSection = 'when' | 'who' | 'what';
+
+/** What the « Quand ? » row shows. */
+export type WhenSummary =
+  | { kind: 'date'; label: string }
+  | { kind: 'days'; days: DayKey[]; daysWithCommonSlot: number }
+  | { kind: 'empty' };
+
+/** What the « Quoi ? » row shows. */
+export interface WhatSummary {
+  outingType: OutingType | null;
+  answeredCount: number;
+  attendingCount: number;
+  /** Activities of the pool not placed in the programme yet. */
+  poolCount: number;
+  /** Titles of the activities already placed in the programme. */
+  placedTitles: string[];
+}
+
+/** Result of the last action of a panel, shown inside it (a toast would be hidden by the modal). */
+export interface PanelFeedback {
+  tone: 'success' | 'error';
+  message: string;
+}

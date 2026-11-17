@@ -1,7 +1,6 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
 import TabLayout from '../_layout';
-import { useOutingsStore } from '@/features/outings';
 
 describe('TabLayout Navbar Icons', () => {
   const tabs = ['index', 'sorties', 'carte', 'profil'];
@@ -15,20 +14,6 @@ describe('TabLayout Navbar Icons', () => {
       expect(options).toBeDefined();
       expect(typeof options.tabBarIcon).toBe('function');
     });
-  });
-
-  test('doit réinitialiser la sélection de sortie au clic sur la tab sorties', () => {
-    useOutingsStore.setState({ selectedOutingId: 'out-123' });
-
-    const { getByTestId } = render(<TabLayout />);
-    const sortiesScreen = getByTestId('tab-screen-sorties');
-    const listeners = sortiesScreen.props.listeners;
-
-    expect(listeners).toBeDefined();
-    expect(typeof listeners.tabPress).toBe('function');
-
-    listeners.tabPress();
-    expect(useOutingsStore.getState().selectedOutingId).toBeNull();
   });
 
   test("affiche l'accueil en premier, sans onglet Activités", () => {

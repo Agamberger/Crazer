@@ -1,48 +1,35 @@
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Button, ChipGroup, TextField } from '@/shared/components';
+import { AppText, Button, TextField } from '@/shared/components';
 import { spacing } from '@/shared/constants/theme';
-import { PickedPlace } from '../../types/activityPlaces';
-import { DayKey } from '../../types/scheduling';
+import { ProposeActivityInput } from '../../hooks/useActivityVotes';
 import { ACTIVITY_NOTE_MAX_LENGTH, ACTIVITY_TITLE_MAX_LENGTH } from '../../utils/activityUtils';
-import { formatDayLabel } from '../../utils/availabilityUtils';
-import { ActivityPlacePicker } from './ActivityPlacePicker';
+
+/** A saved place the proposal is about (picked on the map). */
+export interface ProposalPlace {
+  id: string;
+  name: string;
+}
 
 export interface ProposeActivityFormProps {
-  days: ReadonlyArray<DayKey>;
-  userId: string | null;
+  /** Place picked on the map: prefills the title and is linked to the proposal. */
+  place?: ProposalPlace | null;
   /** Resolves `true` when the activity was saved (the form is then cleared). */
-  onSubmit: (input: {
-    day: DayKey | null;
-    title: string;
-    note: string;
-    placeId: string | null;
-  }) => Promise<boolean>;
+  onSubmit: (input: ProposeActivityInput) => Promise<boolean>;
   isSaving: boolean;
 }
 
-const ANY_DAY = 'any';
-
-/** « Proposer une activité » : title, optional note and the day it is proposed for. */
+/** « Proposer une activité » : title and optional note of an activity added to the pool. */
 export const ProposeActivityForm: React.FC<ProposeActivityFormProps> = ({
-  days,
-  userId,
+  place = null,
   onSubmit,
   isSaving,
 }) => {
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState(place?.name ?? '');
   const [note, setNote] = useState('');
-  const [place, setPlace] = useState<PickedPlace | null>(null);
-  const [dayChoice, setDayChoice] = useState<string>(ANY_DAY);
-
-  const dayOptions = [
-    { value: ANY_DAY, label: 'Peu importe' },
-    ...days.map((day) => ({ value: day, label: formatDayLabel(day) })),
-  ];
 
   const submit = async () => {
     const saved = await onSubmit({
-      day: dayChoice === ANY_DAY ? null : dayChoice,
       title,
       note,
       placeId: place?.id ?? null,
@@ -50,26 +37,24 @@ export const ProposeActivityForm: React.FC<ProposeActivityFormProps> = ({
     if (saved) {
       setTitle('');
       setNote('');
-      setPlace(null);
     }
-  };
-
-  const pickPlace = (picked: PickedPlace | null) => {
-    setPlace(picked);
-    if (picked && title.trim().length === 0) setTitle(picked.name);
   };
 
   return (
     <View style={styles.container} testID="propose-activity-form">
+      {place ? (
+        <AppText color="secondary" testID="propose-activity-place">
+          📍 {place.name}
+        </AppText>
+      ) : null}
       <TextField
-        label="Proposer une activité"
+        label="Activité"
         placeholder="Bowling, resto, balade..."
         value={title}
         onChangeText={setTitle}
         maxLength={ACTIVITY_TITLE_MAX_LENGTH}
         testID="input-activity-title"
       />
-      <ActivityPlacePicker userId={userId} value={place} onChange={pickPlace} />
       <TextField
         placeholder="Un détail ? (facultatif)"
         value={note}
@@ -77,21 +62,12 @@ export const ProposeActivityForm: React.FC<ProposeActivityFormProps> = ({
         maxLength={ACTIVITY_NOTE_MAX_LENGTH}
         testID="input-activity-note"
       />
-      {days.length > 0 ? (
-        <ChipGroup
-          label="Pour quel jour ?"
-          options={dayOptions}
-          value={dayChoice}
-          onChange={setDayChoice}
-          testID="chips-activity-day"
-        />
-      ) : null}
       <Button
         title="Proposer"
         fullWidth
         disabled={title.trim().length === 0}
         loading={isSaving}
-        onPress={submit}
+        onPress={() => void submit()}
         testID="btn-propose-activity"
       />
     </View>

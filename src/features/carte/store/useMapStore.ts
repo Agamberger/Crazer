@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import { registerUserScopedStore } from '@/shared/store/sessionReset';
-import { PlaceItem, PlaceCategoryFilter, MapStyleMode, MapRegion } from '../types/carte';
+import {
+  PlaceItem,
+  PlaceCategoryFilter,
+  MapStyleMode,
+  MapRegion,
+  OutingTargetKind,
+} from '../types/carte';
 
 // OpenStreetMap styles (Raster / Vector styles using standard Osm / CartoDB basemaps)
 export const MAP_STYLE_URLS: Record<MapStyleMode, string> = {
@@ -28,6 +34,8 @@ interface MapState {
   selectedPlaceId: string | null;
   selectedPoiId: string | null;
   targetOutingId: string | null;
+  /** What a place picked for `targetOutingId` becomes (a step by default). */
+  targetKind: OutingTargetKind;
   centerRegion: MapRegion;
   /** Incrémenté à chaque `setCenterRegion` : la carte ne se recentre que sur une nouvelle demande. */
   centerVersion: number;
@@ -42,7 +50,7 @@ interface MapState {
   toggleSavedWaypoint: (place: PlaceItem) => void;
   setSelectedPlaceId: (id: string | null) => void;
   setSelectedPoiId: (id: string | null) => void;
-  setTargetOutingId: (id: string | null) => void;
+  setTargetOutingId: (id: string | null, kind?: OutingTargetKind) => void;
   setCenterRegion: (region: Partial<MapRegion>) => void;
   setUserLocation: (location: { latitude: number; longitude: number } | null) => void;
   setIsLoading: (isLoading: boolean) => void;
@@ -62,6 +70,7 @@ export const useMapStore = create<MapState>((set, get) => ({
   selectedPlaceId: null,
   selectedPoiId: null,
   targetOutingId: null,
+  targetKind: 'step',
   centerRegion: INITIAL_REGION,
   centerVersion: 0,
   userLocation: null,
@@ -93,7 +102,8 @@ export const useMapStore = create<MapState>((set, get) => ({
   setSelectedPoiId: (id: string | null) =>
     set({ selectedPlaceId: id, selectedPoiId: id }),
 
-  setTargetOutingId: (id: string | null) => set({ targetOutingId: id }),
+  setTargetOutingId: (id: string | null, kind: OutingTargetKind = 'step') =>
+    set({ targetOutingId: id, targetKind: kind }),
 
   setCenterRegion: (region: Partial<MapRegion>) =>
     set((state) => ({

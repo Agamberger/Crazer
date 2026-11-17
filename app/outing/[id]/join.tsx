@@ -8,7 +8,7 @@ export default function JoinOutingRoute() {
   return (
     <JoinOutingFlow
       outingId={id}
-      onJoined={() => router.replace({ pathname: '/outing/[id]/recap', params: { id } })}
+      onJoined={() => router.replace({ pathname: '/outing/[id]', params: { id } })}
       onDeclined={() => router.back()}
       onClose={() => router.back()}
     />

@@ -34,15 +34,28 @@ const builder = (result: QueryResult): QueryBuilder => {
     single: jest.fn(),
     then: (onFulfilled, onRejected) => Promise.resolve(result).then(onFulfilled, onRejected),
   };
-  [chain.select, chain.insert, chain.update, chain.delete, chain.eq, chain.order, chain.single].forEach(
-    (fn) => fn.mockReturnValue(chain),
-  );
+  [
+    chain.select,
+    chain.insert,
+    chain.update,
+    chain.delete,
+    chain.eq,
+    chain.order,
+    chain.single,
+  ].forEach((fn) => fn.mockReturnValue(chain));
   return chain;
 };
 
 const ACTIVITY_ROW = {
-  id: 'a1', outing_id: 'o1', day: '2026-11-10', title: 'Bowling', note: null,
-  proposed_by: 'alice', place_id: null, places: null, chosen: false, created_at: 't', updated_at: 't',
+  id: 'a1',
+  outing_id: 'o1',
+  title: 'Bowling',
+  note: null,
+  proposed_by: 'alice',
+  place_id: null,
+  places: null,
+  created_at: 't',
+  updated_at: 't',
 };
 
 describe('activityVotesService', () => {
@@ -51,8 +64,15 @@ describe('activityVotesService', () => {
   it('fetchActivities convertit les lignes', async () => {
     from.mockReturnValue(builder({ data: [ACTIVITY_ROW], error: null }));
     await expect(activityVotesService.fetchActivities('o1')).resolves.toEqual([
-      { id: 'a1', outingId: 'o1', day: '2026-11-10', title: 'Bowling', note: null,
-        proposedBy: 'alice', place: null, chosen: false, createdAt: 't' },
+      {
+        id: 'a1',
+        outingId: 'o1',
+        title: 'Bowling',
+        note: null,
+        proposedBy: 'alice',
+        place: null,
+        createdAt: 't',
+      },
     ]);
   });
 
@@ -71,10 +91,18 @@ describe('activityVotesService', () => {
     const chain = builder({ data: ACTIVITY_ROW, error: null });
     from.mockReturnValue(chain);
     await activityVotesService.proposeActivity({
-      outingId: 'o1', userId: 'alice', day: null, title: '  Bowling ', note: '  ', placeId: 'p1',
+      outingId: 'o1',
+      userId: 'alice',
+      title: '  Bowling ',
+      note: '  ',
+      placeId: 'p1',
     });
     expect(chain.insert).toHaveBeenCalledWith({
-      outing_id: 'o1', proposed_by: 'alice', day: null, title: 'Bowling', note: null, place_id: 'p1',
+      outing_id: 'o1',
+      proposed_by: 'alice',
+      title: 'Bowling',
+      note: null,
+      place_id: 'p1',
     });
   });
 
@@ -92,7 +120,10 @@ describe('activityVotesService', () => {
     from.mockReturnValueOnce(update).mockReturnValueOnce(insert);
     await activityVotesService.castVote('o1', 'a1', 'bob', 'maybe');
     expect(insert.insert).toHaveBeenCalledWith({
-      outing_id: 'o1', activity_id: 'a1', user_id: 'bob', vote: 'maybe',
+      outing_id: 'o1',
+      activity_id: 'a1',
+      user_id: 'bob',
+      vote: 'maybe',
     });
   });
 
@@ -101,14 +132,18 @@ describe('activityVotesService', () => {
       .mockReturnValueOnce(builder({ data: [], error: null }))
       .mockReturnValueOnce(builder({ data: null, error: { message: 'dup', code: '23505' } }))
       .mockReturnValueOnce(builder({ data: [{ id: 'v1' }], error: null }));
-    await expect(activityVotesService.castVote('o1', 'a1', 'bob', 'maybe')).resolves.toBeUndefined();
+    await expect(
+      activityVotesService.castVote('o1', 'a1', 'bob', 'maybe'),
+    ).resolves.toBeUndefined();
   });
 
   it('castVote échoue si l’insertion est refusée', async () => {
     from
       .mockReturnValueOnce(builder({ data: [], error: null }))
       .mockReturnValueOnce(builder({ data: null, error: { message: 'denied', code: '42501' } }));
-    await expect(activityVotesService.castVote('o1', 'a1', 'bob', 'maybe')).rejects.toThrow('denied');
+    await expect(activityVotesService.castVote('o1', 'a1', 'bob', 'maybe')).rejects.toThrow(
+      'denied',
+    );
   });
 
   it('removeVote supprime le vote de l’utilisateur', async () => {
@@ -119,19 +154,23 @@ describe('activityVotesService', () => {
     expect(chain.eq).toHaveBeenCalledWith('user_id', 'bob');
   });
 
-  it('appelle les RPC de l’organisateur avec les bons paramètres', async () => {
-    rpc.mockResolvedValue({ data: 'a2', error: null });
-    await activityVotesService.chooseActivity('a1');
-    expect(rpc).toHaveBeenCalledWith('choose_outing_activity', { p_activity_id: 'a1' });
-    await expect(activityVotesService.drawActivity('o1', '2026-11-10')).resolves.toBe('a2');
-    expect(rpc).toHaveBeenCalledWith('draw_outing_activity', { p_outing_id: 'o1', p_day: '2026-11-10' });
-    await activityVotesService.reopenActivities('o1', null);
-    expect(rpc).toHaveBeenCalledWith('reopen_outing_activities', { p_outing_id: 'o1', p_day: undefined });
+  it('place une activité de la pool dans le programme', async () => {
+    rpc.mockResolvedValue({ data: 'step-1', error: null });
+    await expect(
+      activityVotesService.placeActivity('a1', '2026-11-20T17:00:00.000Z', 60),
+    ).resolves.toBe('step-1');
+    expect(rpc).toHaveBeenCalledWith('place_outing_activity', {
+      p_activity_id: 'a1',
+      p_scheduled_for: '2026-11-20T17:00:00.000Z',
+      p_duration_min: 60,
+    });
   });
 
   it('remonte l’erreur d’une RPC', async () => {
-    rpc.mockResolvedValue({ data: null, error: { message: 'only the organizer' } });
-    await expect(activityVotesService.chooseActivity('a1')).rejects.toThrow('only the organizer');
+    rpc.mockResolvedValue({ data: null, error: { message: 'activity already placed' } });
+    await expect(activityVotesService.placeActivity('a1', 't', 60)).rejects.toThrow(
+      'activity already placed',
+    );
   });
 
   it('subscribeToActivities écoute les deux tables et se désabonne', () => {

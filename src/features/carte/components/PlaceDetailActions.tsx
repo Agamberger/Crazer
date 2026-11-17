@@ -2,10 +2,13 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Button } from '@/shared/components';
 import { spacing } from '@/shared/constants/theme';
+import { OutingTargetKind } from '../types/carte';
 
 export interface PlaceDetailActionsProps {
   /** A specific outing is targeted from the map: the add button names "la sortie". */
   isTargetMode: boolean;
+  /** In target mode, the place becomes a step (default) or an activity proposal. */
+  targetKind?: OutingTargetKind;
   onGetDirections: () => void;
   onAddToOuting: () => void;
 }
@@ -13,6 +16,7 @@ export interface PlaceDetailActionsProps {
 /** "Itinéraire" and "Ajouter à une sortie" buttons at the bottom of `PlaceDetailCard`. */
 export const PlaceDetailActions: React.FC<PlaceDetailActionsProps> = ({
   isTargetMode,
+  targetKind = 'step',
   onGetDirections,
   onAddToOuting,
 }) => (
@@ -26,11 +30,21 @@ export const PlaceDetailActions: React.FC<PlaceDetailActionsProps> = ({
       style={styles.actionButton}
     />
     <Button
-      title={isTargetMode ? '+ Ajouter à la sortie' : '+ Ajouter à une sortie'}
+      title={
+        !isTargetMode
+          ? '+ Ajouter à une sortie'
+          : targetKind === 'activity'
+            ? '+ Proposer comme activité'
+            : '+ Ajouter à la sortie'
+      }
       size="sm"
       onPress={onAddToOuting}
       accessibilityLabel={
-        isTargetMode ? 'Ajouter ce lieu à la sortie' : 'Ajouter ce lieu à une sortie'
+        !isTargetMode
+          ? 'Ajouter ce lieu à une sortie'
+          : targetKind === 'activity'
+            ? 'Proposer ce lieu comme activité de la sortie'
+            : 'Ajouter ce lieu à la sortie'
       }
       style={styles.actionButton}
       testID="add-to-outing-button"

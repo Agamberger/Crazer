@@ -31,8 +31,6 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const outings = useVisibleOutings();
   const fetchOutings = useOutingsStore((state) => state.fetchOutings);
-  const selectOuting = useOutingsStore((state) => state.selectOuting);
-  const selectPlannedOuting = useOutingsStore((state) => state.selectPlannedOuting);
   const invitations = useOutingSchedulingStore((state) => state.invitations);
   const fetchInvitations = useOutingSchedulingStore((state) => state.fetchInvitations);
   const { pendingRequests, fetchFriendsList } = useFriends();
@@ -56,10 +54,8 @@ export default function HomeScreen() {
   );
   const nextOutingMembers = useOutingMembers(nextOuting);
 
-  const openOutings = (outing: OutingRow | null) => {
-    selectPlannedOuting(null);
-    selectOuting(outing?.id ?? null);
-    router.push('/(tabs)/sorties');
+  const openOuting = (outing: OutingRow) => {
+    router.push({ pathname: '/outing/[id]', params: { id: outing.id } });
   };
 
   const handleCreateOuting = () => {
@@ -111,13 +107,13 @@ export default function HomeScreen() {
       <NextOutingSection
         outing={nextOuting}
         members={nextOutingMembers}
-        onOpenOuting={openOutings}
-        onSeeAll={() => openOutings(null)}
+        onOpenOuting={openOuting}
+        onSeeAll={() => router.push('/(tabs)/sorties')}
         onCreateOuting={handleCreateOuting}
       />
       <UpcomingOutingsSection
         outings={upcomingOutings}
-        onOpenOuting={openOutings}
+        onOpenOuting={openOuting}
         onCreateOuting={handleCreateOuting}
       />
       <QuickActions actions={actions} />

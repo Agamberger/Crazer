@@ -255,3 +255,9 @@ export type PoiCategory = PlaceCategoryFilter;
 export const placeToPoiItem = placeToPlaceItem;
 export const poiItemToCreatePlaceDto = placeItemToCreatePlaceDto;
 export { PlaceSearchResult };
+
+/**
+ * What a place picked on the map becomes for the targeted outing:
+ * a step of its programme, or an activity proposal to vote on.
+ */
+export type OutingTargetKind = 'step' | 'activity';

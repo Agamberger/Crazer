@@ -12,9 +12,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radii, spacing } from '@/shared/constants/theme';
 import { AppModalHeader } from './AppModalHeader';
+import { SlideOverModal } from './SlideOverModal';
 import { IconName } from './types';
 
-export type AppModalVariant = 'center' | 'sheet' | 'fullScreen';
+export type AppModalVariant = 'center' | 'sheet' | 'fullScreen' | 'slideOver';
 
 export interface AppModalProps {
   visible: boolean;
@@ -23,14 +24,15 @@ export interface AppModalProps {
   children: React.ReactNode;
   /**
    * `center` : boîte de dialogue ; `sheet` : panneau qui monte du bas ;
-   * `fullScreen` : écran complet (safe area gérée), pour les parcours longs.
+   * `fullScreen` : écran complet (safe area gérée), pour les parcours longs ;
+   * `slideOver` : page complète qui arrive de la droite (détail d'une section, retour ←).
    */
   variant?: AppModalVariant;
   /** Fermer en touchant l'arrière-plan (par défaut : true, sans effet en `fullScreen`). */
   dismissOnBackdrop?: boolean;
   /** Boutons d'action affichés en bas (ex : Annuler / Confirmer). */
   footer?: React.ReactNode;
-  /** Icône du bouton de fermeture (par défaut : `close`, ex : `arrow-back`). */
+  /** Icône du bouton de fermeture (par défaut : `close`, `arrow-back` en `slideOver`). */
   closeIcon?: IconName;
   closeAccessibilityLabel?: string;
   /** testID du bouton de fermeture (par défaut : `${testID}-close`). */
@@ -47,28 +49,39 @@ export const AppModal: React.FC<AppModalProps> = ({
   variant = 'center',
   dismissOnBackdrop = true,
   footer,
-  closeIcon = 'close',
-  closeAccessibilityLabel = 'Fermer',
+  closeIcon,
+  closeAccessibilityLabel,
   closeButtonTestID,
   contentStyle,
   testID = 'app-modal',
 }) => {
   const insets = useSafeAreaInsets();
   const isSheet = variant === 'sheet';
-  const isFullScreen = variant === 'fullScreen';
+  const isSlideOver = variant === 'slideOver';
+  const isFullScreen = variant === 'fullScreen' || isSlideOver;
 
   const header = (
     <AppModalHeader
       title={title}
       isFullScreen={isFullScreen}
       onClose={onClose}
-      closeIcon={closeIcon}
-      closeAccessibilityLabel={closeAccessibilityLabel}
+      closeIcon={closeIcon ?? (isSlideOver ? 'arrow-back' : 'close')}
+      closeAccessibilityLabel={closeAccessibilityLabel ?? (isSlideOver ? 'Retour' : 'Fermer')}
       closeButtonTestID={closeButtonTestID ?? `${testID}-close`}
     />
   );
 
   const footerNode = footer ? <View style={styles.footer}>{footer}</View> : null;
+
+  if (isSlideOver) {
+    return (
+      <SlideOverModal visible={visible} onClose={onClose} testID={testID}>
+        {header}
+        <View style={[styles.fullScreenBody, contentStyle]}>{children}</View>
+        {footerNode}
+      </SlideOverModal>
+    );
+  }
 
   if (isFullScreen) {
     return (

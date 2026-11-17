@@ -45,15 +45,6 @@ export const buildStartDate = (day: DayKey, time: string): string => {
   return date.toISOString();
 };
 
-/** Default `scheduled_for` of the first step added while creating an outing: first selected day at the start of its slot (the outing itself stays undated). */
-export const getFirstStepDate = (
-  days: ReadonlyArray<DayKey>,
-  slots: Record<DayKey, TimeRange>,
-): string => {
-  const firstDay = [...days].sort()[0];
-  return buildStartDate(firstDay, slots[firstDay]?.start ?? '00:00');
-};
-
 /** Intersection of several time ranges, `null` when empty. */
 export const intersectTimeRanges = (ranges: ReadonlyArray<TimeRange>): TimeRange | null => {
   if (ranges.length === 0) return null;
@@ -71,6 +62,34 @@ export const slotsToPayload = (
     .sort()
     .filter((day) => slots[day] !== undefined)
     .map((day) => ({ day, start: slots[day].start, end: slots[day].end }));
+
+/**
+ * Slots of one member, per day.
+ * @param availabilities slots of every member of the outing.
+ * @param userId the member.
+ * @returns the member's slot of each day they are available.
+ */
+export const memberSlotsByDay = (
+  availabilities: ReadonlyArray<MemberAvailability>,
+  userId: string,
+): Record<DayKey, TimeRange> =>
+  Object.fromEntries(
+    availabilities
+      .filter((slot) => slot.userId === userId)
+      .map((slot) => [slot.day, { start: slot.start, end: slot.end }]),
+  );
+
+/** Same days (order ignored). */
+export const haveSameDays = (a: ReadonlyArray<DayKey>, b: ReadonlyArray<DayKey>): boolean =>
+  a.length === b.length && [...a].sort().join() === [...b].sort().join();
+
+/** Same slot for each day of both records. */
+export const haveSameSlots = (
+  a: Record<DayKey, TimeRange>,
+  b: Record<DayKey, TimeRange>,
+): boolean =>
+  haveSameDays(Object.keys(a), Object.keys(b)) &&
+  Object.keys(a).every((day) => a[day].start === b[day].start && a[day].end === b[day].end);
 
 /** Members who come to the outing (accepted or « peut-être »). */
 export const attendingMembers = (members: ReadonlyArray<OutingMember>): OutingMember[] =>

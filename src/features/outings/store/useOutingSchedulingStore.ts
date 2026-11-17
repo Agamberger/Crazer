@@ -2,7 +2,13 @@ import { create } from 'zustand';
 import { bindSetToSession, registerUserScopedStore } from '@/shared/store/sessionReset';
 import { OutingRow, ParticipantStatus } from '@/shared/types';
 import { outingSchedulingService } from '../services/outingSchedulingService';
-import { AvailabilitySlot, OutingDraft, OutingInvitation, OutingScheduling } from '../types/scheduling';
+import {
+  AvailabilitySlot,
+  DayKey,
+  OutingDraft,
+  OutingInvitation,
+  OutingScheduling,
+} from '../types/scheduling';
 import { slotsToPayload } from '../utils/availabilityUtils';
 import { useOutingsStore } from './useOutingsStore';
 
@@ -24,6 +30,21 @@ interface OutingSchedulingState {
   ) => Promise<OutingScheduling | null>;
   /** Creates the outing from the wizard draft. Throws on failure; returns the new outing id. */
   createOutingWithInvites: (draft: OutingDraft) => Promise<string>;
+  /**
+   * Invites friends to an existing outing (organizer) and refreshes its members.
+   * Throws on failure; resolves with the number of newly invited friends.
+   */
+  inviteFriends: (
+    outing: Pick<OutingRow, 'id' | 'created_by'>,
+    inviteeIds: string[],
+  ) => Promise<number>;
+  /** Replaces the candidate days (organizer) and refreshes the scheduling. Throws on failure. */
+  saveDays: (outing: Pick<OutingRow, 'id' | 'created_by'>, days: DayKey[]) => Promise<void>;
+  /** Replaces the current attendee's slots and refreshes the scheduling. Throws on failure. */
+  saveMySlots: (
+    outing: Pick<OutingRow, 'id' | 'created_by'>,
+    slots: AvailabilitySlot[],
+  ) => Promise<void>;
   /** Answers an invitation. Throws on failure. */
   respondToInvitation: (
     outingId: string,
@@ -37,7 +58,25 @@ const withoutId = (ids: string[], id: string): string[] => ids.filter((v) => v !
 const errorMessage = (err: unknown, fallback: string): string =>
   err instanceof Error ? err.message : fallback;
 
-export const useOutingSchedulingStore = create<OutingSchedulingState>((set) => ({
+/** Runs a scheduling change, then reloads the outing's scheduling; keeps the error on failure. */
+const mutateScheduling = async (
+  outing: Pick<OutingRow, 'id' | 'created_by'>,
+  fallback: string,
+  action: () => Promise<void>,
+): Promise<void> => {
+  const setLive = bindSetToSession(useOutingSchedulingStore.setState);
+  setLive({ isSubmitting: true, error: null });
+  try {
+    await action();
+    await useOutingSchedulingStore.getState().fetchScheduling(outing);
+    setLive({ isSubmitting: false });
+  } catch (err: unknown) {
+    setLive({ error: errorMessage(err, fallback), isSubmitting: false });
+    throw err;
+  }
+};
+
+export const useOutingSchedulingStore = create<OutingSchedulingState>((set, get) => ({
   invitations: [],
   nonAttendingOutingIds: [],
   isLoadingInvitations: false,
@@ -113,6 +152,33 @@ export const useOutingSchedulingStore = create<OutingSchedulingState>((set) => (
       throw err;
     }
   },
+
+  inviteFriends: async (outing, inviteeIds) => {
+    const setLive = bindSetToSession(set);
+    setLive({ isSubmitting: true, error: null });
+    try {
+      const invitedCount = await outingSchedulingService.inviteToOuting(outing.id, inviteeIds);
+      await get().fetchScheduling(outing);
+      setLive({ isSubmitting: false });
+      return invitedCount;
+    } catch (err: unknown) {
+      setLive({
+        error: errorMessage(err, 'Erreur lors de l’envoi des invitations'),
+        isSubmitting: false,
+      });
+      throw err;
+    }
+  },
+
+  saveDays: (outing, days) =>
+    mutateScheduling(outing, 'Erreur lors de l’enregistrement des jours', () =>
+      outingSchedulingService.setOutingDays(outing.id, [...days].sort()),
+    ),
+
+  saveMySlots: (outing, slots) =>
+    mutateScheduling(outing, 'Erreur lors de l’enregistrement des dispos', () =>
+      outingSchedulingService.setMySlots(outing.id, slots),
+    ),
 
   respondToInvitation: async (outingId, response, slots) => {
     const setLive = bindSetToSession(set);

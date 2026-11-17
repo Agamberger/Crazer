@@ -32,6 +32,7 @@ export const PlaceDetailCard: React.FC<PlaceDetailCardProps> = ({
   const savedWaypoints = useMapStore((state) => state.savedWaypoints);
   const toggleSavedWaypoint = useMapStore((state) => state.toggleSavedWaypoint);
   const targetOutingId = useMapStore((state) => state.targetOutingId);
+  const targetKind = useMapStore((state) => state.targetKind);
   const { animatedHeight, isExpanded, toggleExpand, panHandlers } = usePlaceSheetGesture(
     place.id,
     expandAnim,
@@ -121,6 +122,7 @@ export const PlaceDetailCard: React.FC<PlaceDetailCardProps> = ({
 
         <PlaceDetailActions
           isTargetMode={isTargetMode}
+          targetKind={targetKind}
           onGetDirections={() => onGetDirections?.(place)}
           onAddToOuting={() => onAddToOuting?.(place)}
         />

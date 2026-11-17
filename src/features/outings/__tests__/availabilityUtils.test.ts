@@ -6,8 +6,10 @@ import {
   dayKeyToDate,
   DEFAULT_TIME_RANGE,
   formatDayLabel,
-  getFirstStepDate,
+  haveSameDays,
+  haveSameSlots,
   intersectTimeRanges,
+  memberSlotsByDay,
   normalizeTime,
   slotsToPayload,
   syncSlotsWithDays,
@@ -123,16 +125,6 @@ describe('availabilityUtils', () => {
     });
   });
 
-  it('la date de début d’une sortie est le premier jour au début de son créneau', () => {
-    const slots = {
-      '2026-11-11': { start: '18:00', end: '23:00' },
-      '2026-11-10': { start: '12:30', end: '21:00' },
-    };
-    expect(getFirstStepDate(['2026-11-11', '2026-11-10'], slots)).toBe(
-      buildStartDate('2026-11-10', '12:30'),
-    );
-  });
-
   it('compte les réponses en attente', () => {
     expect(countPendingResponses([member('a', 'invited'), member('b'), member('c', 'invited')])).toBe(2);
   });
@@ -154,5 +146,26 @@ describe('availabilityUtils', () => {
       '2026-11-11': { start: '12:00', end: '13:00' },
       '2026-11-12': DEFAULT_TIME_RANGE,
     });
+  });
+
+  it('extrait les créneaux d’un membre par jour', () => {
+    expect(
+      memberSlotsByDay(
+        [slot('maceo', 'd1', '18:00', '23:00'), slot('lea', 'd1', '19:00', '22:00')],
+        'maceo',
+      ),
+    ).toEqual({ d1: { start: '18:00', end: '23:00' } });
+  });
+
+  it('compare des jours sans tenir compte de l’ordre', () => {
+    expect(haveSameDays(['d2', 'd1'], ['d1', 'd2'])).toBe(true);
+    expect(haveSameDays(['d1'], ['d1', 'd2'])).toBe(false);
+  });
+
+  it('compare des créneaux jour par jour', () => {
+    const a = { d1: { start: '18:00', end: '23:00' } };
+    expect(haveSameSlots(a, { d1: { start: '18:00', end: '23:00' } })).toBe(true);
+    expect(haveSameSlots(a, { d1: { start: '19:00', end: '23:00' } })).toBe(false);
+    expect(haveSameSlots(a, {})).toBe(false);
   });
 });

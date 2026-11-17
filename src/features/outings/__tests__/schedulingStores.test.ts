@@ -1,6 +1,5 @@
 import { resetUserScopedStores } from '@/shared/store/sessionReset';
 import { outingSchedulingService } from '../services/outingSchedulingService';
-import { useOutingCreationStore } from '../store/useOutingCreationStore';
 import { useOutingSchedulingStore } from '../store/useOutingSchedulingStore';
 import { useOutingsStore } from '../store/useOutingsStore';
 import { DEFAULT_TIME_RANGE } from '../utils/availabilityUtils';
@@ -10,6 +9,9 @@ jest.mock('../services/outingSchedulingService', () => ({
   outingSchedulingService: {
     createOutingWithInvites: jest.fn(),
     respondToInvitation: jest.fn(),
+    inviteToOuting: jest.fn(),
+    setOutingDays: jest.fn(),
+    setMySlots: jest.fn(),
     fetchOutingDays: jest.fn(),
     fetchAvailabilities: jest.fn(),
     fetchMembers: jest.fn(),
@@ -19,42 +21,6 @@ jest.mock('../services/outingSchedulingService', () => ({
 }));
 
 const service = outingSchedulingService as jest.Mocked<typeof outingSchedulingService>;
-
-describe('useOutingCreationStore', () => {
-  beforeEach(() => useOutingCreationStore.getState().reset());
-
-  it('garde les créneaux des jours conservés et ajoute le créneau par défaut', () => {
-    const store = useOutingCreationStore.getState();
-    store.setDays(['2026-11-11', '2026-11-10']);
-    store.setSlot('2026-11-10', { start: '12:00', end: '21:00' });
-    useOutingCreationStore.getState().setDays(['2026-11-10', '2026-11-12']);
-
-    const { days, slots } = useOutingCreationStore.getState();
-    expect(days).toEqual(['2026-11-10', '2026-11-12']);
-    expect(slots).toEqual({
-      '2026-11-10': { start: '12:00', end: '21:00' },
-      '2026-11-12': DEFAULT_TIME_RANGE,
-    });
-  });
-
-  it('borne la navigation entre les étapes et se réinitialise', () => {
-    const store = useOutingCreationStore.getState();
-    store.previousStep();
-    expect(useOutingCreationStore.getState().stepIndex).toBe(0);
-    for (let i = 0; i < 10; i += 1) useOutingCreationStore.getState().nextStep();
-    expect(useOutingCreationStore.getState().stepIndex).toBe(4);
-
-    useOutingCreationStore.getState().setTitle('Glouglou');
-    useOutingCreationStore.getState().reset();
-    expect(useOutingCreationStore.getState()).toMatchObject({ stepIndex: 0, title: '', days: [] });
-  });
-
-  it('est vidé à la déconnexion', () => {
-    useOutingCreationStore.getState().setTitle('Brouillon');
-    resetUserScopedStores();
-    expect(useOutingCreationStore.getState().title).toBe('');
-  });
-});
 
 describe('useOutingSchedulingStore', () => {
   const fetchOutingById = jest.fn();
@@ -92,6 +58,64 @@ describe('useOutingSchedulingStore', () => {
     });
     expect(fetchOutingById).toHaveBeenCalledWith('outing-1');
     expect(useOutingSchedulingStore.getState().isSubmitting).toBe(false);
+  });
+
+  it('inviteFriends invite puis recharge les membres de la sortie', async () => {
+    service.inviteToOuting.mockResolvedValue(1);
+    service.fetchOutingDays.mockResolvedValue([]);
+    service.fetchAvailabilities.mockResolvedValue([]);
+    service.fetchMembers.mockResolvedValue([]);
+
+    const count = await useOutingSchedulingStore
+      .getState()
+      .inviteFriends({ id: 'outing-1', created_by: 'alice' }, ['bob']);
+
+    expect(count).toBe(1);
+    expect(service.inviteToOuting).toHaveBeenCalledWith('outing-1', ['bob']);
+    expect(service.fetchMembers).toHaveBeenCalledWith('outing-1', 'alice');
+    expect(useOutingSchedulingStore.getState().isSubmitting).toBe(false);
+  });
+
+  it('saveDays enregistre les jours triés puis recharge la sortie', async () => {
+    service.setOutingDays.mockResolvedValue();
+    service.fetchOutingDays.mockResolvedValue(['2026-11-10', '2026-11-12']);
+    service.fetchAvailabilities.mockResolvedValue([]);
+    service.fetchMembers.mockResolvedValue([]);
+
+    await useOutingSchedulingStore
+      .getState()
+      .saveDays({ id: 'outing-1', created_by: 'alice' }, ['2026-11-12', '2026-11-10']);
+
+    expect(service.setOutingDays).toHaveBeenCalledWith('outing-1', ['2026-11-10', '2026-11-12']);
+    expect(useOutingSchedulingStore.getState().schedulingByOutingId['outing-1']?.days).toEqual([
+      '2026-11-10',
+      '2026-11-12',
+    ]);
+    expect(useOutingSchedulingStore.getState().isSubmitting).toBe(false);
+  });
+
+  it('saveMySlots relaie l’échec sans recharger', async () => {
+    service.setMySlots.mockRejectedValue(
+      new Error('only an attendee can change their availability'),
+    );
+    await expect(
+      useOutingSchedulingStore.getState().saveMySlots({ id: 'outing-1', created_by: 'alice' }, []),
+    ).rejects.toThrow('only an attendee');
+    expect(useOutingSchedulingStore.getState().error).toBe(
+      'only an attendee can change their availability',
+    );
+    expect(service.fetchMembers).not.toHaveBeenCalled();
+  });
+
+  it('inviteFriends relaie l’échec et mémorise l’erreur', async () => {
+    service.inviteToOuting.mockRejectedValue(new Error('only the organizer can invite'));
+    await expect(
+      useOutingSchedulingStore
+        .getState()
+        .inviteFriends({ id: 'outing-1', created_by: 'alice' }, ['bob']),
+    ).rejects.toThrow('only the organizer can invite');
+    expect(useOutingSchedulingStore.getState().error).toBe('only the organizer can invite');
+    expect(service.fetchMembers).not.toHaveBeenCalled();
   });
 
   it('relaie l’échec de création et mémorise l’erreur', async () => {
@@ -180,7 +204,9 @@ describe('useOutingSchedulingStore', () => {
     service.fetchAvailabilities.mockResolvedValue([]);
     service.fetchMembers.mockResolvedValue([]);
 
-    const pending = useOutingSchedulingStore.getState().fetchScheduling({ id: 'o1', created_by: 'a' });
+    const pending = useOutingSchedulingStore
+      .getState()
+      .fetchScheduling({ id: 'o1', created_by: 'a' });
     resetUserScopedStores();
     resolve(['2026-11-10']);
     await pending;

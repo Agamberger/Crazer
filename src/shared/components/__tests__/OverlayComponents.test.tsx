@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text } from 'react-native';
-import { fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 import { AppModal, ConfirmDialog, Screen } from '@/shared/components';
 
 describe('AppModal', () => {
@@ -59,6 +59,41 @@ describe('AppModal', () => {
     expect(getByLabelText('Retour')).toBeTruthy();
     fireEvent.press(getByTestId('btn-retour'));
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('variante slideOver : page complète avec retour ← par défaut', () => {
+    const onClose = jest.fn();
+    const { getByText, getByTestId, getByLabelText, queryByTestId } = render(
+      <AppModal visible variant="slideOver" title="Quand ?" onClose={onClose} testID="panel">
+        <Text>Jours</Text>
+      </AppModal>,
+    );
+    expect(getByText('Quand ?')).toBeTruthy();
+    expect(getByText('Jours')).toBeTruthy();
+    expect(getByTestId('panel-page')).toBeTruthy();
+    expect(queryByTestId('panel-backdrop', { includeHiddenElements: true })).toBeNull();
+    fireEvent.press(getByLabelText('Retour'));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('variante slideOver : le contenu reste affiché pendant la sortie puis disparaît', () => {
+    jest.useFakeTimers();
+    const { queryByText, rerender } = render(
+      <AppModal visible variant="slideOver" onClose={jest.fn()}>
+        <Text>Détail</Text>
+      </AppModal>,
+    );
+    rerender(
+      <AppModal visible={false} variant="slideOver" onClose={jest.fn()}>
+        <Text>Détail</Text>
+      </AppModal>,
+    );
+    expect(queryByText('Détail')).toBeTruthy();
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(queryByText('Détail')).toBeNull();
+    jest.useRealTimers();
   });
 
   it("n'affiche rien quand invisible", () => {

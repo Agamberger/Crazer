@@ -1,4 +1,5 @@
 import React from 'react';
+import { Text } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { PlannedOutingsTimeline } from '../components/PlannedOutingsTimeline';
 import { PlannedOutingRow } from '@/shared/types';
@@ -54,10 +55,7 @@ describe('PlannedOutingsTimeline Component', () => {
 
   it('renders timeline with planned outings sorted chronologically and vertical continuity connectors', () => {
     const { getByTestId, queryByTestId, getByText } = render(
-      <PlannedOutingsTimeline
-        plannedOutings={mockPlannedOutings}
-        onAddPlannedOuting={jest.fn()}
-      />
+      <PlannedOutingsTimeline plannedOutings={mockPlannedOutings} onAddPlannedOuting={jest.fn()} />,
     );
 
     // Title and total count badge
@@ -83,12 +81,33 @@ describe('PlannedOutingsTimeline Component', () => {
     expect(queryByTestId('timeline-line-bottom-po-3')).toBeNull();
   });
 
-  it('renders empty state when there are no planned outings', () => {
-    const { getByTestId, getByText } = render(
+  it('renders a drop slot before each step and after the last one, in chronological order', () => {
+    const { getAllByTestId } = render(
+      <PlannedOutingsTimeline
+        plannedOutings={mockPlannedOutings}
+        renderDropSlot={(index) => <Text testID={`slot-${index}`}>{index}</Text>}
+      />,
+    );
+    expect(getAllByTestId(/^slot-/).map((node) => node.props.testID)).toEqual(
+      mockPlannedOutings
+        .map((_, index) => `slot-${index}`)
+        .concat(`slot-${mockPlannedOutings.length}`),
+    );
+  });
+
+  it('renders one drop slot in an empty programme', () => {
+    const { getAllByTestId } = render(
       <PlannedOutingsTimeline
         plannedOutings={[]}
-        onAddPlannedOuting={jest.fn()}
-      />
+        renderDropSlot={(index) => <Text testID={`slot-${index}`}>{index}</Text>}
+      />,
+    );
+    expect(getAllByTestId(/^slot-/)).toHaveLength(1);
+  });
+
+  it('renders empty state when there are no planned outings', () => {
+    const { getByTestId, getByText } = render(
+      <PlannedOutingsTimeline plannedOutings={[]} onAddPlannedOuting={jest.fn()} />,
     );
 
     expect(getByTestId('planned-outings-empty')).toBeTruthy();
@@ -98,10 +117,7 @@ describe('PlannedOutingsTimeline Component', () => {
   it('opens choice modal and calls onAddPlannedOuting when custom step is chosen', () => {
     const handleAdd = jest.fn();
     const { getByTestId, getByText } = render(
-      <PlannedOutingsTimeline
-        plannedOutings={mockPlannedOutings}
-        onAddPlannedOuting={handleAdd}
-      />
+      <PlannedOutingsTimeline plannedOutings={mockPlannedOutings} onAddPlannedOuting={handleAdd} />,
     );
 
     const addBtn = getByTestId('btn-add-planned-outing');
@@ -117,10 +133,7 @@ describe('PlannedOutingsTimeline Component', () => {
   it('opens choice modal and calls onAddFromMap when choose from map is selected', () => {
     const handleAddMap = jest.fn();
     const { getByTestId, getByText } = render(
-      <PlannedOutingsTimeline
-        plannedOutings={mockPlannedOutings}
-        onAddFromMap={handleAddMap}
-      />
+      <PlannedOutingsTimeline plannedOutings={mockPlannedOutings} onAddFromMap={handleAddMap} />,
     );
 
     const addBtn = getByTestId('btn-add-planned-outing');
@@ -140,7 +153,7 @@ describe('PlannedOutingsTimeline Component', () => {
         plannedOutings={mockPlannedOutings}
         onAddPlannedOuting={jest.fn()}
         onSelectPlannedOuting={handleSelect}
-      />
+      />,
     );
 
     fireEvent.press(getByTestId('planned-outing-card-po-1'));
@@ -148,7 +161,7 @@ describe('PlannedOutingsTimeline Component', () => {
       expect.objectContaining({
         id: 'po-1',
         title: 'Apéro Bar',
-      })
+      }),
     );
   });
 });

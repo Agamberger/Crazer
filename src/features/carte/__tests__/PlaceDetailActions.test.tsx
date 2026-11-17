@@ -28,4 +28,18 @@ describe('PlaceDetailActions', () => {
     expect(getByText('+ Ajouter à la sortie')).toBeTruthy();
     expect(getByLabelText('Ajouter ce lieu à la sortie')).toBeTruthy();
   });
+
+  it('proposes the place as an activity in activity mode', () => {
+    const { getByText, getByLabelText } = render(
+      <PlaceDetailActions
+        isTargetMode
+        targetKind="activity"
+        onGetDirections={jest.fn()}
+        onAddToOuting={jest.fn()}
+      />,
+    );
+
+    expect(getByText('+ Proposer comme activité')).toBeTruthy();
+    expect(getByLabelText('Proposer ce lieu comme activité de la sortie')).toBeTruthy();
+  });
 });

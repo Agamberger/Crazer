@@ -4,6 +4,7 @@ const mockRouter = {
   push: jest.fn(),
   replace: jest.fn(),
   back: jest.fn(),
+  navigate: jest.fn(),
   canGoBack: jest.fn(() => true),
 };
 
@@ -22,6 +23,7 @@ jest.mock('expo-router', () => {
     useSearchParams: () => ({}),
     useLocalSearchParams: jest.fn(() => ({})),
     usePathname: () => '/',
+    useFocusEffect: (callback: () => void | (() => void)) => React.useEffect(callback, [callback]),
     Link: 'Link',
     Tabs: MockTabs,
     Stack: 'Stack',

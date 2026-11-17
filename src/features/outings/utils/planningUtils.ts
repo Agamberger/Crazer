@@ -135,9 +135,8 @@ export const suggestStartTime = (
   return majority ?? starts[0];
 };
 
-/** Retained activities that can go on this day and are not placed on any day yet. */
+/** Activities of the pool not placed in the programme yet (on any day). */
 export const unplacedActivitiesOf = (
-  day: DayKey,
   activities: ReadonlyArray<OutingActivity>,
   steps: ReadonlyArray<PlannedOutingRow>,
 ): OutingActivity[] => {
@@ -147,9 +146,7 @@ export const unplacedActivitiesOf = (
       .map((s) => s.activity_id)
       .filter((id) => id !== null),
   );
-  return activities.filter(
-    (a) => a.chosen && (a.day === null || a.day === day) && !placedIds.has(a.id),
-  );
+  return activities.filter((a) => !placedIds.has(a.id));
 };
 
 /** Planning of one day: ordered steps with times, attendance, gaps, and what is left to place. */
@@ -196,7 +193,7 @@ export const buildDayPlanning = (
   return {
     day,
     steps: views,
-    unplacedActivities: unplacedActivitiesOf(day, activities, steps),
+    unplacedActivities: unplacedActivitiesOf(activities, steps),
     suggestedStart: suggestStartTime(day, availabilities, members),
   };
 };
@@ -239,22 +236,11 @@ const currentStart = (planning: DayPlanning): string =>
   planning.steps[0]?.start ?? planning.suggestedStart;
 
 /**
- * Suggestion: keeps the organizer's order, appends the retained activities not
- * placed yet, and packs everything from the suggested start.
+ * Suggestion: keeps the order of the day's steps and packs them from the suggested start.
+ * Activities of the pool are placed one by one (« Placer », drag-and-drop), never all at once.
  */
-export const suggestPlanning = (planning: DayPlanning, travelMin: number): PlanningChanges => {
-  const activityItems: ScheduleItem[] = planning.unplacedActivities.map((a) => ({
-    kind: 'activity',
-    activityId: a.id,
-    durationMin: DEFAULT_STEP_DURATION_MIN,
-  }));
-  return buildSchedule(
-    planning.day,
-    [...stepItems(planning), ...activityItems],
-    planning.suggestedStart,
-    travelMin,
-  );
-};
+export const suggestPlanning = (planning: DayPlanning, travelMin: number): PlanningChanges =>
+  buildSchedule(planning.day, stepItems(planning), planning.suggestedStart, travelMin);
 
 /** Moves a step up or down and re-packs the day from its current start. `null` when it cannot move. */
 export const moveStep = (

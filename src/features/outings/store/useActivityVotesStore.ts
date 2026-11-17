@@ -3,7 +3,7 @@ import { bindSetToSession, registerUserScopedStore } from '@/shared/store/sessio
 import { ActivityVote } from '@/shared/types';
 import { activityVotesService, ProposeActivityPayload } from '../services/activityVotesService';
 import { OutingActivities } from '../types/activities';
-import { DayKey } from '../types/scheduling';
+import { useOutingsStore } from './useOutingsStore';
 
 interface ActivityVotesState {
   activitiesByOutingId: Record<string, OutingActivities>;
@@ -23,10 +23,19 @@ interface ActivityVotesState {
     userId: string,
     vote: ActivityVote | null,
   ) => Promise<void>;
-  chooseActivity: (outingId: string, activityId: string) => Promise<void>;
-  /** Draws among the tied activities; resolves with the winning activity id. */
-  drawActivity: (outingId: string, day: DayKey | null) => Promise<string>;
-  reopenActivities: (outingId: string, day: DayKey | null) => Promise<void>;
+  /**
+   * Places an activity of the pool in the programme (the database moves the overlapped steps),
+   * then reloads the outing's steps. Resolves with the new step id.
+   */
+  placeActivity: (placement: ActivityPlacementRequest) => Promise<string>;
+}
+
+/** Where an activity of the pool is dropped in the programme. */
+export interface ActivityPlacementRequest {
+  outingId: string;
+  activityId: string;
+  scheduledFor: string;
+  durationMin: number;
 }
 
 const errorMessage = (err: unknown, fallback: string): string =>
@@ -96,20 +105,13 @@ export const useActivityVotesStore = create<ActivityVotesState>((set, get) => {
           : activityVotesService.castVote(outingId, activityId, userId, vote),
       ),
 
-    chooseActivity: (outingId, activityId) =>
-      mutate(outingId, 'Erreur lors du choix de l’activité', () =>
-        activityVotesService.chooseActivity(activityId),
-      ),
-
-    drawActivity: (outingId, day) =>
-      mutate(outingId, 'Erreur lors du tirage au sort', () =>
-        activityVotesService.drawActivity(outingId, day),
-      ),
-
-    reopenActivities: (outingId, day) =>
-      mutate(outingId, 'Erreur lors de la réouverture du vote', () =>
-        activityVotesService.reopenActivities(outingId, day),
-      ),
+    placeActivity: async ({ outingId, activityId, scheduledFor, durationMin }) => {
+      const stepId = await mutate(outingId, 'Erreur lors de l’ajout au programme', () =>
+        activityVotesService.placeActivity(activityId, scheduledFor, durationMin),
+      );
+      await useOutingsStore.getState().fetchPlannedOutings(outingId);
+      return stepId;
+    },
   };
 });
 

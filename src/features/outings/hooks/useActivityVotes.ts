@@ -5,17 +5,14 @@ import { ActivityVote, OutingRow } from '@/shared/types';
 import { activityVotesService } from '../services/activityVotesService';
 import { useActivityVotesStore } from '../store/useActivityVotesStore';
 import { useOutingsStore } from '../store/useOutingsStore';
-import { ActivityGroup, OutingActivities } from '../types/activities';
-import { DayKey, OutingMember } from '../types/scheduling';
-import { computeActivityGroups, nextVote } from '../utils/activityUtils';
+import { ActivityResult, OutingActivities } from '../types/activities';
+import { OutingMember } from '../types/scheduling';
+import { nextVote, rankActivities } from '../utils/activityUtils';
 import { useOutingMembers } from './useOutingMembers';
-import { useOutingSchedulingStore } from '../store/useOutingSchedulingStore';
 
 const NO_ACTIVITIES: OutingActivities = { activities: [], votes: [] };
-const NO_DAYS: DayKey[] = [];
 
 export interface ProposeActivityInput {
-  day: DayKey | null;
   title: string;
   note: string;
   placeId: string | null;
@@ -23,8 +20,8 @@ export interface ProposeActivityInput {
 
 export interface UseActivityVotesResult {
   outing: OutingRow | null;
-  groups: ActivityGroup[];
-  days: DayKey[];
+  /** Activities of the pool not placed in the programme yet, best score first. */
+  pool: ActivityResult[];
   members: OutingMember[];
   isOrganizer: boolean;
   /** Organizer, accepted or "maybe" participants can propose and vote. */
@@ -34,16 +31,15 @@ export interface UseActivityVotesResult {
   loadFailed: boolean;
   propose: (input: ProposeActivityInput) => Promise<boolean>;
   toggleVote: (activityId: string, tapped: ActivityVote) => Promise<void>;
-  choose: (activityId: string) => Promise<void>;
-  reopen: (day: DayKey | null) => Promise<void>;
   remove: (activityId: string) => Promise<void>;
 }
 
 const showError = (message: string) => toast.error(message, { title: 'Erreur' });
 
 /**
- * Loads an outing's activities and votes and keeps them live through a realtime
- * subscription while the screen is mounted.
+ * Loads an outing's activity pool and votes and keeps them live through a realtime
+ * subscription while the screen is mounted. Activities placed in the programme (a step of the
+ * outing links them) leave the pool.
  */
 export const useActivityVotes = (outingId: string | undefined): UseActivityVotesResult => {
   const { user } = useAuth();
@@ -51,9 +47,7 @@ export const useActivityVotes = (outingId: string | undefined): UseActivityVotes
   const outing = useOutingsStore((state) => state.outings.find((o) => o.id === outingId) ?? null);
   const fetchOutingById = useOutingsStore((state) => state.fetchOutingById);
   const members = useOutingMembers(outing);
-  const days = useOutingSchedulingStore((state) =>
-    outingId ? (state.schedulingByOutingId[outingId]?.days ?? NO_DAYS) : NO_DAYS,
-  );
+  const steps = useOutingsStore((state) => state.plannedOutings);
   const data = useActivityVotesStore((state) =>
     outingId ? state.activitiesByOutingId[outingId] : undefined,
   );
@@ -77,10 +71,19 @@ export const useActivityVotes = (outingId: string | undefined): UseActivityVotes
     });
   }, [outingId, store]);
 
-  const groups = useMemo(() => {
+  const pool = useMemo(() => {
     const { activities, votes } = data ?? NO_ACTIVITIES;
-    return computeActivityGroups(days, activities, votes, userId);
-  }, [data, days, userId]);
+    const placedIds = new Set(
+      steps
+        .filter((step) => step.outing_id === outingId && step.status !== 'cancelled')
+        .map((step) => step.activity_id),
+    );
+    return rankActivities(
+      activities.filter((activity) => !placedIds.has(activity.id)),
+      votes,
+      userId,
+    );
+  }, [data, steps, outingId, userId]);
 
   /** Runs a store action and reports a failure with a toast. */
   const attempt = useCallback(
@@ -104,7 +107,6 @@ export const useActivityVotes = (outingId: string | undefined): UseActivityVotes
           store().proposeActivity({
             outingId,
             userId,
-            day: input.day,
             title: input.title,
             note: input.note,
             placeId: input.placeId,
@@ -127,22 +129,6 @@ export const useActivityVotes = (outingId: string | undefined): UseActivityVotes
     [outingId, userId, data, attempt, store],
   );
 
-  const choose = useCallback(
-    async (activityId: string) => {
-      if (!outingId) return;
-      await attempt(() => store().chooseActivity(outingId, activityId), 'Impossible de retenir cette activité.');
-    },
-    [outingId, attempt, store],
-  );
-
-  const reopen = useCallback(
-    async (day: DayKey | null) => {
-      if (!outingId) return;
-      await attempt(() => store().reopenActivities(outingId, day), 'Impossible de rouvrir le vote.');
-    },
-    [outingId, attempt, store],
-  );
-
   const remove = useCallback(
     async (activityId: string) => {
       if (!outingId) return;
@@ -153,8 +139,7 @@ export const useActivityVotes = (outingId: string | undefined): UseActivityVotes
 
   return {
     outing,
-    groups,
-    days,
+    pool,
     members,
     isOrganizer,
     canVote,
@@ -163,8 +148,6 @@ export const useActivityVotes = (outingId: string | undefined): UseActivityVotes
     loadFailed: !data && !!error,
     propose,
     toggleVote,
-    choose,
-    reopen,
     remove,
   };
 };
