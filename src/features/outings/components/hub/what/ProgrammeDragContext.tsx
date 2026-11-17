@@ -7,7 +7,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { AppText, Card } from '@/shared/components';
 import { colors, spacing } from '@/shared/constants/theme';
 import { findSlotAt, nextScrollOffset, Rect, scrollStepNearEdge } from '../../../utils/dragUtils';
@@ -105,6 +105,15 @@ export const ProgrammeDragProvider: React.FC<ProgrammeDragProviderProps> = ({
 
   useEffect(() => stopAutoScroll, [stopAutoScroll]);
 
+  const isDragging = dragged !== null;
+  useEffect(() => {
+    if (!isDragging || Platform.OS !== 'web' || typeof document === 'undefined') return undefined;
+    const preventSelection = (event: Event) => event.preventDefault();
+    document.getSelection()?.removeAllRanges();
+    document.addEventListener('selectstart', preventSelection);
+    return () => document.removeEventListener('selectstart', preventSelection);
+  }, [isDragging]);
+
   const tickAutoScroll = useCallback(() => {
     const step = scrollStepNearEdge(rootRect.current, pointer.current.y);
     if (step === 0 || !scrollView.current) return;
@@ -186,7 +195,7 @@ export const ProgrammeDragProvider: React.FC<ProgrammeDragProviderProps> = ({
 
   return (
     <ProgrammeDragContext.Provider value={value}>
-      <View ref={rootRef} style={[styles.root, dragged && styles.dragging]}>
+      <View ref={rootRef} style={styles.root}>
         {children}
         {dragged && ghost ? (
           <View
@@ -213,9 +222,6 @@ const styles = StyleSheet.create({
   ghostCard: {
     borderColor: colors.primary,
     borderWidth: 1,
-  },
-  dragging: {
-    userSelect: 'none',
   },
   root: {
     flex: 1,
