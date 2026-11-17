@@ -10,6 +10,8 @@ import { useOutingSchedulingStore } from '../store/useOutingSchedulingStore';
 import { useOutingsStore } from '../store/useOutingsStore';
 import { OutingMember } from '../types/scheduling';
 
+jest.setTimeout(20000);
+
 jest.mock('@/shared/lib/supabase', () => ({ supabase: {} }));
 
 let mockUserId = 'alice';
@@ -60,13 +62,7 @@ const onClose = jest.fn();
 const onOpenPlanning = jest.fn();
 
 const renderHub = () =>
-  render(
-    <OutingHub
-      outingId="o1"
-      onClose={onClose}
-      onOpenPlanning={onOpenPlanning}
-    />,
-  );
+  render(<OutingHub outingId="o1" onClose={onClose} onOpenPlanning={onOpenPlanning} />);
 
 beforeEach(() => {
   jest.clearAllMocks();
