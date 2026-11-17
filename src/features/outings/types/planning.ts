@@ -47,7 +47,7 @@ export interface PlanningStepView {
 export interface DayPlanning {
   day: DayKey;
   steps: PlanningStepView[];
-  /** Retained activities of the day (or of « any day ») not placed yet. */
+  /** Activities of the pool not placed in the programme yet. */
   unplacedActivities: OutingActivity[];
   /** `HH:mm` start suggested from everyone's availability. */
   suggestedStart: string;

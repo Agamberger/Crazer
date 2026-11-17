@@ -57,8 +57,6 @@ const fetchActivities = jest.fn();
 const fetchFriendsList = jest.fn();
 const onClose = jest.fn();
 
-const onOpenTie = jest.fn();
-const onConvert = jest.fn();
 const onOpenPlanning = jest.fn();
 
 const renderHub = () =>
@@ -66,8 +64,6 @@ const renderHub = () =>
     <OutingHub
       outingId="o1"
       onClose={onClose}
-      onOpenTie={onOpenTie}
-      onConvert={onConvert}
       onOpenPlanning={onOpenPlanning}
     />,
   );
@@ -109,7 +105,7 @@ describe('OutingHub', () => {
     expect(getByLabelText('1 participant · 1 en attente')).toBeTruthy();
     expect(getByTestId('hub-what-type')).toHaveTextContent('☀️ Une journée');
     expect(getByTestId('hub-what-answers')).toHaveTextContent('0/1 ont répondu aux questions');
-    expect(getByTestId('hub-what-activities')).toHaveTextContent('Aucune activité proposée');
+    expect(getByTestId('hub-what-activities')).toHaveTextContent('Aucune activité dans la pool');
     expect(fetchAnswers).toHaveBeenCalledWith('o1');
     expect(fetchActivities).toHaveBeenCalledWith('o1');
   });

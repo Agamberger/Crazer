@@ -5,6 +5,7 @@ import { useOutingPlannedOutings } from '../../../hooks/useOutingPlannedOutings'
 import { useOutingsStore } from '../../../store/useOutingsStore';
 import { PlannedOutingEditForm } from '../../PlannedOutingEditForm';
 import { PlannedOutingsTimeline } from '../../PlannedOutingsTimeline';
+import { ProgrammeDropSlot } from './ProgrammeDragParts';
 
 export interface WhatStepsSectionProps {
   outingId: string;
@@ -56,6 +57,7 @@ export const WhatStepsSection: React.FC<WhatStepsSectionProps> = ({
         onAddPlannedOuting={() => void timeline.addPlannedOuting()}
         onAddFromMap={() => onLeave(timeline.addFromMap)}
         onSelectPlannedOuting={timeline.selectPlannedOuting}
+        renderDropSlot={(index) => <ProgrammeDropSlot index={index} />}
       />
       <Button
         title="Planifier la journée"

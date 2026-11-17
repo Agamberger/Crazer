@@ -13,7 +13,7 @@ export interface ProposePlaceActivityModalProps {
   onProposed: () => void;
 }
 
-/** Map « + Proposer comme activité »: day and note of a proposal made from a place. */
+/** Map « + Proposer comme activité »: title and note of a pool activity made from a place. */
 export const ProposePlaceActivityModal: React.FC<ProposePlaceActivityModalProps> = ({
   outingId,
   place,
@@ -46,7 +46,6 @@ export const ProposePlaceActivityModal: React.FC<ProposePlaceActivityModalProps>
       {votes.isReady && votes.canVote && place ? (
         <ProposeActivityForm
           key={place.id}
-          days={votes.days}
           place={place}
           onSubmit={propose}
           isSaving={votes.isSaving}

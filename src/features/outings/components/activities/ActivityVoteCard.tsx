@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { AppText, Badge, Button, Card } from '@/shared/components';
+import { AppText, Button, Card } from '@/shared/components';
 import { spacing } from '@/shared/constants/theme';
 import { ActivityVote } from '@/shared/types';
 import { ActivityResult } from '../../types/activities';
@@ -9,45 +9,40 @@ export interface ActivityVoteCardProps {
   result: ActivityResult;
   /** Display names by user id, to list who voted. */
   memberNames: Record<string, string>;
-  /** Votes are open (member who can vote, group not decided). */
+  /** The user attends the outing: votes and places activities. */
   canVote: boolean;
-  isOrganizer: boolean;
-  /** Highlights the activity the organizer retained. */
-  isChosen: boolean;
-  /** Organizer: shows « Retenir » on this activity. */
-  canChoose: boolean;
-  /** Shown on not retained activities once the group is decided. */
-  onConvert?: (result: ActivityResult) => void;
   onVote: (activityId: string, vote: ActivityVote) => void;
-  onChoose: (activityId: string) => void;
+  /** Author or organizer: deletes the proposal. */
   onRemove?: (activityId: string) => void;
+  /** Adds the activity at the end of the programme. */
+  onPlace?: (result: ActivityResult) => void;
+  /** Handle to drag the activity onto the programme. */
+  dragHandle?: React.ReactNode;
 }
 
 const namesOf = (ids: string[], names: Record<string, string>): string =>
   ids.map((id) => names[id] ?? 'Quelqu’un').join(', ');
 
-/** One proposed activity: live score, who voted what and the voting buttons. */
+/** One activity of the pool: live score, who voted what, voting and « → Programme » buttons. */
 export const ActivityVoteCard: React.FC<ActivityVoteCardProps> = ({
   result,
   memberNames,
   canVote,
-  isChosen,
-  canChoose,
-  onConvert,
   onVote,
-  onChoose,
   onRemove,
+  onPlace,
+  dragHandle,
 }) => {
   const { activity, acceptedUserIds, maybeUserIds, myVote } = result;
   const id = activity.id;
 
   return (
-    <Card variant={isChosen ? 'outlined' : 'default'} style={styles.card} testID={`activity-${id}`}>
+    <Card style={styles.card} testID={`activity-${id}`}>
       <View style={styles.header}>
         <AppText weight="semibold" style={styles.title}>
           {activity.title}
         </AppText>
-        {isChosen ? <Badge label="Retenue" tone="success" testID={`activity-chosen-${id}`} /> : null}
+        {dragHandle}
       </View>
       {activity.place ? (
         <AppText variant="bodySmall" color="secondary" testID={`activity-place-${id}`}>
@@ -92,22 +87,14 @@ export const ActivityVoteCard: React.FC<ActivityVoteCardProps> = ({
             />
           </>
         ) : null}
-        {canChoose ? (
+        {onPlace ? (
           <Button
-            title="Retenir"
+            title="→ Programme"
             size="sm"
             variant="secondary"
-            onPress={() => onChoose(id)}
-            testID={`btn-choose-${id}`}
-          />
-        ) : null}
-        {onConvert ? (
-          <Button
-            title="En faire une sortie"
-            size="sm"
-            variant="ghost"
-            onPress={() => onConvert(result)}
-            testID={`btn-convert-${id}`}
+            onPress={() => onPlace(result)}
+            testID={`btn-place-${id}`}
+            accessibilityLabel={`Ajouter ${activity.title} au programme`}
           />
         ) : null}
         {onRemove ? (
@@ -140,7 +127,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: spacing.sm,
-    justifyContent: 'space-between',
   },
   title: {
     flex: 1,

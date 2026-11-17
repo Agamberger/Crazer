@@ -1,24 +1,23 @@
 import React from 'react';
 import { InlineAlert, Loader } from '@/shared/components';
 import { useActivityVotes } from '../../../hooks/useActivityVotes';
-import { ActivityResult } from '../../../types/activities';
 import { ActivityVotesContent } from '../../activities/ActivityVotesContent';
+import { ActivityDragHandle } from './ProgrammeDragParts';
 
 export interface WhatActivitiesSectionProps {
   outingId: string;
   userId: string | null;
-  onOpenTie: (day: string | null) => void;
-  onConvert: (result: ActivityResult) => void;
   onSearchOnMap: () => void;
+  /** Adds an activity of the pool at the end of the programme. */
+  onPlace: (activityId: string) => void;
 }
 
 /** Activity proposals and live votes of the outing. */
 export const WhatActivitiesSection: React.FC<WhatActivitiesSectionProps> = ({
   outingId,
   userId,
-  onOpenTie,
-  onConvert,
   onSearchOnMap,
+  onPlace,
 }) => {
   const votes = useActivityVotes(outingId);
 
@@ -37,9 +36,11 @@ export const WhatActivitiesSection: React.FC<WhatActivitiesSectionProps> = ({
     <ActivityVotesContent
       votes={votes}
       userId={userId}
-      onOpenTie={onOpenTie}
-      onConvert={onConvert}
       onSearchOnMap={onSearchOnMap}
+      onPlace={(result) => onPlace(result.activity.id)}
+      renderDragHandle={(result) => (
+        <ActivityDragHandle activityId={result.activity.id} title={result.activity.title} />
+      )}
     />
   );
 };

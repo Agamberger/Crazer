@@ -68,9 +68,19 @@ export const useOutingHub = (outingId: string): UseOutingHubResult => {
     () => (outing ? summarizeWhen(outing, recaps) : { kind: 'empty' }),
     [outing, recaps],
   );
+  const steps = useOutingsStore((state) => state.plannedOutings);
   const what = useMemo(
-    () => (outing ? summarizeWhat(outing, members, answers ?? [], activities ?? null) : null),
-    [outing, members, answers, activities],
+    () =>
+      outing
+        ? summarizeWhat(
+            outing,
+            members,
+            answers ?? [],
+            activities ?? null,
+            steps.filter((step) => step.outing_id === outing.id),
+          )
+        : null,
+    [outing, members, answers, activities, steps],
   );
 
   const rename = useCallback(

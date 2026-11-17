@@ -15,8 +15,10 @@ export interface WhatSummary {
   outingType: OutingType | null;
   answeredCount: number;
   attendingCount: number;
-  proposalCount: number;
-  chosenTitles: string[];
+  /** Activities of the pool not placed in the programme yet. */
+  poolCount: number;
+  /** Titles of the activities already placed in the programme. */
+  placedTitles: string[];
 }
 
 /** Result of the last action of a panel, shown inside it (a toast would be hidden by the modal). */

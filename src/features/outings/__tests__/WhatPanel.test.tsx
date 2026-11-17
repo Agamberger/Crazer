@@ -41,6 +41,7 @@ jest.mock('../services/activityVotesService', () => ({
     fetchActivities: jest.fn(),
     fetchVotes: jest.fn(),
     subscribeToActivities: jest.fn(),
+    placeActivity: jest.fn(),
   },
 }));
 jest.mock('../services/outingSchedulingService', () => ({
@@ -94,8 +95,6 @@ const member = (userId: string): OutingMember => ({
 });
 
 const onClose = jest.fn();
-const onOpenTie = jest.fn();
-const onConvert = jest.fn();
 const onOpenPlanning = jest.fn();
 
 const renderPanel = (overrides: Partial<WhatPanelProps> = {}) =>
@@ -106,8 +105,6 @@ const renderPanel = (overrides: Partial<WhatPanelProps> = {}) =>
       outing={OUTING}
       userId={mockUserId}
       isOrganizer={mockUserId === 'alice'}
-      onOpenTie={onOpenTie}
-      onConvert={onConvert}
       onOpenPlanning={onOpenPlanning}
       {...overrides}
     />,
@@ -133,12 +130,10 @@ beforeEach(() => {
     {
       id: 'a1',
       outingId: 'o1',
-      day: null,
       title: 'Bowling',
       note: null,
       proposedBy: 'bob',
       place: null,
-      chosen: false,
       createdAt: '2026-11-01T10:00:00Z',
     },
   ]);
@@ -234,6 +229,26 @@ describe('WhatPanel', () => {
       expect.objectContaining({ title: 'Karting indoor' }),
     );
     expect(useOutingsStore.getState().selectedPlannedOutingId).toBeNull();
+  });
+
+  it('« → Programme » place l’activité après la dernière étape', async () => {
+    votes.placeActivity.mockResolvedValue('s2');
+    const { findByTestId, getByTestId } = renderPanel();
+    await findByTestId('drag-handle-a1');
+    await waitFor(() => expect(useOutingsStore.getState().plannedOutings).toHaveLength(1));
+    await act(async () => {
+      fireEvent.press(getByTestId('btn-place-a1'));
+    });
+    expect(votes.placeActivity).toHaveBeenCalledWith('a1', '2099-06-10T15:00:00.000Z', 60);
+  });
+
+  it('signale dans le panneau une activité qui n’a pas pu être placée', async () => {
+    votes.placeActivity.mockRejectedValue(new Error('activity already placed'));
+    const { findByTestId, getByTestId } = renderPanel();
+    await act(async () => {
+      fireEvent.press(await findByTestId('btn-place-a1'));
+    });
+    expect(getByTestId('what-placement-error')).toHaveTextContent(/Impossible d’ajouter/);
   });
 
   it('ferme le panneau avant d’ouvrir le planning de la journée', async () => {

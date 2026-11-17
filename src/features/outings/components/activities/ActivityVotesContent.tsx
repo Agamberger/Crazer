@@ -4,29 +4,30 @@ import { AppModal, AppText, Button } from '@/shared/components';
 import { spacing } from '@/shared/constants/theme';
 import { ProposeActivityInput, UseActivityVotesResult } from '../../hooks/useActivityVotes';
 import { ActivityResult } from '../../types/activities';
-import { ActivityGroupSection } from './ActivityGroupSection';
+import { ActivityVoteCard } from './ActivityVoteCard';
 import { ProposeActivityForm } from './ProposeActivityForm';
 
 export interface ActivityVotesContentProps {
   votes: UseActivityVotesResult;
   userId: string | null;
-  onOpenTie: (day: string | null) => void;
-  /** Turns a not retained activity into the title of a new outing. */
-  onConvert: (result: ActivityResult) => void;
   /** Opens the map to pick a place that becomes a proposal. */
   onSearchOnMap: () => void;
+  /** Adds an activity of the pool at the end of the programme. */
+  onPlace?: (result: ActivityResult) => void;
+  /** Handle to drag an activity onto the programme, injected by the screen that hosts it. */
+  renderDragHandle?: (result: ActivityResult) => React.ReactNode;
 }
 
 /**
- * Activities grouped by day with their live results; an attendee adds a custom activity
- * (slide-over form) or looks for one on the map.
+ * The activity pool, best score first, with live votes; an attendee adds a custom activity
+ * (slide-over form) or looks for one on the map, and sends one to the programme.
  */
 export const ActivityVotesContent: React.FC<ActivityVotesContentProps> = ({
   votes,
   userId,
-  onOpenTie,
-  onConvert,
   onSearchOnMap,
+  onPlace,
+  renderDragHandle,
 }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const memberNames = useMemo(
@@ -42,20 +43,23 @@ export const ActivityVotesContent: React.FC<ActivityVotesContentProps> = ({
 
   return (
     <>
-      {votes.groups.map((group) => (
-        <ActivityGroupSection
-          key={group.day ?? 'any'}
-          group={group}
+      {votes.pool.length === 0 ? (
+        <AppText color="muted" testID="activity-pool-empty">
+          Aucune activité dans la pool pour l’instant.
+        </AppText>
+      ) : null}
+      {votes.pool.map((result) => (
+        <ActivityVoteCard
+          key={result.activity.id}
+          result={result}
           memberNames={memberNames}
-          currentUserId={userId}
           canVote={votes.canVote}
-          isOrganizer={votes.isOrganizer}
           onVote={votes.toggleVote}
-          onChoose={votes.choose}
-          onRemove={votes.remove}
-          onReopen={votes.reopen}
-          onOpenTie={onOpenTie}
-          onConvert={onConvert}
+          onRemove={
+            votes.isOrganizer || result.activity.proposedBy === userId ? votes.remove : undefined
+          }
+          onPlace={votes.canVote ? onPlace : undefined}
+          dragHandle={votes.canVote ? renderDragHandle?.(result) : null}
         />
       ))}
       {votes.canVote ? (
@@ -89,7 +93,7 @@ export const ActivityVotesContent: React.FC<ActivityVotesContentProps> = ({
         title="Nouvelle activité"
         testID="custom-activity-panel"
       >
-        <ProposeActivityForm days={votes.days} onSubmit={proposeCustom} isSaving={votes.isSaving} />
+        <ProposeActivityForm onSubmit={proposeCustom} isSaving={votes.isSaving} />
       </AppModal>
     </>
   );

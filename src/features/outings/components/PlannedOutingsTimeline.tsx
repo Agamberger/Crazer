@@ -11,6 +11,7 @@ import {
 } from '@/shared/components';
 import { spacing } from '@/shared/constants/theme';
 import { PlannedOutingRow } from '@/shared/types';
+import { sortProgrammeSteps } from '../utils/programmeUtils';
 import { TimelineStep } from './TimelineStep';
 
 export interface PlannedOutingsTimelineProps {
@@ -21,6 +22,8 @@ export interface PlannedOutingsTimelineProps {
   onAddFromMap?: () => void;
   canEdit?: boolean;
   isAdding?: boolean;
+  /** Drop zone shown before step `index` (and after the last step, `index` = count). */
+  renderDropSlot?: (index: number) => React.ReactNode;
 }
 
 export const PlannedOutingsTimeline: React.FC<PlannedOutingsTimelineProps> = ({
@@ -30,13 +33,11 @@ export const PlannedOutingsTimeline: React.FC<PlannedOutingsTimelineProps> = ({
   onAddPlannedOuting,
   onAddFromMap,
   canEdit = true,
+  renderDropSlot,
 }) => {
   const [isChoiceModalVisible, setIsChoiceModalVisible] = useState(false);
 
-  // Tri chronologique par date planifiée
-  const sortedOutings = [...plannedOutings].sort(
-    (a, b) => new Date(a.scheduled_for).getTime() - new Date(b.scheduled_for).getTime(),
-  );
+  const sortedOutings = sortProgrammeSteps(plannedOutings);
 
   const canAdd = canEdit && Boolean(onAddPlannedOuting || onAddFromMap);
   const canSelect = canEdit && Boolean(onSelectPlannedOuting);
@@ -57,25 +58,31 @@ export const PlannedOutingsTimeline: React.FC<PlannedOutingsTimelineProps> = ({
     }
     if (sortedOutings.length === 0) {
       return (
-        <EmptyState
-          icon="location-outline"
-          title="Aucune étape planifiée"
-          description="Ajoutez des étapes pour construire l'itinéraire et le programme de la sortie !"
-          testID="planned-outings-empty"
-        />
+        <>
+          {renderDropSlot?.(0)}
+          <EmptyState
+            icon="location-outline"
+            title="Aucune étape planifiée"
+            description="Ajoutez des étapes pour construire l'itinéraire et le programme de la sortie !"
+            testID="planned-outings-empty"
+          />
+        </>
       );
     }
     return (
       <View style={styles.timelineList}>
         {sortedOutings.map((item, index) => (
-          <TimelineStep
-            key={item.id}
-            item={item}
-            isFirst={index === 0}
-            isLast={index === sortedOutings.length - 1}
-            onPress={canSelect ? () => onSelectPlannedOuting?.(item) : undefined}
-          />
+          <React.Fragment key={item.id}>
+            {renderDropSlot?.(index)}
+            <TimelineStep
+              item={item}
+              isFirst={index === 0}
+              isLast={index === sortedOutings.length - 1}
+              onPress={canSelect ? () => onSelectPlannedOuting?.(item) : undefined}
+            />
+          </React.Fragment>
         ))}
+        {renderDropSlot?.(sortedOutings.length)}
       </View>
     );
   };
@@ -84,9 +91,7 @@ export const PlannedOutingsTimeline: React.FC<PlannedOutingsTimelineProps> = ({
     <View style={styles.container} testID="planned-outings-timeline">
       <View style={styles.headerRow}>
         <View style={styles.headerLeft}>
-          <AppText weight="bold">
-            Étapes de la sortie
-          </AppText>
+          <AppText weight="bold">Étapes de la sortie</AppText>
           <Badge label={String(sortedOutings.length)} tone="neutral" />
         </View>
         {canAdd ? (

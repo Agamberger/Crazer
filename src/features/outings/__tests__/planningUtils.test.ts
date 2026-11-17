@@ -71,12 +71,10 @@ const step = (
 const activity = (id: string, overrides: Partial<OutingActivity> = {}): OutingActivity => ({
   id,
   outingId: 'o1',
-  day: DAY,
   title: id,
   note: null,
   proposedBy: 'alice',
   place: null,
-  chosen: true,
   createdAt: 't',
   ...overrides,
 });
@@ -166,12 +164,7 @@ describe('planningUtils — day planning', () => {
     step('cancelled', '16:00', 60, { status: 'cancelled' }),
     step('other-day', '14:00', 60, { scheduled_for: dateAtMinutes(OTHER_DAY, 840) }),
   ];
-  const activities = [
-    activity('a-karting'),
-    activity('a-any', { day: null }),
-    activity('a-other-day', { day: OTHER_DAY }),
-    activity('a-not-chosen', { chosen: false }),
-  ];
+  const activities = [activity('a-karting'), activity('a-any'), activity('a-other')];
   const planning = buildDayPlanning(DAY, steps, activities, AVAILABILITIES, MEMBERS);
 
   it('orders the day steps, skips cancelled ones and other days', () => {
@@ -187,17 +180,14 @@ describe('planningUtils — day planning', () => {
     expect(resto.gapBefore).toEqual({ kind: 'travel', minutes: 270 });
   });
 
-  it('lists retained activities of the day or of any day that are not placed', () => {
-    expect(planning.unplacedActivities.map((a) => a.id)).toEqual(['a-any']);
-    expect(unplacedActivitiesOf(OTHER_DAY, activities, steps).map((a) => a.id)).toEqual([
-      'a-any',
-      'a-other-day',
-    ]);
+  it('lists the activities of the pool that are not placed on any day', () => {
+    expect(planning.unplacedActivities.map((a) => a.id)).toEqual(['a-any', 'a-other']);
+    expect(unplacedActivitiesOf(activities, steps).map((a) => a.id)).toEqual(['a-any', 'a-other']);
   });
 
   it('a cancelled step frees its activity, which can be placed again', () => {
     const cancelled = [step('old', '14:00', 60, { activity_id: 'a-any', status: 'cancelled' })];
-    expect(unplacedActivitiesOf(DAY, activities, cancelled).map((a) => a.id)).toContain('a-any');
+    expect(unplacedActivitiesOf(activities, cancelled).map((a) => a.id)).toContain('a-any');
   });
 
   it('keeps every packed step on the planned day, even late in the evening', () => {
@@ -212,15 +202,13 @@ describe('planningUtils — day planning', () => {
     expect(changes?.reschedule[1].scheduledFor).toBe(dateAtMinutes(DAY, 23 * 60 + 59));
   });
 
-  it('suggests: keeps the order, appends the activities, packs from the suggested start', () => {
+  it('suggests: keeps the order and packs the steps from the suggested start, without activities', () => {
     const changes = suggestPlanning(planning, 15);
     expect(changes.reschedule).toEqual([
       { id: 'karting', scheduledFor: dateAtMinutes(DAY, 840), durationMin: 90 },
       { id: 'resto', scheduledFor: dateAtMinutes(DAY, 945), durationMin: 150 },
     ]);
-    expect(changes.placements).toEqual([
-      { activityId: 'a-any', scheduledFor: dateAtMinutes(DAY, 1110), durationMin: 60 },
-    ]);
+    expect(changes.placements).toEqual([]);
   });
 
   it('moves a step and re-packs the day from its first start', () => {

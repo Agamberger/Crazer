@@ -100,12 +100,10 @@ describe('CarteScreen — « Chercher sur la carte » (proposer une activité)',
     votes.proposeActivity.mockResolvedValue({
       id: 'a1',
       outingId: 'o1',
-      day: null,
       title: 'Bowling Strike',
       note: null,
       proposedBy: 'alice',
       place: null,
-      chosen: false,
       createdAt: '2026-11-01T00:00:00Z',
     });
     const { getByTestId, getByText, findByTestId } = render(<CarteScreen />);

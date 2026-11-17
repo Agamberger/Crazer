@@ -16,10 +16,6 @@ import { WhoPanel } from './WhoPanel';
 export interface OutingHubProps {
   outingId: string;
   onClose: () => void;
-  /** Opens the tie-break of a day group of activities (`null` = « any day »). */
-  onOpenTie: (day: string | null) => void;
-  /** Creates a new outing named after a not retained activity. */
-  onConvert: (title: string) => void;
   /** Opens the planning of the day. */
   onOpenPlanning: () => void;
 }
@@ -28,13 +24,7 @@ export interface OutingHubProps {
  * Main screen of an outing, for its creation and its edition: the name at the top, then the
  * « Quand ? », « Qui ? » and « Quoi ? » sections, each with a visual summary of its content.
  */
-export const OutingHub: React.FC<OutingHubProps> = ({
-  outingId,
-  onClose,
-  onOpenTie,
-  onConvert,
-  onOpenPlanning,
-}) => {
+export const OutingHub: React.FC<OutingHubProps> = ({ outingId, onClose, onOpenPlanning }) => {
   const hub = useOutingHub(outingId);
   const [openSection, setOpenSection] = useState<HubSection | null>(null);
   const { outing } = hub;
@@ -115,8 +105,6 @@ export const OutingHub: React.FC<OutingHubProps> = ({
         outing={outing}
         userId={hub.userId}
         isOrganizer={hub.isOrganizer}
-        onOpenTie={onOpenTie}
-        onConvert={onConvert}
         onOpenPlanning={onOpenPlanning}
       />
       <WhoPanel

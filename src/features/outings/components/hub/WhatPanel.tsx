@@ -1,11 +1,13 @@
 import React from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { AppModal, SectionHeader } from '@/shared/components';
+import { AppModal, InlineAlert, SectionHeader } from '@/shared/components';
 import { useMapStore } from '@/features/carte/store/useMapStore';
 import { spacing } from '@/shared/constants/theme';
 import { OutingRow } from '@/shared/types';
-import { ActivityResult } from '../../types/activities';
+import { useProgrammePlacement } from '../../hooks/useProgrammePlacement';
+import { ProgrammeDragProvider } from './what/ProgrammeDragContext';
+import { ProgrammeDragScrollView } from './what/ProgrammeDragParts';
 import { WhatActivitiesSection } from './what/WhatActivitiesSection';
 import { WhatDetailsSection } from './what/WhatDetailsSection';
 import { WhatQuestionsSection } from './what/WhatQuestionsSection';
@@ -17,10 +19,6 @@ export interface WhatPanelProps {
   outing: OutingRow;
   userId: string | null;
   isOrganizer: boolean;
-  /** Opens the tie-break of a day group (`null` = « any day »). */
-  onOpenTie: (day: string | null) => void;
-  /** Creates a new outing named after a not retained activity. */
-  onConvert: (title: string) => void;
   onOpenPlanning: () => void;
 }
 
@@ -34,11 +32,10 @@ export const WhatPanel: React.FC<WhatPanelProps> = ({
   outing,
   userId,
   isOrganizer,
-  onOpenTie,
-  onConvert,
   onOpenPlanning,
 }) => {
   const router = useRouter();
+  const placement = useProgrammePlacement(outing);
 
   /** A screen pushed under a modal stays hidden: close the panel first. */
   const leave = (navigate: () => void) => {
@@ -54,35 +51,44 @@ export const WhatPanel: React.FC<WhatPanelProps> = ({
       title="Quoi ?"
       testID="hub-what-panel"
     >
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <SectionHeader title="Type et questions" />
-        <WhatQuestionsSection outingId={outing.id} />
+      <ProgrammeDragProvider
+        onDrop={(activityId, index) => void placement.placeAt(activityId, index)}
+      >
+        <ProgrammeDragScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
+          <SectionHeader title="Type et questions" />
+          <WhatQuestionsSection outingId={outing.id} />
 
-        <SectionHeader title="Détails" />
-        <WhatDetailsSection outing={outing} isOrganizer={isOrganizer} />
+          <SectionHeader title="Détails" />
+          <WhatDetailsSection outing={outing} isOrganizer={isOrganizer} />
 
-        <SectionHeader title="Activités" />
-        <WhatActivitiesSection
-          outingId={outing.id}
-          userId={userId}
-          onOpenTie={(day) => leave(() => onOpenTie(day))}
-          onConvert={(result: ActivityResult) => leave(() => onConvert(result.activity.title))}
-          onSearchOnMap={() =>
-            leave(() => {
-              useMapStore.getState().setTargetOutingId(outing.id, 'activity');
-              router.push('/(tabs)/carte');
-            })
-          }
-        />
+          <SectionHeader title="Activités" />
+          {placement.error ? (
+            <InlineAlert tone="error" message={placement.error} testID="what-placement-error" />
+          ) : null}
+          <WhatActivitiesSection
+            outingId={outing.id}
+            userId={userId}
+            onSearchOnMap={() =>
+              leave(() => {
+                useMapStore.getState().setTargetOutingId(outing.id, 'activity');
+                router.push('/(tabs)/carte');
+              })
+            }
+            onPlace={(activityId) => void placement.placeAtEnd(activityId)}
+          />
 
-        <SectionHeader title="Programme" />
-        <WhatStepsSection
-          outingId={outing.id}
-          outingTitle={outing.title}
-          onLeave={leave}
-          onOpenPlanning={onOpenPlanning}
-        />
-      </ScrollView>
+          <SectionHeader title="Programme" />
+          <WhatStepsSection
+            outingId={outing.id}
+            outingTitle={outing.title}
+            onLeave={leave}
+            onOpenPlanning={onOpenPlanning}
+          />
+        </ProgrammeDragScrollView>
+      </ProgrammeDragProvider>
     </AppModal>
   );
 };

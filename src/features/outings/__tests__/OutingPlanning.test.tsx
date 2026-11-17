@@ -75,9 +75,8 @@ const step = (id: string, minutes: number, durationMin: number, title: string): 
   status: 'pending', created_by: 'alice', created_at: 't', updated_at: 't',
 });
 
-const activity = (id: string, title: string, day: string | null): OutingActivity => ({
-  id, outingId: 'o1', day, title, note: null, proposedBy: 'alice', place: null, chosen: true,
-  createdAt: 't',
+const activity = (id: string, title: string): OutingActivity => ({
+  id, outingId: 'o1', title, note: null, proposedBy: 'alice', place: null, createdAt: 't',
 });
 
 let availabilities: MemberAvailability[];
@@ -98,8 +97,8 @@ beforeEach(() => {
 
   outings.fetchPlannedOutings.mockImplementation(async () => steps);
   votes.fetchActivities.mockResolvedValue([
-    activity('a-karting', 'Karting', DAY),
-    activity('a-resto', 'Restaurant', null),
+    activity('a-karting', 'Karting'),
+    activity('a-resto', 'Restaurant'),
   ]);
   planning.subscribeToPlanning.mockReturnValue(jest.fn());
   scheduling.subscribeToOutingScheduling.mockReturnValue(jest.fn());
@@ -130,7 +129,7 @@ describe('OutingPlanning', () => {
     expect(getByTestId('planning-unplaced-a-resto')).toBeTruthy();
   });
 
-  it('organizer: « Proposer des horaires » packs the steps and places the retained activities', async () => {
+  it('organizer: « Proposer des horaires » packs the steps without placing pool activities', async () => {
     const { findByTestId } = renderPlanning();
     fireEvent.press(await findByTestId('btn-planning-suggest'));
     await waitFor(() =>
@@ -139,9 +138,7 @@ describe('OutingPlanning', () => {
           { id: 'karting', scheduledFor: dateAtMinutes(DAY, 840), durationMin: 90 },
           { id: 'glace', scheduledFor: dateAtMinutes(DAY, 945), durationMin: 30 },
         ],
-        placements: [
-          { activityId: 'a-resto', scheduledFor: dateAtMinutes(DAY, 990), durationMin: 60 },
-        ],
+        placements: [],
       }),
     );
     expect(votes.fetchVotes).not.toHaveBeenCalled();

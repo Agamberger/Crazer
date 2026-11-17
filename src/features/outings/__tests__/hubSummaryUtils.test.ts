@@ -18,15 +18,13 @@ const recap = (day: string, hasCommonSlot: boolean): DayRecap => ({
   commonSlot: hasCommonSlot ? { start: '18:00', end: '22:00' } : null,
 });
 
-const activity = (id: string, title: string, chosen: boolean): OutingActivity => ({
+const activity = (id: string, title: string): OutingActivity => ({
   id,
   outingId: 'o1',
-  day: null,
   title,
   note: null,
   proposedBy: 'alice',
   place: null,
-  chosen,
   createdAt: '2026-11-01T00:00:00Z',
 });
 
@@ -71,26 +69,32 @@ describe('summarizeWhat', () => {
   ];
 
   it('counts the attendees who answered for the outing type', () => {
-    const summary = summarizeWhat({ outing_type: 'one_day' }, members, answers, null);
+    const summary = summarizeWhat({ outing_type: 'one_day' }, members, answers, null, []);
     expect(summary).toEqual({
       outingType: 'one_day',
       answeredCount: 1,
       attendingCount: 2,
-      proposalCount: 0,
-      chosenTitles: [],
+      poolCount: 0,
+      placedTitles: [],
     });
   });
 
   it('counts nobody as answered while the type is not chosen', () => {
-    expect(summarizeWhat({ outing_type: null }, members, answers, null).answeredCount).toBe(0);
+    expect(summarizeWhat({ outing_type: null }, members, answers, null, []).answeredCount).toBe(0);
   });
 
-  it('lists the proposals and the retained activities', () => {
-    const summary = summarizeWhat({ outing_type: 'precise' }, members, [], {
-      activities: [activity('a1', 'Karting', true), activity('a2', 'Bowling', false)],
-      votes: [],
-    });
-    expect(summary.proposalCount).toBe(2);
-    expect(summary.chosenTitles).toEqual(['Karting']);
+  it('counts the pool and lists the activities placed in the programme', () => {
+    const summary = summarizeWhat(
+      { outing_type: 'precise' },
+      members,
+      [],
+      { activities: [activity('a1', 'Karting'), activity('a2', 'Bowling')], votes: [] },
+      [
+        { activity_id: 'a1', status: 'pending' },
+        { activity_id: 'a2', status: 'cancelled' },
+      ],
+    );
+    expect(summary.poolCount).toBe(1);
+    expect(summary.placedTitles).toEqual(['Karting']);
   });
 });

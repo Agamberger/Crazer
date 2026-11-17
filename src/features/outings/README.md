@@ -13,7 +13,6 @@ An outing is created **as soon as it has a name**, then completed from a single 
 | `/outing/create` (modal) | `CreateOutingScreen` | « On sort ! »: name only, then **replaces** itself with the hub. |
 | `/outing/[id]` | `OutingHub` | Name at the top, then the rows « Quand ? », « Qui ? », « Quoi ? », each with a visual summary; each row opens a full-page panel sliding in from the right (`AppModal` `slideOver`). |
 | `/outing/[id]/join` (modal) | `JoinOutingFlow` | Invitee: accept or decline, days, slots (`respond_to_outing_invitation`), then the hub. |
-| `/outing/[id]/tie` | `ActivityTieBreak` | Tie of a day group (`?day=YYYY-MM-DD`, none = « any day »): choose by hand or random draw. |
 | `/outing/[id]/planning` | `OutingPlanning` | Planning of the day; closing it goes back to the hub. |
 
 Entry points:
@@ -24,7 +23,7 @@ Entry points:
 - « 🗺️ Chercher sur la carte » (hub › « Quoi ? » › Activités) opens the map in **activity** mode (`useMapStore.setTargetOutingId(id, 'activity')`): the banner reads « 💡 Proposer une activité pour … », the place card button « + Proposer comme activité » saves the place (`ensurePlaceExists`) and opens `ProposePlaceActivityModal` (title prefilled, 📍 place, day, note); once proposed, the app goes back to the hub.
 
 ### Creation (`CreateOutingScreen`, `useCreateOuting`)
-- Name prefilled by `?placeName=` (map) or `?title=` (« En faire une sortie » from a not retained activity).
+- Name prefilled by `?placeName=` (map) or `?title=`.
 - Calls `create_outing_with_invites` with no day, type nor invitee (an undated `draft` outing; the organizer is an `accepted` participant).
 - From a place, the place becomes a `pending` 60 min step dated now (the trigger `outings_align_planned_outings` moves it once a date is chosen). If the step cannot be added, the outing is still created and a warning toast says so. The place must already be saved (`ensurePlaceExists`, done by the map).
 
@@ -48,11 +47,11 @@ Summary: `ParticipantAvatars` (« 1 participant · 1 en attente »).
 - **Inviter des amis** (organizer, `useInviteFriends`): accepted friends who are not members yet, or who declined, through `invite_to_outing` (`useOutingSchedulingStore.inviteFriends`).
 
 ### « Quoi ? » (`WhatPanel`)
-Summary (`summarizeWhat`): type, « n/m ont répondu aux questions » (attendees who answered for the type), retained activities (« ✅ Karting ») or the number of proposals. One scrolling page with four sections (`components/hub/what/`):
+Summary (`summarizeWhat`): type, « n/m ont répondu aux questions » (attendees who answered for the type), activities placed in the programme (« 📅 Karting, Restaurant ») and the size of the pool (« 2 activités dans la pool »). One scrolling page with four sections (`components/hub/what/`):
 - **Type et questions** (`WhatQuestionsSection`, `useOutingQuestions`): see below. `submit` resolves with `'saved' | 'invalid' | 'failed'`.
 - **Détails** (`WhatDetailsSection`): description and status, edited by the organizer (« Enregistrer les détails »), read by the members.
-- **Activités** (`WhatActivitiesSection`, `useActivityVotes`, `ActivityVotesContent`): see below.
-- **Programme** (`WhatStepsSection`): the steps timeline (`PlannedOutingsTimeline`); a new or tapped step opens `PlannedOutingEditForm` in a nested `slideOver` page; « Planifier la journée » opens the planning.
+- **Activités** (`WhatActivitiesSection`, `useActivityVotes`, `ActivityVotesContent`): the pool, see below.
+- **Programme** (`WhatStepsSection`): the steps timeline (`PlannedOutingsTimeline`, drop zones from `renderDropSlot`); a new or tapped step opens `PlannedOutingEditForm` in a nested `slideOver` page; « Planifier la journée » opens the planning.
 
 ---
 
@@ -73,23 +72,21 @@ Design choices (simplest option, easy to refine later):
 - Answers of an unused type are kept in the row when the type is changed, but ignored by the UI.
 - Saving is update-then-insert (`outingAnswersService.saveMyAnswers`) because `outing_id` / `user_id` are not updatable columns; a unique violation from a concurrent save is retried as an update.
 
-## 🗳️ Activity proposals, votes and tie-break
+## 🗳️ Activity pool, votes and programme
 
-Data: `activityVotesService`, `useActivityVotesStore`, hooks `useActivityVotes` / `useActivityTieBreak`; pure ranking in `utils/activityUtils.ts`.
+Data: `activityVotesService`, `useActivityVotesStore`, hook `useActivityVotes`; ranking in `utils/activityUtils.ts` (`rankActivities`); placement in `utils/programmeUtils.ts` and `hooks/useProgrammePlacement.ts`; drag-and-drop in `components/hub/what/ProgrammeDragContext.tsx` / `ProgrammeDragParts.tsx` (geometry in `utils/dragUtils.ts`).
 
-- **Proposals**: any attendee adds an activity with **« + Activité perso »** (`ProposeActivityForm` in a `slideOver` page: title ≤ 120, optional note ≤ 300, day) or **« 🗺️ Chercher sur la carte »** (a place picked on the map, see the entry points). Each is proposed for a candidate day or « Peu importe » (day `NULL`). Days without a proposal stay listed. The author or the organizer can delete a proposal while the group is open. When the organizer removes a candidate day, its activities move to « Peu importe » (votes kept, not retained any more).
-- **Place of an activity**: only a proposal made from the map is linked to a place (`outing_activities.place_id`, stored through `ensurePlaceExists`); a custom activity has no place. The card shows « 📍 name · address ».
-- **Votes**: « Partant » (2 points) or « Peut-être » (1 point); pressing the current vote again removes it. Results are live (`subscribeToActivities`).
-- **Decision**: the organizer decides. A group is `voting`, `tie` (≥ 2 activities share the best positive score) or `decided` (« Retenir »); « Rouvrir le vote » reopens it.
-- **Tie screen**: the organizer chooses by hand or « 🎲 Tirer au sort » (server draw `draw_outing_activity`, replayed by `DrawRoulette`); members see the decision live.
-- **« En faire une sortie »**: a not retained activity of a decided group opens `/outing/create?title=…`.
-- Known limit: votes are closed by the UI once a group is decided, not by the database.
+- **The pool**: the activities proposed for the outing, with no day and no « retained » flag (`activity_pool` migration; the `day` / `chosen` columns stay in the database, unused, for already-installed app versions). Any attendee adds one with **« + Activité perso »** (`ProposeActivityForm` in a `slideOver` page: title ≤ 120, optional note ≤ 300) or **« 🗺️ Chercher sur la carte »** (a place picked on the map, see the entry points). The pool lists them best score first; the author or the organizer can delete a proposal.
+- **Place of an activity**: only a proposal made from the map is linked to a place (`outing_activities.place_id`, stored through `ensurePlaceExists`); the card shows « 📍 name · address ».
+- **Votes**: « Partant » (2 points) or « Peut-être » (1 point); pressing the current vote again removes it. Results are live (`subscribeToActivities`). There is no « Retenir », tie-break nor draw any more: the group composes the programme directly.
+- **To the programme** (any attendee, `place_outing_activity`): drag the « ⠿ » handle of a pool card onto a drop zone of « Programme » (zones appear between the steps while dragging; the page stops scrolling and scrolls by itself near its top / bottom edge; on web, text selection is off during the drag), or tap **« → Programme »** (after the last step). The new step (60 min, title / note / place of the activity) starts when the closest non-cancelled step above it ends (or at the next step's time when dropped first; on the outing date, else the first candidate day at 18:00, in an empty programme) (`placementAt`). The database moves the steps it overlaps, in cascade and only as much as needed: a step after a free gap keeps its time. The drag handle is injected by the hub (`renderDragHandle`), so `ActivityVotesContent` does not depend on the drag. A placed activity leaves the pool; deleting or cancelling its step puts it back.
+- Known limit: errors from reused hooks (vote, proposal) are toasts drawn under the panel; a failed placement is shown in the panel.
 
 ## 🕒 Planning of the day
 
 `OutingPlanning` (`useOutingPlanning`, `useOutingPlanningStore`, `outingPlanningService`, pure logic in `utils/planningUtils.ts`).
 
-- The planning *is* the outing's `planned_outings` of the selected day (the « Programme » steps). A retained activity becomes a step through `place_outing_activity`; manual steps appear too; cancelled steps are left out.
+- The planning *is* the outing's `planned_outings` of the selected day (the « Programme » steps). An activity of the pool becomes a step through `place_outing_activity` (« Placer » lists the pool activities not placed yet); manual steps appear too; cancelled steps are left out. « ✨ Proposer des horaires » packs the day's steps only, it never adds pool activities.
 - Suggested start: the earliest slot start at which more than half of the attendees of the day are available (`suggestStartTime`), 18:00 when nobody gave a slot.
 - Who comes to each step (`computeAttendance`): present, arrives late, leaves early or not available, with a warning per step.
 - The organizer orders (« ✨ Proposer des horaires », ↑ / ↓, « Durée », « Placer »); everything is saved in one transaction (`apply_outing_planning`).
@@ -120,27 +117,29 @@ src/features/outings/
 │   │   ├── WhenPanel.tsx, MySlotsEditor.tsx
 │   │   ├── WhoPanel.tsx, MyAnswerSection.tsx
 │   │   ├── WhatPanel.tsx
-│   │   └── what/                  # WhatQuestionsSection, WhatActivitiesSection, WhatDetailsSection, WhatStepsSection
+│   │   └── what/                  # WhatQuestionsSection, WhatActivitiesSection, WhatDetailsSection, WhatStepsSection,
+│   │                              # ProgrammeDragContext / ProgrammeDragParts (pool → programme drag-and-drop)
 │   ├── scheduling/                # Invitations, days, availabilities
 │   │   ├── JoinOutingFlow.tsx     # Invitee: Rejoindre ? → Quel jour ? → Dispos → Qui vient ?
 │   │   ├── OutingNameStep.tsx, OutingDaysStep.tsx, AvailabilityStep.tsx, InviteFriendsStep.tsx, WizardHeader.tsx
 │   │   ├── DayRecapRow.tsx, MembersList.tsx, ParticipantAvatars.tsx
 │   │   └── InvitationCard.tsx, PendingInvitationsSection.tsx
 │   ├── questions/                 # OutingTypeStep, OutingQuestionsFields, Precise/OneDay/HolidaysQuestions
-│   ├── activities/                # ActivityVotesContent, ActivityGroupSection, ActivityVoteCard, ProposeActivityForm,
-│   │                              # ProposePlaceActivityModal (map), ActivityTieBreak, DrawRoulette
+│   ├── activities/                # ActivityVotesContent (pool), ActivityVoteCard, ProposeActivityForm,
+│   │                              # ProposePlaceActivityModal (map)
 │   ├── planning/                  # OutingPlanning and its cards
 │   ├── OutingCard.tsx, PlannedOutingCard.tsx, PlannedOutingsTimeline.tsx, TimelineStep.tsx
 │   └── PlannedOutingEditForm.tsx, PlannedOutingFormActions.tsx, DurationField.tsx
 ├── hooks/                         # useOutingHub, useCreateOuting, useWhenPanel, useDayChoice, useMyAnswer,
 │                                  # useInviteFriends, useOutingScheduling, useJoinOutingFlow, useOutingQuestions,
-│                                  # useActivityVotes, useOutingPlanning, useOutingPlannedOutings, …
+│                                  # useActivityVotes, useProgrammePlacement, useOutingPlanning, useOutingPlannedOutings, …
 ├── services/                      # outingService, outingSchedulingService, outingAnswersService,
-│                                  # activityVotesService, activityPlacesService, outingPlanningService, stepBaseDate
+│                                  # activityVotesService, outingPlanningService, stepBaseDate
 ├── store/                         # useOutingsStore, useOutingSchedulingStore, useOutingAnswersStore,
 │                                  # useActivityVotesStore, useOutingPlanningStore
 ├── types/                         # hub, scheduling, questions, activities, planning
-├── utils/                         # hubSummaryUtils, availabilityUtils, answersUtils, activityUtils, planningUtils
+├── utils/                         # hubSummaryUtils, availabilityUtils, answersUtils, activityUtils, planningUtils,
+│                                  # programmeUtils, dragUtils
 ├── constants.ts, questionOptions.ts
 ├── __tests__/
 └── index.ts                       # Public API (barrel)

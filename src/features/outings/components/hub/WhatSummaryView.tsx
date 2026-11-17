@@ -7,12 +7,12 @@ export interface WhatSummaryViewProps {
   summary: WhatSummary | null;
 }
 
-const proposalsLabel = (count: number): string =>
+const poolLabel = (count: number): string =>
   count === 0
-    ? 'Aucune activité proposée'
-    : `${count} activité${count > 1 ? 's' : ''} proposée${count > 1 ? 's' : ''}`;
+    ? 'Aucune activité dans la pool'
+    : `${count} activité${count > 1 ? 's' : ''} dans la pool`;
 
-/** Summary of « Quoi ? »: type, answers progress and activities (retained ones first). */
+/** Summary of « Quoi ? »: type, answers progress, the programme's activities and the pool. */
 export const WhatSummaryView: React.FC<WhatSummaryViewProps> = ({ summary }) => {
   const type = OUTING_TYPE_OPTIONS.find((option) => option.value === summary?.outingType);
   if (!summary || !type) {
@@ -32,9 +32,8 @@ export const WhatSummaryView: React.FC<WhatSummaryViewProps> = ({ summary }) => 
         {summary.answeredCount}/{summary.attendingCount} ont répondu aux questions
       </AppText>
       <AppText variant="caption" color="secondary" testID="hub-what-activities">
-        {summary.chosenTitles.length > 0
-          ? `✅ ${summary.chosenTitles.join(', ')}`
-          : proposalsLabel(summary.proposalCount)}
+        {summary.placedTitles.length > 0 ? `📅 ${summary.placedTitles.join(', ')} · ` : ''}
+        {poolLabel(summary.poolCount)}
       </AppText>
     </>
   );

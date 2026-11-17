@@ -1,4 +1,4 @@
-import { OutingRow } from '@/shared/types';
+import { OutingRow, PlannedOutingRow } from '@/shared/types';
 import { OutingActivities } from '../types/activities';
 import { WhatSummary, WhenSummary } from '../types/hub';
 import { MemberAnswers } from '../types/questions';
@@ -42,14 +42,16 @@ export const summarizeWhen = (
  * @param outing the outing (its type).
  * @param members participants of the outing (attendees answer the questions).
  * @param answers saved answers of the group.
- * @param activities proposed activities, `null` while not loaded.
- * @returns type, answers progress, number of proposals and retained activities.
+ * @param activities activities of the pool, `null` while not loaded.
+ * @param steps steps of the outing (an activity linked by a step is in the programme).
+ * @returns type, answers progress, size of the pool and activities placed in the programme.
  */
 export const summarizeWhat = (
   outing: Pick<OutingRow, 'outing_type'>,
   members: ReadonlyArray<OutingMember>,
   answers: ReadonlyArray<MemberAnswers>,
   activities: OutingActivities | null,
+  steps: ReadonlyArray<Pick<PlannedOutingRow, 'activity_id' | 'status'>>,
 ): WhatSummary => {
   const outingType = outing.outing_type ?? null;
   const attendingIds = new Set(attendingMembers(members).map((member) => member.userId));
@@ -57,12 +59,16 @@ export const summarizeWhat = (
     ? answers.filter((a) => attendingIds.has(a.userId) && hasAnswersFor(outingType, a)).length
     : 0;
   const proposals = activities?.activities ?? [];
+  const placedIds = new Set(
+    steps.filter((step) => step.status !== 'cancelled').map((step) => step.activity_id),
+  );
+  const placed = proposals.filter((activity) => placedIds.has(activity.id));
 
   return {
     outingType,
     answeredCount,
     attendingCount: attendingIds.size,
-    proposalCount: proposals.length,
-    chosenTitles: proposals.filter((activity) => activity.chosen).map((activity) => activity.title),
+    poolCount: proposals.length - placed.length,
+    placedTitles: placed.map((activity) => activity.title),
   };
 };

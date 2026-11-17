@@ -4,14 +4,14 @@
 --
 -- Seed accounts: Alice 1111… (organizer), Bob 2222… and Charlie 3333… (accepted).
 -- Outing c4444… « Samedi entre potes » : one candidate day (today+3), start 14:00 Paris,
--- retained activities f5555… (Karting, placed as step e3333…) and f6666… (Restaurant, not placed).
--- Outing c2222… (Alice) : activities f1111… / f2222… not retained, Charlie not a member.
+-- pool activities f5555… (Karting, placed as step e3333…) and f6666… (Restaurant, not placed).
+-- Outing c2222… (Alice) : pool activities f1111… / f2222… not placed, Charlie not a member.
 -- ============================================================
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET search_path = public, extensions;
 
-SELECT plan(27);
+SELECT plan(30);
 
 CREATE FUNCTION pg_temp.login(p_user UUID) RETURNS VOID LANGUAGE sql AS $$
   SELECT set_config('request.jwt.claims',
@@ -25,9 +25,9 @@ $$;
 SELECT pg_temp.login('22222222-2222-2222-2222-222222222222'); -- Bob
 
 SELECT throws_ok(
-  $$ SELECT public.place_outing_activity('f6666666-6666-6666-6666-666666666666',
-       (CURRENT_DATE + 3 + TIME '18:00') AT TIME ZONE 'Europe/Paris', 90) $$,
-  '42501', NULL, 'place : only the organizer places an activity'
+  $$ SELECT public.place_outing_activity('f1111111-1111-1111-1111-111111111111',
+       now() + INTERVAL '10 days', 60) $$,
+  '42501', NULL, 'place : only an attendee places an activity (Bob is only invited to c2222…)'
 );
 
 SELECT throws_ok(
@@ -46,10 +46,10 @@ SELECT lives_ok(
 
 SELECT pg_temp.login('11111111-1111-1111-1111-111111111111'); -- Alice
 
-SELECT throws_ok(
+SELECT lives_ok(
   $$ SELECT public.place_outing_activity('f1111111-1111-1111-1111-111111111111',
        now() + INTERVAL '10 days', 60) $$,
-  '22023', NULL, 'place : an activity that is not retained cannot be placed'
+  'place : any activity of the pool can be placed (no vote decision needed)'
 );
 
 SELECT throws_ok(
@@ -64,11 +64,15 @@ SELECT throws_ok(
   '23505', NULL, 'place : an activity is placed only once'
 );
 
+SELECT pg_temp.login('22222222-2222-2222-2222-222222222222'); -- Bob, attendee of c4444…
+
 SELECT lives_ok(
   $$ SELECT public.place_outing_activity('f6666666-6666-6666-6666-666666666666',
        (CURRENT_DATE + 3 + TIME '20:00') AT TIME ZONE 'Europe/Paris', 90) $$,
-  'place : the organizer places a retained activity'
+  'place : an attendee (not the organizer) places an activity of the pool'
 );
+
+SELECT pg_temp.login('11111111-1111-1111-1111-111111111111'); -- Alice
 
 SELECT is(
   (SELECT row(title, place_id, duration_min, status)::text FROM public.planned_outings
@@ -125,10 +129,40 @@ SELECT throws_ok(
   '22023', NULL, 'reschedule : a negative duration is refused'
 );
 
-SELECT throws_ok(
-  $$ SELECT public.place_outing_activity('f5555555-5555-5555-5555-555555555555',
-       (CURRENT_DATE + 5 + TIME '14:00') AT TIME ZONE 'Europe/Paris', 60) $$,
-  '22023', NULL, 'place : a day-specific activity stays on its day'
+INSERT INTO public.planned_outings (id, outing_id, title, scheduled_for, duration_min, created_by)
+VALUES
+  ('e9999999-9999-9999-9999-999999999999', 'c2222222-2222-2222-2222-222222222222', 'Dessert',
+   (CURRENT_DATE + 6 + TIME '21:00') AT TIME ZONE 'Europe/Paris', 30, '11111111-1111-1111-1111-111111111111'),
+  ('e8888888-8888-8888-8888-888888888888', 'c2222222-2222-2222-2222-222222222222', 'Café',
+   (CURRENT_DATE + 6 + TIME '21:45') AT TIME ZONE 'Europe/Paris', 30, '11111111-1111-1111-1111-111111111111'),
+  ('e7777777-7777-7777-7777-777777777777', 'c2222222-2222-2222-2222-222222222222', 'Dernier verre',
+   (CURRENT_DATE + 6 + TIME '23:30') AT TIME ZONE 'Europe/Paris', 30, '11111111-1111-1111-1111-111111111111');
+
+SELECT lives_ok(
+  $$ SELECT public.place_outing_activity('f2222222-2222-2222-2222-222222222222',
+       (CURRENT_DATE + 6 + TIME '21:00') AT TIME ZONE 'Europe/Paris', 60) $$,
+  'place : an activity is dropped before the overlapping steps'
+);
+
+SELECT is(
+  (SELECT scheduled_for FROM public.planned_outings
+   WHERE id = 'e9999999-9999-9999-9999-999999999999'),
+  (CURRENT_DATE + 6 + TIME '22:00') AT TIME ZONE 'Europe/Paris',
+  'place : an overlapped step moves to the end of the new step'
+);
+
+SELECT is(
+  (SELECT scheduled_for FROM public.planned_outings
+   WHERE id = 'e8888888-8888-8888-8888-888888888888'),
+  (CURRENT_DATE + 6 + TIME '22:30') AT TIME ZONE 'Europe/Paris',
+  'place : the shift cascades only as much as needed'
+);
+
+SELECT is(
+  (SELECT scheduled_for FROM public.planned_outings
+   WHERE id = 'e7777777-7777-7777-7777-777777777777'),
+  (CURRENT_DATE + 6 + TIME '23:30') AT TIME ZONE 'Europe/Paris',
+  'place : a step that is not overlapped does not move'
 );
 
 UPDATE public.planned_outings SET status = 'cancelled'

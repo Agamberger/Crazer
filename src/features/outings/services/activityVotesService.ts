@@ -1,7 +1,6 @@
 import { supabase } from '@/shared/lib/supabase';
 import { ActivityVote, OutingActivityRow, OutingActivityVoteRow } from '@/shared/types';
 import { ActivityVoteEntry, OutingActivity } from '../types/activities';
-import { DayKey } from '../types/scheduling';
 
 const UNIQUE_VIOLATION = '23505';
 
@@ -11,7 +10,6 @@ let subscriptionCounter = 0;
 export interface ProposeActivityPayload {
   outingId: string;
   userId: string;
-  day: DayKey | null;
   title: string;
   note: string | null;
   placeId: string | null;
@@ -26,12 +24,10 @@ type ActivityRowWithPlace = OutingActivityRow & {
 const rowToActivity = (row: ActivityRowWithPlace): OutingActivity => ({
   id: row.id,
   outingId: row.outing_id,
-  day: row.day,
   title: row.title,
   note: row.note,
   proposedBy: row.proposed_by,
   place: row.places,
-  chosen: row.chosen,
   createdAt: row.created_at,
 });
 
@@ -67,7 +63,6 @@ export const activityVotesService = {
       .insert({
         outing_id: payload.outingId,
         proposed_by: payload.userId,
-        day: payload.day,
         title: payload.title.trim(),
         note: payload.note?.trim() || null,
         place_id: payload.placeId,
@@ -123,29 +118,24 @@ export const activityVotesService = {
     if (error) throw new Error(error.message);
   },
 
-  /** Organizer only: retains this activity for its day. */
-  chooseActivity: async (activityId: string): Promise<void> => {
-    const { error } = await supabase.rpc('choose_outing_activity', { p_activity_id: activityId });
-    if (error) throw new Error(error.message);
-  },
-
-  /** Organizer only: random draw among the best scored activities. Returns the winner id. */
-  drawActivity: async (outingId: string, day: DayKey | null): Promise<string> => {
-    const { data, error } = await supabase.rpc('draw_outing_activity', {
-      p_outing_id: outingId,
-      p_day: day ?? undefined,
+  /**
+   * Places an activity of the pool in the programme (any attendee); the database moves the
+   * steps the new one overlaps.
+   * @returns the id of the new step.
+   * @throws Error when the user does not attend or the activity is already placed.
+   */
+  placeActivity: async (
+    activityId: string,
+    scheduledFor: string,
+    durationMin: number,
+  ): Promise<string> => {
+    const { data, error } = await supabase.rpc('place_outing_activity', {
+      p_activity_id: activityId,
+      p_scheduled_for: scheduledFor,
+      p_duration_min: durationMin,
     });
     if (error) throw new Error(error.message);
     return data;
-  },
-
-  /** Organizer only: no activity is chosen any more for this day group. */
-  reopenActivities: async (outingId: string, day: DayKey | null): Promise<void> => {
-    const { error } = await supabase.rpc('reopen_outing_activities', {
-      p_outing_id: outingId,
-      p_day: day ?? undefined,
-    });
-    if (error) throw new Error(error.message);
   },
 
   /** Live updates of activities and votes. Returns the unsubscribe function. */

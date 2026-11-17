@@ -16,10 +16,6 @@ export default function OutingHubRoute() {
     <OutingHub
       outingId={id}
       onClose={close}
-      onOpenTie={(day) =>
-        router.push({ pathname: '/outing/[id]/tie', params: day ? { id, day } : { id } })
-      }
-      onConvert={(title) => router.push({ pathname: '/outing/create', params: { title } })}
       onOpenPlanning={() => router.push({ pathname: '/outing/[id]/planning', params: { id } })}
     />
   );

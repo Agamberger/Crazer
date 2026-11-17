@@ -33,7 +33,6 @@ export * from './utils/activityUtils';
 export * from './services/activityVotesService';
 export * from './store/useActivityVotesStore';
 export * from './hooks/useActivityVotes';
-export * from './components/activities/ActivityTieBreak';
 export * from './components/activities/ProposePlaceActivityModal';
 export type { ProposalPlace } from './components/activities/ProposeActivityForm';
 
