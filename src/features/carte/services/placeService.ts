@@ -8,10 +8,8 @@ import {
   SearchPlacesParams,
 } from '@/shared/types/place';
 
-import {
-  PlaceItem,
-  placeItemToCreatePlaceDto,
-} from '../types/carte';
+import { PlaceItem, placeItemToCreatePlaceDto } from '../types/carte';
+import { GOOGLE_PLACE_ITEM_PREFIX } from './googlePlaces/googlePlaceMappers';
 
 /** Code Postgres d'une violation de contrainte d'unicité. */
 const UNIQUE_VIOLATION = '23505';
@@ -27,17 +25,8 @@ const UNIQUE_VIOLATION = '23505';
  * @param params - Paramètres de recherche (lat, lng, radius_m, query, filter_cat, max_results)
  * @returns Liste de lieux triés par pertinence / distance
  */
-export async function searchPlaces(
-  params: SearchPlacesParams,
-): Promise<PlaceSearchResult[]> {
-  const {
-    query,
-    lat,
-    lng,
-    radius_m = 2000,
-    filter_cat,
-    max_results = 20,
-  } = params;
+export async function searchPlaces(params: SearchPlacesParams): Promise<PlaceSearchResult[]> {
+  const { query, lat, lng, radius_m = 2000, filter_cat, max_results = 20 } = params;
 
   const { data, error } = await supabase.rpc('search_places', {
     query: query && query.trim() ? query.trim() : undefined,
@@ -136,12 +125,16 @@ async function findSameNameNearby(
  * 3. sinon, insertion d'un nouveau lieu.
  *
  * Un lieu existant n'est jamais réécrit : ses données appartiennent à son créateur.
+ * Les lieux Google passent par `ensureGooglePlace` (CGU : place ID uniquement).
  *
  * @param dto - Données du lieu à persister
  * @returns L'identifiant UUID du lieu dans Supabase
- * @throws si les coordonnées sont invalides ou si Supabase renvoie une erreur
+ * @throws si le lieu vient de Google, si les coordonnées sont invalides ou si Supabase renvoie une erreur
  */
 export async function upsertPlace(dto: CreatePlaceDto): Promise<string> {
+  if (dto.source === 'google') {
+    throw new Error('A Google place is saved by its place ID only (ensureGooglePlace).');
+  }
   const hasExternalId = Boolean(dto.source_id) && dto.source !== 'custom';
 
   if (hasExternalId && dto.source_id) {
@@ -150,7 +143,7 @@ export async function upsertPlace(dto: CreatePlaceDto): Promise<string> {
   }
 
   if (!hasValidCoordinates(dto.latitude, dto.longitude)) {
-    throw new Error('Coordonnées du lieu invalides : impossible de l\'enregistrer.');
+    throw new Error("Coordonnées du lieu invalides : impossible de l'enregistrer.");
   }
 
   const sameNameId = await findSameNameNearby(dto.name, dto.latitude, dto.longitude);
@@ -208,13 +201,35 @@ export async function upsertPlace(dto: CreatePlaceDto): Promise<string> {
  * @param userId - ID de l'utilisateur créateur
  * @returns UUID du lieu créé
  */
-export async function createCustomPlace(
-  place: PlaceItem,
-  userId?: string,
-): Promise<string> {
+export async function createCustomPlace(place: PlaceItem, userId?: string): Promise<string> {
   const dto = placeItemToCreatePlaceDto(place, userId);
   return upsertPlace(dto);
 }
+
+/**
+ * Returns the `places` row of a Google place, creating it if needed. Only the Google place ID
+ * is stored (Google Maps Platform terms); name, address, photos… are fetched live.
+ *
+ * @param googlePlaceId - Google place ID
+ * @returns UUID of the row in `places`
+ * @throws Error when Supabase refuses (not logged in, invalid ID)
+ */
+export async function ensureGooglePlace(googlePlaceId: string): Promise<string> {
+  const { data, error } = await supabase.rpc('ensure_google_place', {
+    p_google_place_id: googlePlaceId,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  return data;
+}
+
+/** Google place ID of a map item: explicit field, or the `google-<id>` in-memory id. */
+const googlePlaceIdOf = (place: PlaceItem): string | null =>
+  place.googlePlaceId ??
+  (place.id.startsWith(GOOGLE_PLACE_ITEM_PREFIX)
+    ? place.id.slice(GOOGLE_PLACE_ITEM_PREFIX.length)
+    : null);
 
 /**
  * S'assure qu'un lieu (carte ou personnalisé) est bien persisté dans la base `places`.
@@ -225,15 +240,12 @@ export async function createCustomPlace(
  * @param userId - ID de l'utilisateur courant (pour ownership si custom)
  * @returns UUID garanti dans la table `places`
  */
-export async function ensurePlaceExists(
-  place: PlaceItem,
-  userId?: string,
-): Promise<string> {
-  // Si le lieu a déjà un UUID de base (pas un id 'osm-xxx' ou 'google-xxx')
-  const isUuid =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      place.id,
-    );
+export async function ensurePlaceExists(place: PlaceItem, userId?: string): Promise<string> {
+  const googlePlaceId = googlePlaceIdOf(place);
+  if (googlePlaceId) return ensureGooglePlace(googlePlaceId);
+
+  // Si le lieu a déjà un UUID de base (pas un id 'osm-xxx')
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(place.id);
 
   if (isUuid) {
     // Vérifier si l'ID existe déjà dans la base

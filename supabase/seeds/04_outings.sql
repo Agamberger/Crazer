@@ -131,8 +131,9 @@ VALUES
    CURRENT_DATE + 5, 'Rooftop avec vue', 'Réservation possible à 19h',
    '11111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111111'),
   ('f2222222-2222-2222-2222-222222222222', 'c2222222-2222-2222-2222-222222222222',
-   CURRENT_DATE + 5, 'Bar à jeux', NULL,
-   '11111111-1111-1111-1111-111111111111', NULL)
+   -- Lieu Google (place ID seul) : nom et adresse chargés en direct par l'app
+   CURRENT_DATE + 5, 'Pique-nique au Champ-de-Mars', NULL,
+   '11111111-1111-1111-1111-111111111111', 'b4444444-4444-4444-4444-444444444444')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.outing_activity_votes (activity_id, outing_id, user_id, vote)

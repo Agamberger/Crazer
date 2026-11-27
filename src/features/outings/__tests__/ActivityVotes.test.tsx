@@ -215,7 +215,7 @@ describe('WhatActivitiesSection', () => {
   it('affiche le lieu d’une activité', async () => {
     activities = [
       activity('a', 'Bowling', {
-        place: { id: 'p1', name: 'Strike', address: '1 rue X', rating: 4 },
+        place: { id: 'p1', name: 'Strike', address: '1 rue X', googlePlaceId: null },
       }),
     ];
     const { findByTestId } = renderVotes();

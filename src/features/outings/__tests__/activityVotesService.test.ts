@@ -76,6 +76,46 @@ describe('activityVotesService', () => {
     ]);
   });
 
+  it('fetchActivities garde le seul place ID d’un lieu Google', async () => {
+    from.mockReturnValue(
+      builder({
+        data: [
+          {
+            ...ACTIVITY_ROW,
+            place_id: 'p-google',
+            places: {
+              id: 'p-google',
+              name: null,
+              address: null,
+              source: 'google',
+              source_id: 'ChIJ1',
+            },
+          },
+          {
+            ...ACTIVITY_ROW,
+            id: 'a2',
+            place_id: 'p-crazer',
+            places: {
+              id: 'p-crazer',
+              name: 'Strike',
+              address: '1 rue X',
+              source: 'custom',
+              source_id: 'x',
+            },
+          },
+        ],
+        error: null,
+      }),
+    );
+
+    const activities = await activityVotesService.fetchActivities('o1');
+
+    expect(activities.map((activity) => activity.place)).toEqual([
+      { id: 'p-google', name: null, address: null, googlePlaceId: 'ChIJ1' },
+      { id: 'p-crazer', name: 'Strike', address: '1 rue X', googlePlaceId: null },
+    ]);
+  });
+
   it('fetchVotes convertit les lignes et remonte les erreurs', async () => {
     from.mockReturnValueOnce(
       builder({ data: [{ activity_id: 'a1', user_id: 'bob', vote: 'maybe' }], error: null }),

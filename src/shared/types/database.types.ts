@@ -437,7 +437,7 @@ export type Database = {
       places: {
         Row: {
           address: string | null
-          category: Database["public"]["Enums"]["place_category"]
+          category: Database["public"]["Enums"]["place_category"] | null
           city: string | null
           country_code: string | null
           created_at: string
@@ -448,7 +448,7 @@ export type Database = {
           is_public: boolean
           location: unknown
           metadata: Json | null
-          name: string
+          name: string | null
           opening_hours: string | null
           phone: string | null
           postcode: string | null
@@ -458,6 +458,7 @@ export type Database = {
           search_vector: unknown
           source: Database["public"]["Enums"]["place_source"]
           source_id: string | null
+          source_id_refreshed_at: string | null
           source_url: string | null
           street: string | null
           tags: string[] | null
@@ -466,36 +467,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
-          category?: Database["public"]["Enums"]["place_category"]
-          city?: string | null
-          country_code?: string | null
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          id?: string
-          images?: string[] | null
-          is_public?: boolean
-          location: unknown
-          metadata?: Json | null
-          name: string
-          opening_hours?: string | null
-          phone?: string | null
-          postcode?: string | null
-          price_range?: string | null
-          rating?: number | null
-          reviews_count?: number | null
-          search_vector?: unknown
-          source?: Database["public"]["Enums"]["place_source"]
-          source_id?: string | null
-          source_url?: string | null
-          street?: string | null
-          tags?: string[] | null
-          updated_at?: string
-          website?: string | null
-        }
-        Update: {
-          address?: string | null
-          category?: Database["public"]["Enums"]["place_category"]
+          category?: Database["public"]["Enums"]["place_category"] | null
           city?: string | null
           country_code?: string | null
           created_at?: string
@@ -506,7 +478,7 @@ export type Database = {
           is_public?: boolean
           location?: unknown
           metadata?: Json | null
-          name?: string
+          name?: string | null
           opening_hours?: string | null
           phone?: string | null
           postcode?: string | null
@@ -516,6 +488,37 @@ export type Database = {
           search_vector?: unknown
           source?: Database["public"]["Enums"]["place_source"]
           source_id?: string | null
+          source_id_refreshed_at?: string | null
+          source_url?: string | null
+          street?: string | null
+          tags?: string[] | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          category?: Database["public"]["Enums"]["place_category"] | null
+          city?: string | null
+          country_code?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          images?: string[] | null
+          is_public?: boolean
+          location?: unknown
+          metadata?: Json | null
+          name?: string | null
+          opening_hours?: string | null
+          phone?: string | null
+          postcode?: string | null
+          price_range?: string | null
+          rating?: number | null
+          reviews_count?: number | null
+          search_vector?: unknown
+          source?: Database["public"]["Enums"]["place_source"]
+          source_id?: string | null
+          source_id_refreshed_at?: string | null
           source_url?: string | null
           street?: string | null
           tags?: string[] | null
@@ -880,6 +883,10 @@ export type Database = {
         | { Args: { schema_name: string; table_name: string }; Returns: string }
         | { Args: { table_name: string }; Returns: string }
       enablelongtransactions: { Args: never; Returns: string }
+      ensure_google_place: {
+        Args: { p_google_place_id: string }
+        Returns: string
+      }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
       geometry: { Args: { "": string }; Returns: unknown }
       geometry_above: {

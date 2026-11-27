@@ -36,7 +36,7 @@ Les données de test sont découpées de manière modulaire dans le dossier `sup
 
 - `01_users.sql` : Création des comptes de test (`auth.users`, `auth.identities` et `profiles`).
 - `02_friendships.sql` : Relations d'amitié entre utilisateurs.
-- `03_places.sql` : Lieux et POIs de test (coordonnées PostGIS).
+- `03_places.sql` : Lieux et POIs de test (coordonnées PostGIS) et un lieu Google (Tour Eiffel) stocké par son seul place ID, lié à l'activité « Pique-nique au Champ-de-Mars ».
 - `04_outings.sql` : Sorties, participants et étapes planifiées. Also seeds the scheduling workflow: candidate days and Alice's availability for the rooftop outing (`c2222…`), with a pending invitation for Bob.
 
 ### Comptes de Test par Défaut
@@ -55,7 +55,7 @@ Les données de test sont découpées de manière modulaire dans le dossier `sup
 
 1. **`profiles`** : Profils utilisateurs (synchronisés automatiquement via trigger avec `auth.users`).
 2. **`friendships`** : Relations d'amitié entre profils (`pending`, `accepted`, `rejected`).
-3. **`places`** : Lieux et POIs (restaurants, bars, activités, nature) stockés avec coordonnées PostGIS `GEOGRAPHY(POINT, 4326)`.
+3. **`places`** : Lieux Crazer / OSM (restaurants, bars, activités, nature) stockés avec coordonnées PostGIS `GEOGRAPHY(POINT, 4326)`, et lieux Google réduits à leur **place ID** (`source = 'google'`, `source_id`, `source_id_refreshed_at` ; nom, position et catégorie `NULL`). Écriture des lieux Google : RPC `ensure_google_place(p_google_place_id)`. `search_places` ne renvoie que les lieux Crazer / OSM. Règle complète : `docs/SUPABASE.md` › « Lieux Google ».
 4. **`outings`** : Sorties organisées entre amis (`draft`, `planned`, `ongoing`, `done`, `cancelled`).
 5. **`outing_participants`** : Participants invités/inscrits aux sorties (`invited`, `accepted`, `declined`, `maybe`).
 6. **`planned_outings`** : Étapes planifiées au sein d'une sortie, liées à des lieux et triées par heure.
