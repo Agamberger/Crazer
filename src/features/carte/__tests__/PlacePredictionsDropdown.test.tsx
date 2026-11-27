@@ -1,19 +1,17 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import { PlacePredictionsDropdown } from '../components/PlacePredictionsDropdown';
-import { GoogleAutocompletePrediction } from '../services/googlePlacesService';
+import { GooglePlacePrediction } from '../services/googlePlaces';
 
-const predictions: GoogleAutocompletePrediction[] = [
+const predictions: GooglePlacePrediction[] = [
   {
-    place_id: 'p1',
+    placeId: 'p1',
     description: 'Tour Eiffel, Paris',
-    structured_formatting: { main_text: 'Tour Eiffel', secondary_text: 'Paris, France' },
+    mainText: 'Tour Eiffel',
+    secondaryText: 'Paris, France',
+    types: [],
   },
-  {
-    place_id: 'p2',
-    description: 'Louvre, Paris',
-    structured_formatting: { main_text: '' },
-  },
+  { placeId: 'p2', description: 'Louvre, Paris', mainText: 'Louvre, Paris', types: [] },
 ];
 
 describe('PlacePredictionsDropdown', () => {

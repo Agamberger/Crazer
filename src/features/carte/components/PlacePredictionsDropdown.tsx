@@ -2,11 +2,11 @@ import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { AppText, ListItem } from '@/shared/components';
 import { colors, radii, spacing } from '@/shared/constants/theme';
-import { GoogleAutocompletePrediction } from '../services/googlePlacesService';
+import { GooglePlacePrediction } from '../services/googlePlaces';
 
 export interface PlacePredictionsDropdownProps {
-  predictions: GoogleAutocompletePrediction[];
-  onSelectPrediction: (prediction: GoogleAutocompletePrediction) => void;
+  predictions: GooglePlacePrediction[];
+  onSelectPrediction: (prediction: GooglePlacePrediction) => void;
 }
 
 /** Google Places autocomplete suggestions shown under the map search bar. */
@@ -24,12 +24,12 @@ export const PlacePredictionsDropdown: React.FC<PlacePredictionsDropdownProps> =
         style={styles.dropdownScroll}
       >
         {predictions.map((item) => {
-          const mainText = item.structured_formatting?.main_text || item.description;
+          const mainText = item.mainText;
           return (
             <ListItem
-              key={item.place_id}
+              key={item.placeId}
               title={mainText}
-              subtitle={item.structured_formatting?.secondary_text || undefined}
+              subtitle={item.secondaryText}
               left={<AppText>📍</AppText>}
               showChevron={false}
               onPress={() => onSelectPrediction(item)}

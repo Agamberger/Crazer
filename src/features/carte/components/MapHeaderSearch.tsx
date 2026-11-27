@@ -1,14 +1,11 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { SearchBar } from '@/shared/components';
+import { AppText, SearchBar } from '@/shared/components';
 import { colors, spacing, typography } from '@/shared/constants/theme';
 import { PlaceCategoryFilter, PlaceItem } from '../types/carte';
 import { useMapStore } from '../store/useMapStore';
 import { usePlaceAutocomplete } from '../hooks/usePlaceAutocomplete';
-import {
-  googlePlaceDetailsToPlaceItem,
-  GooglePlaceDetailsResult,
-} from '../services/googlePlacesService';
+import { GooglePlaceDetails, googlePlaceToPlaceItem } from '../services/googlePlaces';
 import { CategoryFilterChips } from './CategoryFilterChips';
 import { PlacePredictionsDropdown } from './PlacePredictionsDropdown';
 
@@ -28,8 +25,8 @@ export const MapHeaderSearch: React.FC<MapHeaderSearchProps> = ({
   const setPlaces = useMapStore((state) => state.setPlaces);
   const setCenterRegion = useMapStore((state) => state.setCenterRegion);
 
-  const showPlaceDetails = (details: GooglePlaceDetailsResult) => {
-    const newPlace = googlePlaceDetailsToPlaceItem(details);
+  const showPlaceDetails = (details: GooglePlaceDetails) => {
+    const newPlace = googlePlaceToPlaceItem(details);
 
     // Si le lieu n'est pas déjà dans le store, on l'ajoute
     if (!places.some((p) => p.id === newPlace.id)) {
@@ -58,6 +55,7 @@ export const MapHeaderSearch: React.FC<MapHeaderSearchProps> = ({
     predictions,
     isSearchingGoogle,
     isDropdownVisible,
+    searchError,
     handleFocus,
     handleChangeText,
     handleClear,
@@ -90,6 +88,17 @@ export const MapHeaderSearch: React.FC<MapHeaderSearchProps> = ({
         />
       ) : null}
 
+      {searchError ? (
+        <AppText
+          variant="bodySmall"
+          color="error"
+          style={styles.searchError}
+          testID="map-search-error"
+        >
+          {searchError}
+        </AppText>
+      ) : null}
+
       <CategoryFilterChips
         selectedCategory={selectedCategory}
         onSelectCategory={handleSelectCategory}
@@ -113,6 +122,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 6,
+  },
+  searchError: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.xs,
   },
   searchInput: {
     fontSize: typography.fontSizes.sm,

@@ -13,3 +13,5 @@ export * from './hooks/usePlaces';
 export type { MapVisibleArea } from './utils/leafletMap';
 export * from './services/placeService';
 export * from './services/googlePlacesService';
+export * from './services/googlePlaces';
+export * from './hooks/useGooglePlaces';

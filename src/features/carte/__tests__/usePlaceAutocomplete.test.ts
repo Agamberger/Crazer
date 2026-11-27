@@ -1,22 +1,36 @@
 import { act, renderHook } from '@testing-library/react-native';
 import { usePlaceAutocomplete } from '../hooks/usePlaceAutocomplete';
 import * as googlePlacesService from '../services/googlePlacesService';
+import * as googlePlacesRepository from '../services/googlePlaces/googlePlacesRepository';
+import {
+  GooglePlaceDetails,
+  GooglePlacePrediction,
+  GooglePlacesError,
+} from '../services/googlePlaces';
 import { useMapStore } from '../store/useMapStore';
 
 jest.mock('../services/googlePlacesService');
+jest.mock('../services/googlePlaces/googlePlacesRepository');
 
-const mockGoogle = googlePlacesService as jest.Mocked<typeof googlePlacesService>;
+const mockToken = googlePlacesService as jest.Mocked<typeof googlePlacesService>;
+const mockGoogle = googlePlacesRepository as jest.Mocked<typeof googlePlacesRepository>;
 
-const prediction: googlePlacesService.GoogleAutocompletePrediction = {
-  place_id: 'gp-1',
+const prediction: GooglePlacePrediction = {
+  placeId: 'gp-1',
   description: 'Tour Eiffel, Paris',
-  structured_formatting: { main_text: 'Tour Eiffel', secondary_text: 'Paris' },
+  mainText: 'Tour Eiffel',
+  secondaryText: 'Paris',
+  types: [],
 };
 
-const details: googlePlacesService.GooglePlaceDetailsResult = {
-  place_id: 'gp-1',
+const details: GooglePlaceDetails = {
+  tier: 'details',
+  placeId: 'gp-1',
   name: 'Tour Eiffel',
-  geometry: { location: { lat: 48.858, lng: 2.294 } },
+  latitude: 48.858,
+  longitude: 2.294,
+  types: [],
+  photos: [],
 };
 
 describe('usePlaceAutocomplete', () => {
@@ -24,9 +38,9 @@ describe('usePlaceAutocomplete', () => {
     jest.useFakeTimers();
     jest.clearAllMocks();
     useMapStore.setState({ searchQuery: '' });
-    mockGoogle.createPlacesSessionToken.mockReturnValue('tok-1');
-    mockGoogle.fetchGooglePlaceAutocomplete.mockResolvedValue([prediction]);
-    mockGoogle.fetchGooglePlaceDetails.mockResolvedValue(details);
+    mockToken.createPlacesSessionToken.mockReturnValue('tok-1');
+    mockGoogle.searchGooglePlacePredictions.mockResolvedValue([prediction]);
+    mockGoogle.getGooglePlaceDetails.mockResolvedValue(details);
   });
 
   afterEach(() => {
@@ -38,13 +52,13 @@ describe('usePlaceAutocomplete', () => {
 
     act(() => result.current.handleChangeText('Tour'));
     expect(useMapStore.getState().searchQuery).toBe('Tour');
-    expect(mockGoogle.fetchGooglePlaceAutocomplete).not.toHaveBeenCalled();
+    expect(mockGoogle.searchGooglePlacePredictions).not.toHaveBeenCalled();
 
     await act(async () => {
       jest.advanceTimersByTime(350);
     });
 
-    expect(mockGoogle.fetchGooglePlaceAutocomplete).toHaveBeenCalledWith('Tour', 'tok-1');
+    expect(mockGoogle.searchGooglePlacePredictions).toHaveBeenCalledWith('Tour', 'tok-1');
     expect(result.current.predictions).toEqual([prediction]);
     expect(result.current.isDropdownVisible).toBe(true);
     expect(result.current.isSearchingGoogle).toBe(false);
@@ -58,7 +72,7 @@ describe('usePlaceAutocomplete', () => {
       jest.advanceTimersByTime(500);
     });
 
-    expect(mockGoogle.fetchGooglePlaceAutocomplete).not.toHaveBeenCalled();
+    expect(mockGoogle.searchGooglePlacePredictions).not.toHaveBeenCalled();
     expect(result.current.isDropdownVisible).toBe(false);
   });
 
@@ -75,7 +89,7 @@ describe('usePlaceAutocomplete', () => {
     });
 
     expect(useMapStore.getState().searchQuery).toBe('Tour Eiffel');
-    expect(mockGoogle.fetchGooglePlaceDetails).toHaveBeenCalledWith('gp-1', 'tok-1');
+    expect(mockGoogle.getGooglePlaceDetails).toHaveBeenCalledWith('gp-1', 'tok-1');
     expect(onPlaceDetails).toHaveBeenCalledWith(details);
     expect(result.current.isDropdownVisible).toBe(false);
     expect(result.current.isSearchingGoogle).toBe(false);
@@ -92,5 +106,19 @@ describe('usePlaceAutocomplete', () => {
 
     expect(result.current.predictions).toEqual([]);
     expect(result.current.isDropdownVisible).toBe(false);
+  });
+
+  it('exposes a French message when the details request fails', async () => {
+    mockGoogle.getGooglePlaceDetails.mockRejectedValueOnce(new GooglePlacesError('network'));
+    const onPlaceDetails = jest.fn();
+    const { result } = renderHook(() => usePlaceAutocomplete(onPlaceDetails));
+
+    await act(async () => {
+      await result.current.handleSelectPrediction(prediction);
+    });
+
+    expect(onPlaceDetails).not.toHaveBeenCalled();
+    expect(result.current.searchError).toMatch(/connexion à Google/);
+    expect(result.current.isSearchingGoogle).toBe(false);
   });
 });
