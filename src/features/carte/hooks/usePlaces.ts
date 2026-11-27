@@ -14,7 +14,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Location from 'expo-location';
 import { captureUserSession } from '@/shared/store/sessionReset';
 import { fetchNearbyPlaces, searchPlaces } from '../services/placeService';
-import { placeToPlaceItem } from '../types/carte';
+import { PlaceItem, placeToPlaceItem } from '../types/carte';
 import { useMapStore } from '../store/useMapStore';
 import { MapVisibleArea } from '../utils/leafletMap';
 import { PlaceCategory, PlaceSearchResult, SearchPlacesParams } from '@/shared/types/place';
@@ -70,6 +70,20 @@ export interface UsePlacesReturn {
   requestLocation: () => Promise<{ latitude: number; longitude: number } | null>;
   /** Efface l'erreur en cours */
   clearError: () => void;
+}
+
+/**
+ * The database never returns Google places (only their place ID is stored), so a Google place
+ * picked through the search would vanish at the next map load: keep it while it is selected.
+ *
+ * @param loaded - places loaded from the database
+ * @returns the loaded places, preceded by the selected Google place when missing
+ */
+function keepSelectedGooglePlace(loaded: PlaceItem[]): PlaceItem[] {
+  const { places, selectedPlaceId } = useMapStore.getState();
+  const selected = places.find((place) => place.id === selectedPlaceId && place.googlePlaceId);
+  if (!selected || loaded.some((place) => place.id === selected.id)) return loaded;
+  return [selected, ...loaded];
 }
 
 export function usePlaces(): UsePlacesReturn {
@@ -166,7 +180,7 @@ export function usePlaces(): UsePlacesReturn {
       try {
         const results = await request();
         if (requestId !== requestIdRef.current || !isCurrentSession()) return;
-        setPlaces(results.map(placeToPlaceItem));
+        setPlaces(keepSelectedGooglePlace(results.map(placeToPlaceItem)));
       } catch (err) {
         if (requestId !== requestIdRef.current) return;
         setError(err instanceof Error ? err.message : fallbackError);

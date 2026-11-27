@@ -115,4 +115,30 @@ describe('CarteScreen', () => {
       expect(useRouter().push).not.toHaveBeenCalled();
     });
   });
+
+  test('un lieu Google sélectionné : pas de fiche sur la carte, fiche plein écran à part', async () => {
+    process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY = '';
+    useMapStore.setState({
+      places: [
+        {
+          id: 'google-ChIJ1',
+          googlePlaceId: 'ChIJ1',
+          title: 'Tour Eiffel',
+          category: 'culture',
+          latitude: 48.85,
+          longitude: 2.29,
+          address: 'Champ de Mars',
+          rating: 4.7,
+          reviewsCount: 10,
+        },
+      ],
+      selectedPlaceId: 'google-ChIJ1',
+    });
+
+    const { findByTestId, queryByTestId } = render(<CarteScreen />);
+
+    expect(await findByTestId('google-place-teaser')).toBeTruthy();
+    expect(queryByTestId('place-detail-card')).toBeNull();
+    expect(await findByTestId('google-place-sheet')).toBeTruthy();
+  });
 });

@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { AppText, ListItem } from '@/shared/components';
 import { colors, radii, spacing } from '@/shared/constants/theme';
 import { GooglePlacePrediction } from '../services/googlePlaces';
+import { GoogleAttribution } from './GoogleAttribution';
 
 export interface PlacePredictionsDropdownProps {
   predictions: GooglePlacePrediction[];
@@ -39,11 +40,20 @@ export const PlacePredictionsDropdown: React.FC<PlacePredictionsDropdownProps> =
           );
         })}
       </ScrollView>
+      <View style={styles.attribution}>
+        <GoogleAttribution testID="predictions-google-attribution" />
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  attribution: {
+    borderTopColor: colors.border,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
   dropdownContainer: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -52,7 +62,7 @@ const styles = StyleSheet.create({
     elevation: 8,
     marginHorizontal: spacing.md,
     marginTop: spacing.xs,
-    maxHeight: 220,
+    maxHeight: 260,
     overflow: 'hidden',
     shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },

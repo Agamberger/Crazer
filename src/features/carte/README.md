@@ -41,6 +41,17 @@ Google Maps Platform terms allow storing **only the Google place ID** (indefinit
 - **Search bar**: `usePlaceAutocomplete` uses `searchGooglePlacePredictions` + `getGooglePlaceDetails` with one session token; failures are shown under the bar (`searchError`, `testID="map-search-error"`).
 - **Key**: `EXPO_PUBLIC_GOOGLE_PLACES_API_KEY`, with **Places API (New)** enabled (CORS is supported, so the web build calls it directly).
 
+### Google content and the map (EEA terms)
+
+Under the Google Maps Platform **EEA terms** (billing account in the EEA), Places content other than latitude, longitude and place ID must not be shown on or next to a non-Google map (our map is Leaflet / MapLibre on OpenFreeMap):
+
+- **Pins**: `toMapPinPlace` (`utils/mapPins.ts`) reduces a Google place to its location and place ID (label « Lieu Google », neutral category) before it reaches `MapViewComponent`.
+- **Over the map**: a selected Google place shows **`GooglePlaceMapTeaser`** (« 📍 Lieu choisi », « Voir la fiche »), with no Google content. Crazer / OSM places keep `PlaceDetailCard` over the map.
+- **Full-screen sheet**: **`GooglePlaceSheet`** (`AppModal` `slideOver`, opened by `useGooglePlaceSheet` as soon as a Google place is selected) loads the details live (`useGooglePlaceDetails`): photos with their authors (`PlacePhotoGallery` `credits`), rating, open now, contact, hours, **`GoogleAttribution`** (« Google Maps » + « Voir sur Google Maps » link to `googleMapsUri`), and the usual actions.
+- **Attributions** elsewhere: under the autocomplete suggestions (`PlacePredictionsDropdown`), in the place summary of `AddPlaceToOutingModal` (`PlaceSummaryBanner`), and in `PlaceNameLabel`.
+- **Steps**: `buildPlannedStepValues` pre-fills only the (editable) title for a Google place; its address, phone, hours… are no longer copied into `planned_outings.notes`.
+- **Map loads**: `usePlaces` keeps the selected Google place when the visible area is reloaded (the database never returns Google places).
+
 ## 🗺️ Basemap tiles (OpenFreeMap)
 
 - **Provider**: [OpenFreeMap](https://openfreemap.org) — free OpenStreetMap vector tiles for MapLibre, **no API key, no usage limit, no registration**, open source. It replaced CARTO, whose free tier needs an API key, stops at 1M tile requests/month for commercial use and can be suspended at any time.
@@ -85,3 +96,4 @@ Les tests unitaires et de composants se trouvent dans `src/features/carte/__test
 - `StyleSelector.test.tsx`
 - `useMapStore.test.ts`
 - `PlaceNameLabel.test.tsx` (lieu Crazer, lieu Google résolu en direct, Google indisponible)
+- `GooglePlaceSheet.test.tsx`, `googleMapCompliance.test.tsx` (neutral pins, teaser, sheet hook, attributions, photo credits, step pre-fill)
