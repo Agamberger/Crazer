@@ -1,4 +1,10 @@
-import { Place, PlaceCategory, PlaceSource, CreatePlaceDto, PlaceSearchResult } from '@/shared/types';
+import {
+  Place,
+  PlaceCategory,
+  PlaceSource,
+  CreatePlaceDto,
+  PlaceSearchResult,
+} from '@/shared/types';
 import { toDisplayImageUrl, toStorableImageRef } from '../utils/googlePhotos';
 
 export type PlaceCategoryFilter = 'all' | 'resto' | 'bar' | 'activite' | 'nature' | 'culture';
@@ -53,9 +59,7 @@ export interface PlaceItem {
 export function placeToPlaceItem(place: Place | PlaceSearchResult): PlaceItem {
   // Les références Google stockées (`google-photo:…`) sont résolues avec la clé de l'app.
   const images: string[] = Array.isArray(place.images)
-    ? place.images
-        .map(toDisplayImageUrl)
-        .filter((url): url is string => Boolean(url))
+    ? place.images.map(toDisplayImageUrl).filter((url): url is string => Boolean(url))
     : [];
 
   let openingHours: string[] | undefined;
@@ -65,9 +69,11 @@ export function placeToPlaceItem(place: Place | PlaceSearchResult): PlaceItem {
     openingHours = place.opening_hours.split('\n').filter(Boolean);
   }
 
-  const category = (['resto', 'bar', 'activite', 'nature', 'culture'].includes(place.category)
-    ? place.category
-    : 'activite') as PlaceCategoryFilter;
+  const category = (
+    ['resto', 'bar', 'activite', 'nature', 'culture'].includes(place.category)
+      ? place.category
+      : 'activite'
+  ) as PlaceCategoryFilter;
 
   return {
     id: place.id,
@@ -103,7 +109,10 @@ export function parseAddressComponents(address?: string | null): {
   }
 
   const cleaned = address.trim();
-  const parts = cleaned.split(',').map((p) => p.trim()).filter(Boolean);
+  const parts = cleaned
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean);
 
   let street: string | null = null;
   let city: string | null = null;
@@ -153,10 +162,7 @@ export function parseAddressComponents(address?: string | null): {
  * Convertit un PlaceItem en CreatePlaceDto enrichi au maximum avec
  * toutes les colonnes supportées par le schéma SQL `places`.
  */
-export function placeItemToCreatePlaceDto(
-  place: PlaceItem,
-  createdBy?: string,
-): CreatePlaceDto {
+export function placeItemToCreatePlaceDto(place: PlaceItem, createdBy?: string): CreatePlaceDto {
   const { street, city, postcode, country_code } = parseAddressComponents(place.address);
 
   // Déterminer la source et le source_id externe
@@ -188,24 +194,20 @@ export function placeItemToCreatePlaceDto(
   const category: PlaceCategory =
     place.category === 'all'
       ? 'autre'
-      : (['resto', 'bar', 'activite', 'nature', 'culture'].includes(place.category)
-          ? (place.category as PlaceCategory)
-          : 'autre');
+      : ['resto', 'bar', 'activite', 'nature', 'culture'].includes(place.category)
+        ? (place.category as PlaceCategory)
+        : 'autre';
 
   // Jamais de clé API en base : les photos Google deviennent des références.
   const images = (
-    place.images && place.images.length > 0
-      ? place.images
-      : place.imageUrl
-      ? [place.imageUrl]
-      : []
+    place.images && place.images.length > 0 ? place.images : place.imageUrl ? [place.imageUrl] : []
   ).map(toStorableImageRef);
 
   const openingHoursStr = Array.isArray(place.openingHours)
     ? place.openingHours.join('\n')
     : typeof place.openingHours === 'string'
-    ? place.openingHours
-    : null;
+      ? place.openingHours
+      : null;
 
   const tags: string[] = [];
   if (place.category && place.category !== 'all') {

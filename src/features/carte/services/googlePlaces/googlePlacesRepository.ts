@@ -61,8 +61,16 @@ const fetchAndCache = async (
   }
 };
 
-function loadPlace(placeId: string, tier: 'summary', sessionToken?: string): Promise<GooglePlaceSummary>;
-function loadPlace(placeId: string, tier: 'details', sessionToken?: string): Promise<GooglePlaceDetails>;
+function loadPlace(
+  placeId: string,
+  tier: 'summary',
+  sessionToken?: string,
+): Promise<GooglePlaceSummary>;
+function loadPlace(
+  placeId: string,
+  tier: 'details',
+  sessionToken?: string,
+): Promise<GooglePlaceDetails>;
 async function loadPlace(
   placeId: string,
   tier: GooglePlaceTier,

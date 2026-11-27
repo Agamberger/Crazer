@@ -8,7 +8,11 @@ import {
 import { GooglePlacesError } from '../services/googlePlaces';
 
 const jsonResponse = (status: number, body: unknown): Response =>
-  ({ ok: status >= 200 && status < 300, status, json: jest.fn().mockResolvedValue(body) }) as unknown as Response;
+  ({
+    ok: status >= 200 && status < 300,
+    status,
+    json: jest.fn().mockResolvedValue(body),
+  }) as unknown as Response;
 
 const placeBody = {
   id: 'ChIJ1',
@@ -42,7 +46,10 @@ describe('googlePlacesClient', () => {
               placePrediction: {
                 placeId: 'ChIJ1',
                 text: { text: 'Tour Eiffel, Paris' },
-                structuredFormat: { mainText: { text: 'Tour Eiffel' }, secondaryText: { text: 'Paris' } },
+                structuredFormat: {
+                  mainText: { text: 'Tour Eiffel' },
+                  secondaryText: { text: 'Paris' },
+                },
                 types: ['tourist_attraction'],
               },
             },
@@ -123,7 +130,11 @@ describe('googlePlacesClient', () => {
           nationalPhoneNumber: '01 23 45 67 89',
           websiteUri: 'https://comptoir.fr',
           photos: [
-            { name: 'places/ChIJ1/photos/A', widthPx: 800, authorAttributions: [{ displayName: 'Jo' }] },
+            {
+              name: 'places/ChIJ1/photos/A',
+              widthPx: 800,
+              authorAttributions: [{ displayName: 'Jo' }],
+            },
             { widthPx: 10 },
           ],
         }),

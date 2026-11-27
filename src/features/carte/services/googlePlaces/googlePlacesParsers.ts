@@ -92,7 +92,8 @@ const parsePhoto = (value: JsonRecord): GooglePlacePhoto[] => {
 const parseSummaryFields = (body: JsonRecord, tier: GooglePlaceTier): GooglePlaceSummary => {
   const placeId = readString(body.id);
   const name = readText(body.displayName);
-  if (!placeId || !name) throw new GooglePlacesError('invalid_response', 'place without id or name');
+  if (!placeId || !name)
+    throw new GooglePlacesError('invalid_response', 'place without id or name');
   const location = isRecord(body.location) ? body.location : {};
   const latitude = readNumber(location.latitude) ?? null;
   const longitude = readNumber(location.longitude) ?? null;

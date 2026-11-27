@@ -31,9 +31,7 @@ export function useGooglePlaceSummaries(
 ): Record<string, GooglePlaceLookup<GooglePlaceSummary>> {
   const idsKey = uniqueIds(placeIds).join('|');
   const ids = useMemo(() => (idsKey ? idsKey.split('|') : []), [idsKey]);
-  const [lookups, setLookups] = useState<Record<string, GooglePlaceLookup<GooglePlaceSummary>>>(
-    {},
-  );
+  const [lookups, setLookups] = useState<Record<string, GooglePlaceLookup<GooglePlaceSummary>>>({});
 
   useEffect(() => {
     let isCurrent = true;

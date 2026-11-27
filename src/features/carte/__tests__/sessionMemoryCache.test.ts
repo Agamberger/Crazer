@@ -48,7 +48,9 @@ describe('createQuotaGuard', () => {
     expect(() => guard.assertAvailable()).not.toThrow();
     guard.reportQuotaExceeded();
     now = 999;
-    expect(() => guard.assertAvailable()).toThrow(expect.objectContaining({ kind: 'quota_exceeded' }));
+    expect(() => guard.assertAvailable()).toThrow(
+      expect.objectContaining({ kind: 'quota_exceeded' }),
+    );
     now = 1000;
     expect(() => guard.assertAvailable()).not.toThrow();
   });

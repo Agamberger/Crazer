@@ -34,7 +34,7 @@ describe('MapHeaderSearch', () => {
     expect(getByText('Bars')).toBeTruthy();
   });
 
-  test('affiche les suggestions d\'autocomplétion après saisie', async () => {
+  test("affiche les suggestions d'autocomplétion après saisie", async () => {
     mockRepository.searchGooglePlacePredictions.mockResolvedValueOnce([eiffelPrediction]);
 
     const { getByPlaceholderText, findByText } = render(<MapHeaderSearch />);
@@ -65,7 +65,7 @@ describe('MapHeaderSearch', () => {
     });
 
     const { getByPlaceholderText, findByText, queryByTestId } = render(
-      <MapHeaderSearch onSelectGooglePlace={mockOnSelectGooglePlace} />
+      <MapHeaderSearch onSelectGooglePlace={mockOnSelectGooglePlace} />,
     );
 
     const input = getByPlaceholderText(/Rechercher un lieu/i);
@@ -88,7 +88,7 @@ describe('MapHeaderSearch', () => {
         expect.objectContaining({
           id: 'google-place_1',
           title: 'Tour Eiffel',
-        })
+        }),
       );
       // La liste d'autocomplétion doit être fermée
       expect(queryByTestId('autocomplete-dropdown')).toBeNull();

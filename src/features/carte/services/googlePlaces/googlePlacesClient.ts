@@ -115,8 +115,16 @@ export async function requestAutocomplete(
  * @returns the summary or the details of the place
  * @throws GooglePlacesError on any failure (`not_found` when the ID no longer exists)
  */
-export async function requestPlace(placeId: string, tier: 'summary', sessionToken?: string): Promise<GooglePlaceSummary>;
-export async function requestPlace(placeId: string, tier: 'details', sessionToken?: string): Promise<GooglePlaceDetails>;
+export async function requestPlace(
+  placeId: string,
+  tier: 'summary',
+  sessionToken?: string,
+): Promise<GooglePlaceSummary>;
+export async function requestPlace(
+  placeId: string,
+  tier: 'details',
+  sessionToken?: string,
+): Promise<GooglePlaceDetails>;
 export async function requestPlace(
   placeId: string,
   tier: GooglePlaceTier,

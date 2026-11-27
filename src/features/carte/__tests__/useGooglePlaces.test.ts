@@ -1,7 +1,11 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
 import { useGooglePlaceDetails, useGooglePlaceSummaries } from '../hooks/useGooglePlaces';
 import * as repository from '../services/googlePlaces/googlePlacesRepository';
-import { GooglePlaceDetails, GooglePlacesError, GooglePlaceSummary } from '../services/googlePlaces';
+import {
+  GooglePlaceDetails,
+  GooglePlacesError,
+  GooglePlaceSummary,
+} from '../services/googlePlaces';
 
 jest.mock('../services/googlePlaces/googlePlacesRepository');
 

@@ -5,7 +5,11 @@ import {
   getGooglePlaceSummary,
   searchGooglePlacePredictions,
 } from '../services/googlePlaces/googlePlacesRepository';
-import { GooglePlaceDetails, GooglePlacesError, GooglePlaceSummary } from '../services/googlePlaces';
+import {
+  GooglePlaceDetails,
+  GooglePlacesError,
+  GooglePlaceSummary,
+} from '../services/googlePlaces';
 import { resetUserScopedStores } from '@/shared/store/sessionReset';
 
 jest.mock('../services/googlePlaces/googlePlacesClient');

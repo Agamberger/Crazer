@@ -89,7 +89,12 @@ export const MapHeaderSearch: React.FC<MapHeaderSearchProps> = ({
       ) : null}
 
       {searchError ? (
-        <AppText variant="bodySmall" color="error" style={styles.searchError} testID="map-search-error">
+        <AppText
+          variant="bodySmall"
+          color="error"
+          style={styles.searchError}
+          testID="map-search-error"
+        >
           {searchError}
         </AppText>
       ) : null}

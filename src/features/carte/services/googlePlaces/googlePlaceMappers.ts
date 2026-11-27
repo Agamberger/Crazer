@@ -10,7 +10,15 @@ const CATEGORY_TYPES: readonly [PlaceCategoryFilter, readonly string[]][] = [
   ['bar', ['bar', 'night_club', 'pub', 'wine_bar']],
   [
     'culture',
-    ['museum', 'art_gallery', 'church', 'hindu_temple', 'mosque', 'synagogue', 'tourist_attraction'],
+    [
+      'museum',
+      'art_gallery',
+      'church',
+      'hindu_temple',
+      'mosque',
+      'synagogue',
+      'tourist_attraction',
+    ],
   ],
   ['nature', ['park', 'natural_feature', 'campground', 'national_park', 'hiking_area']],
 ];
