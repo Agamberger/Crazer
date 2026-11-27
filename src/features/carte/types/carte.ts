@@ -5,7 +5,6 @@ import {
   CreatePlaceDto,
   PlaceSearchResult,
 } from '@/shared/types';
-import { toDisplayImageUrl, toStorableImageRef } from '../utils/googlePhotos';
 
 export type PlaceCategoryFilter = 'all' | 'resto' | 'bar' | 'activite' | 'nature' | 'culture';
 
@@ -57,10 +56,7 @@ export interface PlaceItem {
  * Convertit une entité Place (ou PlaceSearchResult) en PlaceItem pour la carte.
  */
 export function placeToPlaceItem(place: Place | PlaceSearchResult): PlaceItem {
-  // Les références Google stockées (`google-photo:…`) sont résolues avec la clé de l'app.
-  const images: string[] = Array.isArray(place.images)
-    ? place.images.map(toDisplayImageUrl).filter((url): url is string => Boolean(url))
-    : [];
+  const images: string[] = Array.isArray(place.images) ? place.images.filter(Boolean) : [];
 
   let openingHours: string[] | undefined;
   if (Array.isArray(place.opening_hours)) {
@@ -159,8 +155,9 @@ export function parseAddressComponents(address?: string | null): {
 }
 
 /**
- * Convertit un PlaceItem en CreatePlaceDto enrichi au maximum avec
- * toutes les colonnes supportées par le schéma SQL `places`.
+ * Convertit un PlaceItem non Google (Crazer, OSM…) en CreatePlaceDto pour la table `places`.
+ *
+ * @throws Error pour un lieu Google : seul son place ID peut être stocké (`ensureGooglePlace`)
  */
 export function placeItemToCreatePlaceDto(place: PlaceItem, createdBy?: string): CreatePlaceDto {
   const { street, city, postcode, country_code } = parseAddressComponents(place.address);
@@ -169,11 +166,12 @@ export function placeItemToCreatePlaceDto(place: PlaceItem, createdBy?: string):
   let source: PlaceSource = 'custom';
   let source_id: string | null = null;
 
+  if (place.googlePlaceId || place.id.startsWith('google-')) {
+    throw new Error('A Google place is saved by its place ID only (ensureGooglePlace).');
+  }
+
   if (place.id) {
-    if (place.id.startsWith('google-')) {
-      source = 'google';
-      source_id = place.id.replace(/^google-/, '');
-    } else if (place.id.startsWith('osm-')) {
+    if (place.id.startsWith('osm-')) {
       source = 'osm';
       source_id = place.id.replace(/^osm-/, '');
     } else if (place.id.startsWith('fsq-')) {
@@ -198,10 +196,8 @@ export function placeItemToCreatePlaceDto(place: PlaceItem, createdBy?: string):
         ? (place.category as PlaceCategory)
         : 'autre';
 
-  // Jamais de clé API en base : les photos Google deviennent des références.
-  const images = (
-    place.images && place.images.length > 0 ? place.images : place.imageUrl ? [place.imageUrl] : []
-  ).map(toStorableImageRef);
+  const images =
+    place.images && place.images.length > 0 ? place.images : place.imageUrl ? [place.imageUrl] : [];
 
   const openingHoursStr = Array.isArray(place.openingHours)
     ? place.openingHours.join('\n')

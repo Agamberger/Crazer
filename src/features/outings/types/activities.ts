@@ -1,11 +1,14 @@
 import { ActivityVote } from '@/shared/types';
 
-/** The saved place (Crazer or imported from Google Maps) an activity happens at. */
+/**
+ * The saved place (Crazer or Google Maps) an activity happens at. A Google place only stores
+ * its place ID: `name` and `address` are then `null` and fetched live (`PlaceNameLabel`).
+ */
 export interface ActivityPlace {
   id: string;
-  name: string;
+  name: string | null;
   address: string | null;
-  rating: number | null;
+  googlePlaceId: string | null;
 }
 
 /** An activity of the outing's pool: proposed by an attendee, voted on, placed in the programme. */

@@ -36,3 +36,15 @@ VALUES
   'custom-bar-1'
 )
 ON CONFLICT (id) DO NOTHING;
+
+-- Lieu Google : seul le place ID est stocké (CGU Google Maps Platform) ;
+-- nom, adresse, photos, horaires… sont récupérés à la volée par l'app.
+INSERT INTO public.places (id, source, source_id, category, source_id_refreshed_at)
+VALUES (
+  'b4444444-4444-4444-4444-444444444444',
+  'google',
+  'ChIJLU7jZClu5kcR4PcOOO6p3I0', -- Tour Eiffel
+  NULL,
+  now()
+)
+ON CONFLICT (id) DO NOTHING;

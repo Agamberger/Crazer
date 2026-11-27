@@ -72,7 +72,7 @@ describe('placeService - Helper parsing & DTO enrichment', () => {
 
   test('placeItemToCreatePlaceDto mappe tous les champs SQL enrichis', () => {
     const place: PlaceItem = {
-      id: 'google-ChIJ123456789',
+      id: 'osm-node123456789',
       title: 'Le Grand Véfour',
       category: 'resto',
       latitude: 48.866,
@@ -94,8 +94,8 @@ describe('placeService - Helper parsing & DTO enrichment', () => {
 
     expect(dto.name).toBe('Le Grand Véfour');
     expect(dto.category).toBe('resto');
-    expect(dto.source).toBe('google');
-    expect(dto.source_id).toBe('ChIJ123456789');
+    expect(dto.source).toBe('osm');
+    expect(dto.source_id).toBe('node123456789');
     expect(dto.street).toBe('17 Rue de Beaujolais');
     expect(dto.postcode).toBe('75001');
     expect(dto.city).toBe('Paris');
@@ -107,8 +107,25 @@ describe('placeService - Helper parsing & DTO enrichment', () => {
     expect(dto.images).toHaveLength(2);
     expect(dto.tags).toContain('resto');
     expect(dto.tags).toContain('ouvert');
-    expect(dto.metadata).toEqual(expect.objectContaining({ isOpenNow: true, originalPlaceId: 'google-ChIJ123456789' }));
+    expect(dto.metadata).toEqual(
+      expect.objectContaining({ isOpenNow: true, originalPlaceId: 'osm-node123456789' }),
+    );
     expect(dto.created_by).toBe('user-uuid-123');
+  });
+
+  test('placeItemToCreatePlaceDto refuse un lieu Google (seul son place ID est stockable)', () => {
+    const place: PlaceItem = {
+      id: 'google-ChIJ123',
+      googlePlaceId: 'ChIJ123',
+      title: 'Le Grand Véfour',
+      category: 'resto',
+      latitude: 48.866,
+      longitude: 2.337,
+      address: '17 Rue de Beaujolais',
+      rating: 4.8,
+      reviewsCount: 1540,
+    };
+    expect(() => placeItemToCreatePlaceDto(place)).toThrow(/place ID only/);
   });
 });
 
@@ -182,7 +199,9 @@ describe('placeService.upsertPlace', () => {
   });
 
   test('met à jour un lieu existant trouvé par source_id', async () => {
-    const mockUpdate = jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) });
+    const mockUpdate = jest
+      .fn()
+      .mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) });
 
     mockFrom.mockReturnValue({
       select: jest.fn().mockReturnValue({
@@ -289,7 +308,9 @@ describe('placeService.ensurePlaceExists', () => {
     mockFrom.mockReturnValue({
       select: jest.fn().mockReturnValue({
         eq: jest.fn().mockReturnValue({
-          maybeSingle: jest.fn().mockResolvedValue({ data: { id: 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d' } }),
+          maybeSingle: jest
+            .fn()
+            .mockResolvedValue({ data: { id: 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d' } }),
         }),
       }),
     });
@@ -309,6 +330,43 @@ describe('placeService.ensurePlaceExists', () => {
     expect(id).toBe('a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d');
   });
 
+  test('enregistre un lieu Google par son seul place ID (RPC ensure_google_place)', async () => {
+    mockRpc.mockResolvedValue({ data: 'google-row-uuid', error: null });
+    const place: PlaceItem = {
+      id: 'google-ChIJ123',
+      googlePlaceId: 'ChIJ123',
+      title: 'Tour Eiffel',
+      category: 'culture',
+      latitude: 48.85,
+      longitude: 2.29,
+      address: 'Champ de Mars',
+      rating: 4.7,
+      reviewsCount: 100,
+      phone: '01',
+    };
+
+    await expect(ensurePlaceExists(place, 'user-1')).resolves.toBe('google-row-uuid');
+    expect(mockRpc).toHaveBeenCalledWith('ensure_google_place', { p_google_place_id: 'ChIJ123' });
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  test('reconnaît un lieu Google à son id « google-… » et remonte les erreurs', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: { message: 'invalid Google place id' } });
+    const place: PlaceItem = {
+      id: 'google-ChIJ999',
+      title: 'X',
+      category: 'bar',
+      latitude: 1,
+      longitude: 2,
+      address: '',
+      rating: 0,
+      reviewsCount: 0,
+    };
+
+    await expect(ensurePlaceExists(place)).rejects.toThrow('invalid Google place id');
+    expect(mockRpc).toHaveBeenCalledWith('ensure_google_place', { p_google_place_id: 'ChIJ999' });
+  });
+
   test('crée un lieu si c’est un POI externe (ex: osm-12345)', async () => {
     mockRpc.mockResolvedValue({ data: [], error: null });
     mockFrom.mockReturnValue({
@@ -324,7 +382,9 @@ describe('placeService.ensurePlaceExists', () => {
       }),
       insert: jest.fn().mockReturnValue({
         select: jest.fn().mockReturnValue({
-          single: jest.fn().mockResolvedValue({ data: { id: 'created-from-osm-uuid' }, error: null }),
+          single: jest
+            .fn()
+            .mockResolvedValue({ data: { id: 'created-from-osm-uuid' }, error: null }),
         }),
       }),
     });
@@ -408,7 +468,7 @@ describe('placeService.upsertPlace — rapprochement et validation', () => {
     jest.clearAllMocks();
   });
 
-  test("ne rattache pas un homonyme éloigné : la recherche est limitée autour du lieu", async () => {
+  test('ne rattache pas un homonyme éloigné : la recherche est limitée autour du lieu', async () => {
     mockRpc.mockResolvedValue({ data: [], error: null });
     const { ilike, insert } = buildPlacesTable({ insertId: 'new-lyon-uuid' });
 
@@ -436,12 +496,20 @@ describe('placeService.upsertPlace — rapprochement et validation', () => {
     expect(insert).not.toHaveBeenCalled();
   });
 
+  test('refuse d’enregistrer le contenu d’un lieu Google', async () => {
+    const { insert } = buildPlacesTable({});
+    await expect(
+      upsertPlace({ ...baseDto, source: 'google', source_id: 'ChIJ123' }),
+    ).rejects.toThrow(/place ID only/);
+    expect(insert).not.toHaveBeenCalled();
+  });
+
   test('ne réécrit pas un lieu externe déjà importé', async () => {
     const { update, insert } = buildPlacesTable({
       bySource: { data: { id: 'google-existing' }, error: null },
     });
 
-    const id = await upsertPlace({ ...baseDto, source: 'google', source_id: 'ChIJ123' });
+    const id = await upsertPlace({ ...baseDto, source: 'osm', source_id: 'node/123' });
 
     expect(id).toBe('google-existing');
     expect(update).not.toHaveBeenCalled();
@@ -453,9 +521,9 @@ describe('placeService.upsertPlace — rapprochement et validation', () => {
       bySource: { data: null, error: { message: 'réseau indisponible' } },
     });
 
-    await expect(
-      upsertPlace({ ...baseDto, source: 'osm', source_id: 'node/1' }),
-    ).rejects.toThrow('réseau indisponible');
+    await expect(upsertPlace({ ...baseDto, source: 'osm', source_id: 'node/1' })).rejects.toThrow(
+      'réseau indisponible',
+    );
     expect(insert).not.toHaveBeenCalled();
   });
 

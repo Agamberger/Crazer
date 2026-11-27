@@ -1,6 +1,11 @@
 import { supabase } from '@/shared/lib/supabase';
-import { ActivityVote, OutingActivityRow, OutingActivityVoteRow } from '@/shared/types';
-import { ActivityVoteEntry, OutingActivity } from '../types/activities';
+import {
+  ActivityVote,
+  OutingActivityRow,
+  OutingActivityVoteRow,
+  PlaceSource,
+} from '@/shared/types';
+import { ActivityPlace, ActivityVoteEntry, OutingActivity } from '../types/activities';
 
 const UNIQUE_VIOLATION = '23505';
 
@@ -15,11 +20,27 @@ export interface ProposeActivityPayload {
   placeId: string | null;
 }
 
-const ACTIVITY_COLUMNS = '*, places(id, name, address, rating)';
+const ACTIVITY_COLUMNS = '*, places(id, name, address, source, source_id)';
 
-type ActivityRowWithPlace = OutingActivityRow & {
-  places: { id: string; name: string; address: string | null; rating: number | null } | null;
-};
+interface EmbeddedPlaceRow {
+  id: string;
+  name: string | null;
+  address: string | null;
+  source: PlaceSource;
+  source_id: string | null;
+}
+
+type ActivityRowWithPlace = OutingActivityRow & { places: EmbeddedPlaceRow | null };
+
+const toActivityPlace = (row: EmbeddedPlaceRow | null): ActivityPlace | null =>
+  row
+    ? {
+        id: row.id,
+        name: row.name,
+        address: row.address,
+        googlePlaceId: row.source === 'google' ? row.source_id : null,
+      }
+    : null;
 
 const rowToActivity = (row: ActivityRowWithPlace): OutingActivity => ({
   id: row.id,
@@ -27,7 +48,7 @@ const rowToActivity = (row: ActivityRowWithPlace): OutingActivity => ({
   title: row.title,
   note: row.note,
   proposedBy: row.proposed_by,
-  place: row.places,
+  place: toActivityPlace(row.places),
   createdAt: row.created_at,
 });
 
@@ -144,7 +165,11 @@ export const activityVotesService = {
     subscriptionCounter += 1;
     const channel = supabase
       .channel(`outing-activities-${outingId}-${subscriptionCounter}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'outing_activities', filter }, onChange)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'outing_activities', filter },
+        onChange,
+      )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'outing_activity_votes', filter },

@@ -15,11 +15,12 @@ SET search_path = public, extensions;
 SELECT plan(24);
 
 -- ── Données de test (insérées en superuser, annulées au ROLLBACK) ────────────
-INSERT INTO public.places (id, name, location, source, source_id, created_by)
+INSERT INTO public.places (id, name, location, category, source, source_id, created_by)
 VALUES
-  ('aaaaaaaa-0000-0000-0000-000000000001', 'Lieu Google de Bob', 'POINT(2.35 48.85)',
+  -- Lieu Google : place ID seul (contrainte places_google_rows_store_place_id_only)
+  ('aaaaaaaa-0000-0000-0000-000000000001', NULL, NULL, NULL,
    'google', 'test_place_bob', '22222222-2222-2222-2222-222222222222'),
-  ('aaaaaaaa-0000-0000-0000-000000000002', 'Lieu perso d''Alice', 'POINT(2.36 48.86)',
+  ('aaaaaaaa-0000-0000-0000-000000000002', 'Lieu perso d''Alice', 'POINT(2.36 48.86)', 'autre',
    'custom', NULL, '11111111-1111-1111-1111-111111111111');
 
 INSERT INTO public.outing_participants (id, outing_id, user_id, status)

@@ -91,6 +91,15 @@ Pour revenir au projet distant : `npm run env:remote` puis relancer Expo avec `-
 - **Tests RLS** : chaque correctif ou nouvelle politique est couvert par un test pgTAP dans `supabase/tests/database/` (`npm run db:test`). Exemple : `rls_security.test.sql`.
 - **Sécurité des clés API** : Seule la clé publique anonyme `EXPO_PUBLIC_SUPABASE_ANON_KEY` doit être exposée dans l'application mobile. Ne jamais stocker ni utiliser la clé `service_role` dans le code source React Native.
 
+### 2 bis. 📍 Lieux Google — règle de stockage (CGU Google Maps Platform)
+- **Stockable sans limite** : le **place ID** Google (`places.source_id` quand `source = 'google'`). Google recommande de le rafraîchir s'il a plus de 12 mois (`places.source_id_refreshed_at`, mis à jour par `ensure_google_place` ; une requête Place Details limitée au champ `id` est gratuite).
+- **Cache de 30 jours au plus** : latitude / longitude. Crazer ne les stocke **pas du tout** pour les lieux Google (pas de purge à planifier).
+- **Interdit** : nom, adresse, photos, note et nombre d'avis, horaires, téléphone, site, avis, types/catégorie dérivée… Ces données sont récupérées **à la volée** par l'app (API Places New) et gardées en mémoire pendant la session (`src/features/carte/services/googlePlaces/`).
+- **Garde-fou en base** : la contrainte `places_google_rows_store_place_id_only` refuse toute ligne Google contenant autre chose que son place ID ; les lieux Crazer / OSM gardent nom, position et catégorie obligatoires (`places_non_google_rows_have_core_fields`).
+- **Écriture** : un lieu Google s'enregistre uniquement via la RPC `ensure_google_place(p_google_place_id)` (utilisateur connecté, place ID validé, sans doublon). `upsertPlace` / `placeItemToCreatePlaceDto` refusent un lieu Google.
+- **Affichage** : toute donnée Google affichée hors d'une carte Google est créditée « Google Maps » (et l'auteur des photos). Avec les CGU EEA (compte de facturation dans l'EEE), le contenu Google ne doit pas être affiché sur ou à côté d'une carte non Google : la fiche détaillée s'ouvre en plein écran, hors de la carte.
+- **Migration** `20261127222229_places_store_google_place_id_only` : a vidé le contenu Google de toutes les lignes `source = 'google'` existantes (voir l'en-tête du fichier pour la liste exacte des colonnes). Les liens des étapes et activités (`place_id`) sont conservés.
+
 ### 3. 🏷️ Synchronisation des Types TypeScript
 - Le fichier `src/shared/types/database.types.ts` est la source de vérité pour le typage du client Supabase (`supabase.from('outings')`).
 - À chaque ajout de table, colonne ou enum dans Supabase, vous **devez** exécuter :

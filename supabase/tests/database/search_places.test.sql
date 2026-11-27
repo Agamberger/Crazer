@@ -38,14 +38,14 @@ SELECT isnt_empty(
 
 SELECT is(
   (SELECT count(*)::int FROM public.search_places('!!! ???', NULL, NULL, 2000, NULL, 100)),
-  (SELECT count(*)::int FROM public.places WHERE is_public),
+  (SELECT count(*)::int FROM public.places WHERE is_public AND source <> 'google'),
   'search_places : une saisie sans mot n''applique pas de filtre texte'
 );
 
 -- Mots vides français seuls (« le », « la »…) : to_tsquery renvoie une requête vide
 SELECT is(
   (SELECT count(*)::int FROM public.search_places('le', NULL, NULL, 2000, NULL, 100)),
-  (SELECT count(*)::int FROM public.places WHERE is_public),
+  (SELECT count(*)::int FROM public.places WHERE is_public AND source <> 'google'),
   'search_places : une saisie faite uniquement de mots vides n''applique pas de filtre texte'
 );
 

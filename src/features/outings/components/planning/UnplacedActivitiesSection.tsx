@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppText, Button, Card, SectionHeader } from '@/shared/components';
 import { spacing } from '@/shared/constants/theme';
+import { PlaceNameLabel } from '@/features/carte/components/PlaceNameLabel';
 import { OutingActivity } from '../../types/activities';
 
 export interface UnplacedActivitiesSectionProps {
@@ -27,11 +28,7 @@ export const UnplacedActivitiesSection: React.FC<UnplacedActivitiesSectionProps>
         <Card key={activity.id} style={styles.card} testID={`planning-unplaced-${activity.id}`}>
           <View style={styles.texts}>
             <AppText weight="semibold">{activity.title}</AppText>
-            {activity.place ? (
-              <AppText variant="caption" color="secondary">
-                📍 {activity.place.name}
-              </AppText>
-            ) : null}
+            {activity.place ? <PlaceNameLabel place={activity.place} variant="caption" /> : null}
           </View>
           {canPlace ? (
             <Button

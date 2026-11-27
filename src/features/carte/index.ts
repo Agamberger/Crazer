@@ -3,6 +3,7 @@ export * from './store/useMapStore';
 export { MAP_STYLE_URLS, MAP_ATTRIBUTION_HTML } from './constants';
 export * from './components/MapViewComponent';
 export * from './components/MapHeaderSearch';
+export * from './components/PlaceNameLabel';
 export * from './components/PlaceDetailCard';
 export * from './components/PoiDetailCard';
 export * from './components/AddPlaceToOutingModal';

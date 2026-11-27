@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppText, Button, Card } from '@/shared/components';
 import { spacing } from '@/shared/constants/theme';
+import { PlaceNameLabel } from '@/features/carte/components/PlaceNameLabel';
 import { ActivityVote } from '@/shared/types';
 import { ActivityResult } from '../../types/activities';
 
@@ -45,10 +46,7 @@ export const ActivityVoteCard: React.FC<ActivityVoteCardProps> = ({
         {dragHandle}
       </View>
       {activity.place ? (
-        <AppText variant="bodySmall" color="secondary" testID={`activity-place-${id}`}>
-          📍 {activity.place.name}
-          {activity.place.address ? ` · ${activity.place.address}` : ''}
-        </AppText>
+        <PlaceNameLabel place={activity.place} showAddress testID={`activity-place-${id}`} />
       ) : null}
       {activity.note ? (
         <AppText variant="bodySmall" color="secondary">
