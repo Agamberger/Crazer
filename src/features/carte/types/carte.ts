@@ -3,7 +3,8 @@ import { toDisplayImageUrl, toStorableImageRef } from '../utils/googlePhotos';
 
 export type PlaceCategoryFilter = 'all' | 'resto' | 'bar' | 'activite' | 'nature' | 'culture';
 
-export type MapStyleMode = 'dark' | 'voyager' | 'outdoor';
+/** Basemap style, named after its OpenFreeMap style. */
+export type MapStyleMode = 'dark' | 'liberty' | 'positron';
 
 export interface MapRegion {
   latitude: number;

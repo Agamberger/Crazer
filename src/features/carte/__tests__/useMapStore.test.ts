@@ -77,8 +77,8 @@ describe('useMapStore', () => {
   });
 
   test('doit changer le mode de style de la carte', () => {
-    useMapStore.getState().setMapStyleMode('voyager');
-    expect(useMapStore.getState().mapStyleMode).toBe('voyager');
+    useMapStore.getState().setMapStyleMode('liberty');
+    expect(useMapStore.getState().mapStyleMode).toBe('liberty');
   });
 
   test('doit réinitialiser les filtres', () => {

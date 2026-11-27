@@ -6,7 +6,7 @@ Ce module gère l'affichage de la carte interactive, des lieux (Places) et des s
 
 - **`MapViewComponent`** : Composant cartographique principal.
   - *Mode Natif (Dev Client)* : Utilise `@maplibre/maplibre-react-native` pour un rendu vectoriel 3D haute performance.
-  - *Mode Expo Go (Développement)* : Intègre automatiquement une carte **OpenStreetMap / Leaflet** interactive via `react-native-webview` (tuiles OpenStreetMap, avec un filtre CSS d'inversion pour le style sombre : les tuiles raster CARTO exigent une clé API). Cela permet d'avoir une **vraie carte totalement fonctionnelle directement dans Expo Go**, sans aucun crash ni compilation de binaire natif requis !
+  - *Expo Go mode (development)*: renders the fallback **Leaflet** map in `react-native-webview`. Its basemap is the same **OpenFreeMap vector style** as on native, drawn by MapLibre GL JS through the `@maplibre/maplibre-gl-leaflet` binding (WebGL required); Leaflet keeps the markers, centring and messages. This gives a **real, fully working map directly in Expo Go**, with no native binary to compile.
   - *Mode Web (`npm run web`)* : `react-native-webview` n'existe pas sur le web, la même carte Leaflet est donc affichée dans une `<iframe>` (`LeafletWebFrame`). Le HTML n'est rechargé que si le style change : marqueurs, sélection et centrage sont envoyés par `postMessage`, et les clics sur les marqueurs remontent à l'app de la même façon. Le HTML Leaflet commun (WebView et iframe) est généré par `utils/leafletMap.ts`, qui échappe les données des lieux (`serializeForScript`) pour qu'un nom contenant `</script>` ne puisse pas injecter de code.
   - *Comportement commun du fallback Leaflet* : le HTML n'est construit qu'une fois par style, y compris dans la WebView native ; ensuite tout passe par `injectJavaScript` / `postMessage`. La carte ne se recentre que sur une **nouvelle demande de centrage** (`centerVersion` du store, incrémenté par `setCenterRegion`) : charger des lieux ou changer de filtre ne la ramène plus en arrière après un déplacement manuel. À chaque fin de déplacement ou de zoom (et au chargement), la carte envoie sa **zone visible** (`REGION_CHANGE` : centre, zoom, rayon couvrant l'écran) ; `MapViewComponent` la remonte via `onRegionChange`, et l'écran Carte appelle `usePlaces().loadVisibleArea`, qui recharge les lieux Supabase de cette zone (délai de 400 ms, rayon borné entre 2 km et 1 000 km, 100 lieux max). Les lieux s'affichent donc même sans géolocalisation, et partout où l'on se déplace.
 - **`MapHeaderSearch`** : Barre de recherche (`SearchBar`) et filtres de catégories (`Chip`) avec autocomplétion Google Places (délai de 350 ms, réponses périmées ignorées). Un **jeton de session** (hook `usePlacesSessionToken`) est partagé par les frappes et la requête de détail qui conclut la recherche : Google facture alors une seule session au lieu d'une requête par frappe. Le jeton est renouvelé après la sélection d'un lieu, quand le champ est vidé (recherche abandonnée) et après 3 minutes (`PLACES_SESSION_TTL_MS`).
@@ -22,9 +22,26 @@ Ce module gère l'affichage de la carte interactive, des lieux (Places) et des s
   - **`PlannedStepForm`** : détails de l'étape, préremplis par `buildPlannedStepValues()`.
   Le succès est signalé par un **toast** (`@/shared/store/useToastStore`).
   - **« + Créer une nouvelle sortie »** appelle la prop obligatoire `onCreateNewOuting(place)`. `app/(tabs)/carte.tsx` enregistre alors le lieu (`ensurePlaceExists`) puis ouvre l'assistant `/outing/create?placeId=…&placeName=…` : le titre est prérempli et le lieu devient la première étape de la sortie. En cas d'erreur, le message reste dans la modale (un toast serait masqué par la `Modal` plein écran) ; en cas de succès, la modale se ferme.
-- **`constants.ts`** : `PLACE_CATEGORY_LABELS` / `getPlaceCategoryLabel()` (libellés et couleurs des catégories).
-- **`StyleSelector`** : Widget de sélection du style de carte (Dark, Light, Outdoor).
+- **`constants.ts`** : `PLACE_CATEGORY_LABELS` / `getPlaceCategoryLabel()` (libellés et couleurs des catégories), `MAP_STYLE_URLS` and `MAP_ATTRIBUTION_HTML` (basemap, see below).
+- **`StyleSelector`** : map style picker (« Sombre » → `dark`, « Coloré » → `liberty`, « Clair » → `positron`).
 - **`useMapStore`** : Store Zustand pour l'état de la carte (Places, filtres, mode de style, centrage).
+
+## 🗺️ Basemap tiles (OpenFreeMap)
+
+- **Provider**: [OpenFreeMap](https://openfreemap.org) — free OpenStreetMap vector tiles for MapLibre, **no API key, no usage limit, no registration**, open source. It replaced CARTO, whose free tier needs an API key, stops at 1M tile requests/month for commercial use and can be suspended at any time.
+- **Styles**: `MAP_STYLE_URLS` (`constants.ts`, `Record<MapStyleMode, string>`) is the single source of the style URLs, shared by native MapLibre (`NativeMapLibreView`) and the Leaflet fallback (`utils/leafletMap.ts`):
+
+  | `MapStyleMode` | OpenFreeMap style | UI label |
+  | :--- | :--- | :--- |
+  | `dark` (default) | `https://tiles.openfreemap.org/styles/dark` | Sombre |
+  | `liberty` | `https://tiles.openfreemap.org/styles/liberty` | Coloré |
+  | `positron` | `https://tiles.openfreemap.org/styles/positron` | Clair |
+
+  Other available styles: `bright`, `fiord`.
+- **Attribution (required)**: « © OpenFreeMap © OpenMapTiles Data from OpenStreetMap ». On web / Expo Go it is passed explicitly to the Leaflet attribution control (`MAP_ATTRIBUTION_HTML`); on native, MapLibre's attribution control (`attributionEnabled`) shows the attribution declared by the style's tile source. Never hide either control.
+- **Terms**: the public instance is provided **as-is, without SLA**; the data is © OpenStreetMap contributors (ODbL). See the [terms of use](https://openfreemap.org/tos/) and the [quick start](https://openfreemap.org/quick_start/).
+- **Pinned browser builds** (fallback map document, `LEAFLET_MAP_ASSETS`): Leaflet 1.9.4, MapLibre GL JS 5.24.1, `@maplibre/maplibre-gl-leaflet` 0.1.3, loaded from unpkg.
+- **Self-hosting option**: if the public instance ever becomes a risk, OpenFreeMap can be self-hosted (open-source scripts on a single server, see [github.com/hyperknot/openfreemap](https://github.com/hyperknot/openfreemap)); only `OPENFREEMAP_STYLES_BASE_URL` in `constants.ts` would change.
 
 ### Sous-composants (découpage des composants de plus de 200 lignes)
 
@@ -47,6 +64,8 @@ Les tests unitaires et de composants se trouvent dans `src/features/carte/__test
 - `placeService.test.ts`
 - `googlePlacesService.test.ts`
 - `usePlaces.test.ts`
-- `leafletMapScript.test.ts` (exécute le script Leaflet avec un faux `L` : centrage, zone visible, marqueurs)
+- `leafletMapScript.test.ts` (exécute le script Leaflet avec un faux `L` : centrage, zone visible, marqueurs, fond de carte OpenFreeMap)
+- `leafletTiles.test.tsx` (OpenFreeMap style URLs, attribution, no CARTO / raster tiles)
+- `StyleSelector.test.tsx`
 - `useMapStore.test.ts`
 - `googlePhotos.test.ts` (aucune clé API dans les données persistées)

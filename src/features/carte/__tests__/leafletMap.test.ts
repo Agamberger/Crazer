@@ -44,18 +44,18 @@ describe('buildLeafletHtml', () => {
   test("n'injecte pas de balise <script> venant du nom d'un lieu", () => {
     const html = buildLeafletHtml('dark', state);
     expect(html).not.toContain('<script>window.pwned');
-    // Seules les deux balises du template (leaflet.js + script inline) existent.
-    expect(html.match(/<\/script>/g)).toHaveLength(2);
+    // Only the template tags exist: leaflet.js, maplibre-gl.js, the binding and the inline script.
+    expect(html.match(/<\/script>/g)).toHaveLength(4);
   });
 
   test("relaie les clics vers la page parente quand il n'y a pas de WebView native (web)", () => {
-    const html = buildLeafletHtml('voyager', state);
+    const html = buildLeafletHtml('liberty', state);
     expect(html).toContain('window.ReactNativeWebView');
     expect(html).toContain('window.parent.postMessage');
   });
 
   test('accepte les mises à jour envoyées par la page parente (web)', () => {
-    const html = buildLeafletHtml('voyager', state);
+    const html = buildLeafletHtml('liberty', state);
     expect(html).toContain("addEventListener('message'");
     expect(html).toContain('UPDATE_MAP');
   });

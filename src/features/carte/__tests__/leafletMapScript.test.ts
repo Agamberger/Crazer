@@ -65,11 +65,12 @@ const loadMap = (state: LeafletMapState) => {
     },
   };
   const markers: { latlng: [number, number] }[] = [];
+  const basemap = jest.fn(() => ({ addTo: jest.fn() }));
   const layer = () => ({ addTo: () => layer(), clearLayers: jest.fn() });
   const L = {
     map: () => map,
     layerGroup: layer,
-    tileLayer: () => ({ addTo: jest.fn() }),
+    maplibreGL: basemap,
     divIcon: () => ({}),
     marker: (latlng: [number, number]) => {
       markers.push({ latlng });
@@ -106,7 +107,7 @@ const loadMap = (state: LeafletMapState) => {
       .map(([data]: [string]) => parseLeafletRegion(data))
       .filter((region): region is NonNullable<typeof region> => region !== null);
 
-  return { map, markers, update, moveTo, regions };
+  return { map, markers, basemap, update, moveTo, regions };
 };
 
 describe('Carte Leaflet — centrage', () => {
@@ -159,6 +160,17 @@ describe('Carte Leaflet — zone visible', () => {
       [43.6, 1.44],
       [43.57, 1.45],
     ]);
+  });
+});
+
+describe('Carte Leaflet — fond de carte', () => {
+  test('dessine le style vectoriel OpenFreeMap avec son attribution', () => {
+    const { basemap } = loadMap(baseState);
+
+    expect(basemap).toHaveBeenCalledWith({
+      style: 'https://tiles.openfreemap.org/styles/dark',
+      attributionControl: { customAttribution: expect.stringContaining('OpenFreeMap') },
+    });
   });
 });
 
