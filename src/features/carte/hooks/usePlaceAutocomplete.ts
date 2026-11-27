@@ -2,30 +2,37 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Keyboard, TextInput } from 'react-native';
 import { useMapStore } from '../store/useMapStore';
 import {
-  fetchGooglePlaceAutocomplete,
-  fetchGooglePlaceDetails,
-  GoogleAutocompletePrediction,
-  GooglePlaceDetailsResult,
-} from '../services/googlePlacesService';
+  getGooglePlaceDetails,
+  GooglePlaceDetails,
+  GooglePlacePrediction,
+  GooglePlacesError,
+  searchGooglePlacePredictions,
+} from '../services/googlePlaces';
 import { usePlacesSessionToken } from './usePlacesSessionToken';
 
 const AUTOCOMPLETE_DEBOUNCE_MS = 350;
 const MIN_QUERY_LENGTH = 2;
+const GENERIC_SEARCH_ERROR = 'Recherche Google indisponible.';
+
+const toUserMessage = (error: unknown): string =>
+  error instanceof GooglePlacesError ? error.userMessage : GENERIC_SEARCH_ERROR;
 
 /**
  * Google Places autocomplete of the map search bar, bound to `useMapStore.searchQuery`.
  * Typing is debounced (350 ms, 2 characters min), stale answers are ignored, and one Google
  * session token covers the keystrokes plus the details request of the chosen prediction.
- * `onPlaceDetails` receives the details of the selected prediction.
+ * `onPlaceDetails` receives the details of the selected prediction; failures (quota, network,
+ * missing key…) are exposed as a French `searchError` message.
  */
-export function usePlaceAutocomplete(onPlaceDetails: (details: GooglePlaceDetailsResult) => void) {
+export function usePlaceAutocomplete(onPlaceDetails: (details: GooglePlaceDetails) => void) {
   const searchQuery = useMapStore((state) => state.searchQuery);
   const setSearchQuery = useMapStore((state) => state.setSearchQuery);
 
-  const [predictions, setPredictions] = useState<GoogleAutocompletePrediction[]>([]);
+  const [predictions, setPredictions] = useState<GooglePlacePrediction[]>([]);
   const [isSearchingGoogle, setIsSearchingGoogle] = useState(false);
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   const inputRef = useRef<React.ComponentRef<typeof TextInput>>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -49,15 +56,18 @@ export function usePlaceAutocomplete(onPlaceDetails: (details: GooglePlaceDetail
     if (searchQuery.trim().length >= MIN_QUERY_LENGTH && isFocused) {
       debounceTimerRef.current = setTimeout(async () => {
         setIsSearchingGoogle(true);
+        setSearchError(null);
         try {
-          const results = await fetchGooglePlaceAutocomplete(searchQuery, getSessionToken());
+          const results = await searchGooglePlacePredictions(searchQuery, getSessionToken());
           if (!isCurrent) return;
           setPredictions(results);
           if (!justSelectedRef.current) {
             setIsDropdownVisible(results.length > 0);
           }
-        } catch {
-          if (isCurrent) setPredictions([]);
+        } catch (error: unknown) {
+          if (!isCurrent) return;
+          setPredictions([]);
+          setSearchError(toUserMessage(error));
         } finally {
           if (isCurrent) setIsSearchingGoogle(false);
         }
@@ -68,6 +78,7 @@ export function usePlaceAutocomplete(onPlaceDetails: (details: GooglePlaceDetail
       setPredictions([]);
       setIsDropdownVisible(false);
       setIsSearchingGoogle(false);
+      setSearchError(null);
     }
 
     return () => {
@@ -84,36 +95,37 @@ export function usePlaceAutocomplete(onPlaceDetails: (details: GooglePlaceDetail
     if (predictions.length > 0 && searchQuery.trim().length >= MIN_QUERY_LENGTH) {
       setIsDropdownVisible(true);
     } else if (searchQuery.trim().length >= MIN_QUERY_LENGTH) {
-      fetchGooglePlaceAutocomplete(searchQuery, getSessionToken())
+      searchGooglePlacePredictions(searchQuery, getSessionToken())
         .then((results) => {
           setPredictions(results);
           if (!justSelectedRef.current) {
             setIsDropdownVisible(results.length > 0);
           }
         })
-        .catch(() => {});
+        .catch((error: unknown) => setSearchError(toUserMessage(error)));
     }
   }, [predictions.length, searchQuery, getSessionToken]);
 
-  const handleSelectPrediction = async (prediction: GoogleAutocompletePrediction) => {
+  const handleSelectPrediction = async (prediction: GooglePlacePrediction) => {
     justSelectedRef.current = true;
     setIsFocused(false);
     setIsDropdownVisible(false);
     inputRef.current?.blur();
     Keyboard.dismiss();
 
-    const selectedName = prediction.structured_formatting?.main_text || prediction.description;
+    const selectedName = prediction.mainText;
     setSearchQuery(selectedName);
 
     try {
       setIsSearchingGoogle(true);
-      const details = await fetchGooglePlaceDetails(prediction.place_id, getSessionToken());
+      setSearchError(null);
+      const details = await getGooglePlaceDetails(prediction.placeId, getSessionToken());
+      onPlaceDetails(details);
+    } catch (error: unknown) {
+      setSearchError(toUserMessage(error));
+    } finally {
       // La session Google se termine avec la requête de détail
       endPlacesSession();
-      if (details) onPlaceDetails(details);
-    } catch {
-      // Ignorer l'erreur silencieusement ou laisser le store gérer
-    } finally {
       setIsSearchingGoogle(false);
     }
   };
@@ -127,6 +139,7 @@ export function usePlaceAutocomplete(onPlaceDetails: (details: GooglePlaceDetail
   const handleClear = () => {
     setPredictions([]);
     setIsDropdownVisible(false);
+    setSearchError(null);
   };
 
   return {
@@ -135,6 +148,7 @@ export function usePlaceAutocomplete(onPlaceDetails: (details: GooglePlaceDetail
     predictions,
     isSearchingGoogle,
     isDropdownVisible,
+    searchError,
     handleFocus,
     handleChangeText,
     handleClear,

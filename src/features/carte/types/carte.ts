@@ -39,6 +39,12 @@ export interface PlaceItem {
   isOpenNow?: boolean;
   phone?: string;
   website?: string;
+  /** Google place ID when the place comes from Google (the only Google value we store). */
+  googlePlaceId?: string;
+  /** Link to the place on Google Maps (attribution target). */
+  googleMapsUri?: string;
+  /** Author of each image of `images`, same order (Google requires crediting them). */
+  imageCredits?: (string | undefined)[];
 }
 
 /**

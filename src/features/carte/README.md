@@ -26,6 +26,20 @@ Ce module gère l'affichage de la carte interactive, des lieux (Places) et des s
 - **`StyleSelector`** : map style picker (« Sombre » → `dark`, « Coloré » → `liberty`, « Clair » → `positron`).
 - **`useMapStore`** : Store Zustand pour l'état de la carte (Places, filtres, mode de style, centrage).
 
+## 🔎 Google Places (API New, live data only)
+
+Google Maps Platform terms allow storing **only the Google place ID** (indefinitely; refresh it when older than 12 months). Names, addresses, photos, ratings and opening hours must **never** be persisted: they are fetched live and kept in memory for the session. See `docs/SUPABASE.md` (« Lieux Google ») for the storage rule.
+
+- **`services/googlePlaces/`** (public API in `index.ts`):
+  - `googlePlacesClient.ts` — REST calls to `https://places.googleapis.com/v1` (Autocomplete New, Place Details New with an `X-Goog-FieldMask`, photo media URLs). Two tiers: `summary` (`id`, `displayName`, `formattedAddress`, `location`, `types`, `googleMapsUri` → Place Details **Pro** SKU) for lists, `details` (adds rating, hours, phone, website, photos → **Enterprise** SKU) only when a place card opens.
+  - `googlePlacesParsers.ts` — narrows the `unknown` JSON into typed values (no `any`).
+  - `googlePlacesError.ts` — `GooglePlacesError` with a `kind` (`missing_key`, `invalid_key`, `quota_exceeded`, `not_found`, `invalid_request`, `network`, `invalid_response`) and a French `userMessage`.
+  - `googlePlacesRepository.ts` — **session memory cache** (300 places / 1 h, 100 predictions / 5 min, LRU), merged concurrent requests, details reused for summaries, `not_found` remembered, **quota guard** (no Google call for 5 min after a `RESOURCE_EXHAUSTED` / HTTP 429). Emptied at logout (`registerUserScopedReset`). Nothing is written to disk.
+  - `googlePlaceMappers.ts` — `googlePlaceToPlaceItem` (category from Google types computed on display, price level, photo URLs with their author in `imageCredits`).
+- **Hooks**: `useGooglePlaceSummaries(placeIds)` (lists) and `useGooglePlaceDetails(placeId)` (place card) return `{ status: 'loading' | 'ready' | 'unavailable' }`.
+- **Search bar**: `usePlaceAutocomplete` uses `searchGooglePlacePredictions` + `getGooglePlaceDetails` with one session token; failures are shown under the bar (`searchError`, `testID="map-search-error"`).
+- **Key**: `EXPO_PUBLIC_GOOGLE_PLACES_API_KEY`, with **Places API (New)** enabled (CORS is supported, so the web build calls it directly).
+
 ## 🗺️ Basemap tiles (OpenFreeMap)
 
 - **Provider**: [OpenFreeMap](https://openfreemap.org) — free OpenStreetMap vector tiles for MapLibre, **no API key, no usage limit, no registration**, open source. It replaced CARTO, whose free tier needs an API key, stops at 1M tile requests/month for commercial use and can be suspended at any time.
@@ -62,7 +76,8 @@ Les tests unitaires et de composants se trouvent dans `src/features/carte/__test
 - `AddPlaceToOutingModal.test.tsx`
 - `MapHeaderSearch.test.tsx`
 - `placeService.test.ts`
-- `googlePlacesService.test.ts`
+- `googlePlacesService.test.ts` (session tokens)
+- `googlePlacesClient.test.ts`, `googlePlacesRepository.test.ts` (cache, quota guard, logout), `sessionMemoryCache.test.ts`, `googlePlaceMappers.test.ts`, `useGooglePlaces.test.ts`
 - `usePlaces.test.ts`
 - `leafletMapScript.test.ts` (exécute le script Leaflet avec un faux `L` : centrage, zone visible, marqueurs, fond de carte OpenFreeMap)
 - `leafletTiles.test.tsx` (OpenFreeMap style URLs, attribution, no CARTO / raster tiles)
