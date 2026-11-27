@@ -12,7 +12,7 @@ L'objectif produit est de lutter contre l'isolement social en simplifiant la pla
 - **Langage** : [TypeScript](https://www.typescriptlang.org/) (Mode strict activé)
 - **Base de données & Auth** : [Supabase](https://supabase.com/) (`@supabase/supabase-js` avec persistance `AsyncStorage`)
 - **Navigation** : [Expo Router v3+](https://docs.expo.dev/router/introduction/) (Navigation basée sur le système de fichiers, routage fortement typé, deep linking natif)
-- **Cartographie & Maps** : [MapLibre React Native](https://github.com/maplibre/maplibre-react-native) + Tuiles vectorielles & raster OpenStreetMap (CartoDB Dark Matter / Positron)
+- **Cartographie & Maps** : [MapLibre React Native](https://github.com/maplibre/maplibre-react-native) + OpenStreetMap vector tiles from [OpenFreeMap](https://openfreemap.org) (styles Dark / Liberty / Positron, no API key)
 - **Gestion d'État Global** : [Zustand](https://github.com/pmndrs/zustand) (Découplage léger par feature)
 - **Tests** : [Jest](https://jestjs.io/) + [React Native Testing Library](https://callstack.github.io/react-native-testing-library/)
 - **Linter & Formatage** : [ESLint](https://eslint.org/) + [Prettier](https://prettier.io/)

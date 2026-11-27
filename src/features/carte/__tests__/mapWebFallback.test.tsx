@@ -56,7 +56,7 @@ describe('MapViewComponent — fallback web', () => {
 
     const iframes = UNSAFE_root.findAll((node) => node.type === 'iframe');
     expect(iframes).toHaveLength(1);
-    expect(String(iframes[0].props.srcDoc)).toContain('L.tileLayer(');
+    expect(String(iframes[0].props.srcDoc)).toContain('L.maplibreGL(');
     expect(String(iframes[0].props.srcDoc)).toContain('Pizza Mama');
     expect(queryByTestId('leaflet-webview-map')).toBeNull();
     expect(queryByTestId('maplibre-map-view')).toBeNull();

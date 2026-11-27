@@ -32,6 +32,18 @@ const mockPlaces: PlaceItem[] = [
 ];
 
 describe('MapViewComponent', () => {
+  test('passe le style OpenFreeMap du mode choisi à la carte MapLibre native', () => {
+    useMapStore.getState().setMapStyleMode('positron');
+    const { getByTestId } = render(
+      <MapViewComponent places={mockPlaces} onSelectPlace={jest.fn()} />
+    );
+
+    expect(getByTestId('maplibre-map-view').props.styleURL).toBe(
+      'https://tiles.openfreemap.org/styles/positron'
+    );
+    useMapStore.getState().setMapStyleMode('dark');
+  });
+
   test('doit afficher le conteneur de la carte et les marqueurs', () => {
     const handleSelect = jest.fn();
     const { getByTestId, getByLabelText } = render(

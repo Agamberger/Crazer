@@ -1,9 +1,19 @@
+import { MAP_ATTRIBUTION_HTML, MAP_STYLE_URLS } from '../constants';
 import { MapRegion, MapStyleMode, PlaceItem } from '../types/carte';
 
 /**
- * Carte de repli Leaflet + OpenStreetMap, utilisée quand MapLibre (natif) est indisponible :
- * dans une WebView sur Expo Go, dans une <iframe> sur le web.
+ * Fallback Leaflet map drawing OpenFreeMap vector tiles through MapLibre GL JS, used when
+ * native MapLibre is unavailable: in a WebView on Expo Go, in an <iframe> on the web.
  */
+
+/** Pinned browser builds loaded by the Leaflet map document. */
+export const LEAFLET_MAP_ASSETS = {
+  leafletCss: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+  leafletJs: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+  mapLibreCss: 'https://unpkg.com/maplibre-gl@5.24.1/dist/maplibre-gl.css',
+  mapLibreJs: 'https://unpkg.com/maplibre-gl@5.24.1/dist/maplibre-gl.js',
+  mapLibreLeafletJs: 'https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.3/leaflet-maplibre-gl.js',
+} as const;
 
 export interface LeafletMapState {
   places: PlaceItem[];
@@ -49,11 +59,6 @@ export const serializeForScript = (value: unknown): string =>
     .replace(/\u2028/g, '\\u2028')
     .replace(/\u2029/g, '\\u2029');
 
-const getTileUrl = (mode: MapStyleMode): string =>
-  mode === 'dark'
-    ? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
-    : 'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png';
-
 const stateArgs = (state: LeafletMapState): string =>
   [
     serializeForScript(state.places),
@@ -69,12 +74,11 @@ export const buildLeafletUpdateScript = (state: LeafletMapState): string =>
 
 /** Document HTML complet de la carte Leaflet. */
 export const buildLeafletHtml = (mode: MapStyleMode, state: LeafletMapState): string => {
-  // Les tuiles raster sombres de CARTO exigent une clé API : on inverse les tuiles OSM standard.
-  const darkTilesFilter =
-    mode === 'dark'
-      ? '.leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9); }'
-      : '';
   const { center } = state;
+  const basemapOptions = {
+    style: MAP_STYLE_URLS[mode],
+    attributionControl: { customAttribution: MAP_ATTRIBUTION_HTML },
+  };
 
   return `
       <!DOCTYPE html>
@@ -82,12 +86,15 @@ export const buildLeafletHtml = (mode: MapStyleMode, state: LeafletMapState): st
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <link rel="stylesheet" href="${LEAFLET_MAP_ASSETS.leafletCss}" />
+        <link rel="stylesheet" href="${LEAFLET_MAP_ASSETS.mapLibreCss}" />
+        <script src="${LEAFLET_MAP_ASSETS.leafletJs}"></script>
+        <script src="${LEAFLET_MAP_ASSETS.mapLibreJs}"></script>
+        <script src="${LEAFLET_MAP_ASSETS.mapLibreLeafletJs}"></script>
         <style>
           body, html, #map { margin: 0; padding: 0; width: 100%; height: 100%; background: #121214; }
-          ${darkTilesFilter}
           .leaflet-control-attribution { font-size: 9px !important; background: rgba(0,0,0,0.6) !important; color: #aaa !important; }
+          .leaflet-control-attribution a { color: #ddd !important; }
           .custom-marker {
             display: flex;
             align-items: center;
@@ -130,10 +137,7 @@ export const buildLeafletHtml = (mode: MapStyleMode, state: LeafletMapState): st
           var markersLayer = L.layerGroup().addTo(map);
           var userLayer = L.layerGroup().addTo(map);
 
-          L.tileLayer('${getTileUrl(mode)}', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap contributors'
-          }).addTo(map);
+          L.maplibreGL(${serializeForScript(basemapOptions)}).addTo(map);
 
           // WebView native (Expo Go) ou page parente (iframe sur le web).
           function notify(payload) {

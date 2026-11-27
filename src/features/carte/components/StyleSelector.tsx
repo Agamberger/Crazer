@@ -6,8 +6,8 @@ import { useMapStore } from '../store/useMapStore';
 
 const MAP_STYLES: { id: MapStyleMode; label: string; icon: string }[] = [
   { id: 'dark', label: 'Sombre', icon: '🌙' },
-  { id: 'voyager', label: 'Voyager', icon: '☀️' },
-  { id: 'outdoor', label: 'Positron', icon: '🧭' },
+  { id: 'liberty', label: 'Coloré', icon: '☀️' },
+  { id: 'positron', label: 'Clair', icon: '🧭' },
 ];
 
 export const StyleSelector: React.FC = () => {

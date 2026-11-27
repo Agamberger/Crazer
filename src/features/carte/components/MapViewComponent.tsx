@@ -3,7 +3,8 @@ import { Platform, View, StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { colors } from '@/shared/constants/theme';
 import { PlaceItem } from '../types/carte';
-import { useMapStore, MAP_STYLE_URLS } from '../store/useMapStore';
+import { MAP_STYLE_URLS } from '../constants';
+import { useMapStore } from '../store/useMapStore';
 import {
   buildLeafletHtml,
   buildLeafletUpdateScript,
@@ -58,7 +59,7 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
   const leafletStateRef = React.useRef(leafletState);
   leafletStateRef.current = leafletState;
 
-  // Fallback OpenStreetMap / Leaflet (Expo Go via WebView, web via iframe).
+  // Fallback Leaflet + OpenFreeMap vector tiles (Expo Go via WebView, web via iframe).
   // Le HTML n'est reconstruit que si le style change : sinon chaque nouveau lieu rechargeait
   // toute la carte et annulait le déplacement de l'utilisateur. Le reste passe par injectJavaScript.
   const leafletHtmlSource = React.useMemo(

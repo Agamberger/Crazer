@@ -8,13 +8,6 @@ import {
   OutingTargetKind,
 } from '../types/carte';
 
-// OpenStreetMap styles (Raster / Vector styles using standard Osm / CartoDB basemaps)
-export const MAP_STYLE_URLS: Record<MapStyleMode, string> = {
-  dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-  voyager: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
-  outdoor: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-};
-
 export const INITIAL_PLACES: PlaceItem[] = [];
 export const INITIAL_POIS = INITIAL_PLACES;
 
