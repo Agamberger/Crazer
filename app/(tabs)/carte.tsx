@@ -12,6 +12,10 @@ import {
   usePlaces,
   PlaceItem,
   ensurePlaceExists,
+  GooglePlaceMapTeaser,
+  GooglePlaceSheet,
+  toMapPinPlace,
+  useGooglePlaceSheet,
 } from '@/features/carte';
 import { useAuth } from '@/features/auth';
 import { ProposalPlace, ProposePlaceActivityModal, useOutingsStore } from '@/features/outings';
@@ -58,6 +62,8 @@ export default function CarteScreen() {
 
   const filteredPlaces = getFilteredPlaces();
   const selectedPlace = places.find((p) => p.id === selectedPlaceId) || null;
+  const googleSheet = useGooglePlaceSheet(selectedPlace);
+  const mapPins = filteredPlaces.map(toMapPinPlace);
   const targetOuting = targetOutingId ? outings.find((o) => o.id === targetOutingId) || null : null;
 
   const handleSelectPlace = (place: PlaceItem) => {
@@ -118,7 +124,7 @@ export default function CarteScreen() {
     <View style={styles.container}>
       {/* Map View spanning 100% full screen edge-to-edge */}
       <MapViewComponent
-        places={filteredPlaces}
+        places={mapPins}
         onSelectPlace={handleSelectPlace}
         onRegionChange={loadVisibleArea}
       />
@@ -147,7 +153,16 @@ export default function CarteScreen() {
       </Animated.View>
 
       {/* Detail Card Overlay at Bottom */}
-      {selectedPlace && (
+      {selectedPlace?.googlePlaceId ? (
+        <View style={styles.bottomCardOverlay}>
+          <GooglePlaceMapTeaser
+            onOpen={googleSheet.open}
+            onClose={() => setSelectedPlaceId(null)}
+          />
+        </View>
+      ) : null}
+
+      {selectedPlace && !selectedPlace.googlePlaceId && (
         <View style={styles.bottomCardOverlay}>
           <PlaceDetailCard
             place={selectedPlace}
@@ -160,6 +175,19 @@ export default function CarteScreen() {
           />
         </View>
       )}
+
+      <GooglePlaceSheet
+        googlePlaceId={googleSheet.sheetPlaceId}
+        placeItemId={selectedPlace?.id}
+        onClose={googleSheet.close}
+        onAddToOuting={(place) => {
+          googleSheet.close();
+          void handleAddToOuting(place);
+        }}
+        onGetDirections={handleGetDirections}
+        isTargetMode={!!targetOutingId}
+        targetKind={targetKind}
+      />
 
       {/* Add Place to Outing Modal */}
       <AddPlaceToOutingModal

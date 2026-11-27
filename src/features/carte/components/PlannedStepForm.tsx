@@ -38,8 +38,23 @@ const STATUS_OPTIONS = PLANNED_STATUS_OPTIONS.filter(
 );
 const DEFAULT_DURATION_MIN = 60;
 
-/** Pré-remplit l'étape avec les infos pratiques du lieu et la date de base de la sortie (voir `useStepBaseDate`). */
+/**
+ * Pré-remplit l'étape avec la date de base de la sortie (voir `useStepBaseDate`) et, pour un lieu
+ * Crazer, ses infos pratiques. Un lieu Google ne pré-remplit que le titre (modifiable) : ses
+ * adresse, téléphone, horaires… ne doivent pas être copiés en base (CGU Google Maps Platform)
+ * et restent consultables en direct sur sa fiche.
+ */
 export const buildPlannedStepValues = (baseDate: Date, place: PlaceItem): PlannedStepValues => {
+  if (place.googlePlaceId) {
+    return {
+      title: place.title,
+      description: '',
+      notes: '',
+      scheduledFor: baseDate,
+      durationMin: DEFAULT_DURATION_MIN,
+      status: 'pending',
+    };
+  }
   const notes: string[] = [];
   if (place.address) notes.push(`Adresse : ${place.address}`);
   if (place.phone) notes.push(`Tél : ${place.phone}`);

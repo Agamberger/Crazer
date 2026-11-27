@@ -7,6 +7,7 @@
 
 import { renderHook, act } from '@testing-library/react-native';
 import { usePlaces } from '../hooks/usePlaces';
+import { PlaceItem } from '../types/carte';
 
 // ── Mock expo-location ────────────────────────────────────────────────────────
 jest.mock('expo-location', () => ({
@@ -29,6 +30,8 @@ const mockStoreState = {
   setUserLocation: jest.fn(),
   centerRegion: { latitude: 48.8566, longitude: 2.3522, zoomLevel: 12 },
   userLocation: null,
+  places: [] as PlaceItem[],
+  selectedPlaceId: null as string | null,
 };
 
 jest.mock('../store/useMapStore', () => {
@@ -250,6 +253,36 @@ describe('usePlaces', () => {
     expect(mockFetchNearby).toHaveBeenCalledTimes(1);
     expect(mockFetchNearby).toHaveBeenCalledWith(43.6, 1.44, 3_500, undefined, expect.any(Number));
     expect(mockSetPlaces).toHaveBeenCalled();
+  });
+
+  test('loadVisibleArea — garde le lieu Google sélectionné, absent des résultats de la base', async () => {
+    const googleItem: PlaceItem = {
+      id: 'google-ChIJ1',
+      googlePlaceId: 'ChIJ1',
+      title: 'Musée d’Orsay',
+      category: 'culture',
+      latitude: 48.86,
+      longitude: 2.326,
+      address: 'Esplanade Valéry Giscard d’Estaing',
+      rating: 4.8,
+      reviewsCount: 10,
+    };
+    mockStoreState.places = [googleItem];
+    mockStoreState.selectedPlaceId = 'google-ChIJ1';
+    mockFetchNearby.mockResolvedValueOnce([mockPlaceResult]);
+    const { result } = renderHook(() => usePlaces());
+
+    act(() => {
+      result.current.loadVisibleArea({ latitude: 48.86, longitude: 2.33, zoomLevel: 15, radiusM: 2_000 });
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(400);
+    });
+
+    const shown = mockSetPlaces.mock.calls[mockSetPlaces.mock.calls.length - 1][0] as PlaceItem[];
+    expect(shown.map((place) => place.id)).toEqual(['google-ChIJ1', 'place-1']);
+    mockStoreState.places = [];
+    mockStoreState.selectedPlaceId = null;
   });
 
   test('loadVisibleArea — borne le rayon demandé', async () => {

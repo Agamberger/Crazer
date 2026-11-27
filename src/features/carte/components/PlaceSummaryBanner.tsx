@@ -4,6 +4,7 @@ import { AppText, Badge } from '@/shared/components';
 import { colors, radii, spacing } from '@/shared/constants/theme';
 import { getPlaceCategoryLabel } from '../constants';
 import { PlaceItem } from '../types/carte';
+import { GoogleAttribution } from './GoogleAttribution';
 
 export interface PlaceSummaryBannerProps {
   place: PlaceItem;
@@ -29,6 +30,7 @@ export const PlaceSummaryBanner: React.FC<PlaceSummaryBannerProps> = ({ place })
       <AppText variant="caption" color="secondary" numberOfLines={1} style={styles.address}>
         📍 {place.address}
       </AppText>
+      {place.googlePlaceId ? <GoogleAttribution testID="poi-preview-google-attribution" /> : null}
     </View>
   );
 };
