@@ -15,13 +15,14 @@ CREATE FUNCTION pg_temp.act_as(p_user UUID) RETURNS VOID LANGUAGE sql AS $$
     json_build_object('sub', p_user, 'role', 'authenticated')::TEXT, true);
 $$;
 
--- Fichiers « déjà envoyés » (insérés en superuser, comme le ferait Storage)
+-- Fichiers « déjà envoyés » (insérés en superuser, comme le fait Storage :
+-- seule la colonne texte owner_id est remplie, owner (déprécié) reste NULL)
 CREATE FUNCTION pg_temp.fake_upload(p_place UUID, p_photo UUID, p_owner UUID) RETURNS VOID
 LANGUAGE sql AS $$
-  INSERT INTO storage.objects (bucket_id, name, owner, owner_id)
+  INSERT INTO storage.objects (bucket_id, name, owner_id)
   VALUES
-    ('place-photos', p_place || '/' || p_photo || '.jpg', p_owner, p_owner::TEXT),
-    ('place-photos', p_place || '/' || p_photo || '_thumb.jpg', p_owner, p_owner::TEXT);
+    ('place-photos', p_place || '/' || p_photo || '.jpg', p_owner::TEXT),
+    ('place-photos', p_place || '/' || p_photo || '_thumb.jpg', p_owner::TEXT);
 $$;
 
 -- ── Bucket ───────────────────────────────────────────────────────────────────
@@ -187,7 +188,7 @@ SELECT throws_ok(
 -- Storage : chemin et lieu vérifiés à l'envoi
 SELECT throws_ok(
   $$ INSERT INTO storage.objects (bucket_id, name, owner, owner_id)
-     VALUES ('place-photos', 'not-a-place/evil.jpg', auth.uid(), auth.uid()::TEXT) $$,
+     VALUES ('place-photos', 'not-a-place/evil.jpg', NULL, auth.uid()::TEXT) $$,
   '42501', NULL,
   'storage : envoi refusé hors du format <lieu>/<photo>.jpg'
 );
@@ -195,7 +196,7 @@ SELECT lives_ok(
   $$ INSERT INTO storage.objects (bucket_id, name, owner, owner_id)
      VALUES ('place-photos',
        'b1111111-1111-1111-1111-111111111111/0a0a0a0a-0000-4000-8000-000000000005.jpg',
-       auth.uid(), auth.uid()::TEXT) $$,
+       NULL, auth.uid()::TEXT) $$,
   'storage : envoi accepté pour un lieu visible'
 );
 SELECT lives_ok(

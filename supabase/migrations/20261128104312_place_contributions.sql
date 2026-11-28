@@ -14,6 +14,8 @@
 --   5. RPC get_place_contribution_summaries(place_ids): counts, average rating
 --      and confirmed hours per place (completeness score, increment 2.5).
 --
+--   Storage fills only the text column `owner_id` (`owner` is deprecated): every
+--   ownership check below compares `owner_id` with `auth.uid()::TEXT`.
 --   Reads: any authenticated user (places are shared). Writes: through
 --   SECURITY DEFINER RPCs (photos, reports, hours, votes) or own rows (reviews).
 -- Tests: supabase/tests/database/place_contributions.test.sql
@@ -114,7 +116,7 @@ SET search_path = public
 AS $$
   SELECT count(*)::INTEGER FROM storage.objects o
   WHERE o.bucket_id = 'place-photos'
-    AND o.owner = auth.uid()
+    AND o.owner_id = auth.uid()::TEXT
     AND o.created_at > now() - INTERVAL '1 day';
 $$;
 
@@ -137,7 +139,7 @@ CREATE POLICY "place-photos: read visible photos and own uploads"
   USING (
     bucket_id = 'place-photos'
     AND (
-      owner = auth.uid()
+      owner_id = auth.uid()::TEXT
       OR EXISTS (
         SELECT 1 FROM public.place_photos ph
         WHERE NOT ph.is_hidden
@@ -149,7 +151,7 @@ CREATE POLICY "place-photos: read visible photos and own uploads"
 CREATE POLICY "place-photos: delete own uploads"
   ON storage.objects FOR DELETE
   TO authenticated
-  USING (bucket_id = 'place-photos' AND owner = auth.uid());
+  USING (bucket_id = 'place-photos' AND owner_id = auth.uid()::TEXT);
 
 -- add_place_photo: called once both files are uploaded.
 CREATE FUNCTION public.add_place_photo(
@@ -177,7 +179,7 @@ BEGIN
   END IF;
   IF (
     SELECT count(*) FROM storage.objects o
-    WHERE o.bucket_id = 'place-photos' AND o.owner = v_user AND o.name IN (v_path, v_thumb)
+    WHERE o.bucket_id = 'place-photos' AND o.owner_id = v_user::TEXT AND o.name IN (v_path, v_thumb)
   ) <> 2 THEN
     RAISE EXCEPTION 'upload the photo and its thumbnail first' USING ERRCODE = '22023';
   END IF;
