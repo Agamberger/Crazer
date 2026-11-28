@@ -7,6 +7,8 @@ import { useMapStore } from '../store/useMapStore';
 import { PlaceItem } from '../types/carte';
 import { PlaceContactChips } from './PlaceContactChips';
 import { PlaceDetailActions } from './PlaceDetailActions';
+import { PlaceCommunityHours } from './PlaceCommunityHours';
+import { PlaceCommunityPhotos } from './PlaceCommunityPhotos';
 import { PlaceDetailHeader } from './PlaceDetailHeader';
 import { PlaceOpeningHours } from './PlaceOpeningHours';
 import { PlacePhotoGallery } from './PlacePhotoGallery';
@@ -78,7 +80,11 @@ export const PlaceDetailCard: React.FC<PlaceDetailCardProps> = ({
           onClose={onClose}
         />
 
-        <PlacePhotoGallery photos={photos} placeTitle={place.title} isExpanded={isExpanded} />
+        {isExpanded ? (
+          <PlaceCommunityPhotos place={place} />
+        ) : (
+          <PlacePhotoGallery photos={photos} placeTitle={place.title} isExpanded={false} />
+        )}
 
         <AppText variant="h3" weight="bold" style={styles.title}>
           {place.title}
@@ -101,10 +107,12 @@ export const PlaceDetailCard: React.FC<PlaceDetailCardProps> = ({
 
         {isExpanded ? <PlaceContactChips phone={place.phone} website={place.website} /> : null}
 
-        {hasHours ? (
+        {isExpanded ? <PlaceCommunityHours place={place} /> : null}
+
+        {hasHours && !isExpanded ? (
           <PlaceOpeningHours
             hours={place.openingHours ?? []}
-            expanded={showHours || isExpanded}
+            expanded={showHours}
             onToggle={() => setShowHours(!showHours)}
           />
         ) : null}

@@ -38,7 +38,7 @@ Les icônes sont des noms [Ionicons](https://icons.expo.fyi/) (type `IconName`, 
 | `ChipGroup` | Puces à sélection unique (générique typé, `string` ou `number`) | `options` (`value`, `label`, `emoji?`, `icon?`), `value`, `onChange`, `label`, `testID` → `${testID}-${value}` |
 | `MultiChipGroup` | Puces à sélection multiple (jours, amis…), l'ordre des options est conservé | `options`, `values`, `onChange(values)`, `label`, `testID` → `${testID}-${value}` — helper `toggleChipValue()` |
 | `MultiDateCalendar` | Calendrier mensuel à sélection multiple de jours, navigation libre entre les mois, jours choisis listés en puces supprimables | `values` (`YYYY-MM-DD`), `onChange`, `minDate` (jours passés et mois précédent désactivés), `testID` → `${testID}-selected-${day}` |
-| `TimeRangeField` | Créneau horaire « De » / « À » (sélecteur thémé en mode heure seule), erreur si fin ≤ début | `value` (`{ start, end }` en `HH:mm`), `onChange`, `label`, `testID` — helpers `isValidTimeRange()`, `formatTimeLabel()` |
+| `TimeRangeField` | Créneau horaire « De » / « À » (sélecteur thémé en mode heure seule), erreur si fin ≤ début (ou fin = début avec `allowOvernight`, pour un créneau qui finit après minuit) | `value` (`{ start, end }` en `HH:mm`), `onChange`, `label`, `allowOvernight`, `testID` — helpers `isValidTimeRange()`, `formatTimeLabel()` |
 | `DateTimeField` | Boutons « Date » + « Heure » avec sélecteur thémé intégré | `value`, `onChange`, `label`, `testIDScope` — helpers `formatFieldDate()`, `formatFieldTime()` |
 | `Checkbox` | Case à cocher | `checked`, `onChange`, `label`, `description` |
 | `Toggle` | Interrupteur | `value`, `onValueChange`, `label`, `description` |

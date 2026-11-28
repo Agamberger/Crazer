@@ -58,6 +58,14 @@
           "locationWhenInUsePermission": "Crazer utilise votre position pour afficher les lieux à proximité.",
           "isAndroidBackgroundLocationEnabled": false
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Crazer accède à tes photos pour que tu puisses partager une photo d'un lieu.",
+          "cameraPermission": "Crazer utilise l'appareil photo pour que tu puisses photographier un lieu.",
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {

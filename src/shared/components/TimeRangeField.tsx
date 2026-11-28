@@ -15,6 +15,8 @@ export interface TimeRangeFieldProps {
   onChange: (value: TimeRange) => void;
   label?: string;
   disabled?: boolean;
+  /** Accepts an end before the start (range ending after midnight, e.g. 19:00 – 02:00). */
+  allowOvernight?: boolean;
   style?: StyleProp<ViewStyle>;
   /** testID prefix: `${testID}-start`, `${testID}-end`, `${testID}-error`. */
   testID?: string;
@@ -51,6 +53,7 @@ export const TimeRangeField: React.FC<TimeRangeFieldProps> = ({
   onChange,
   label,
   disabled = false,
+  allowOvernight = false,
   style,
   testID = 'time-range',
 }) => {
@@ -59,7 +62,7 @@ export const TimeRangeField: React.FC<TimeRangeFieldProps> = ({
     () => timeStringToDate(openBound ? value[openBound] : value.start),
     [openBound, value],
   );
-  const valid = isValidTimeRange(value);
+  const valid = allowOvernight ? value.end !== value.start : isValidTimeRange(value);
 
   const handleConfirm = (date: Date) => {
     if (openBound) onChange({ ...value, [openBound]: dateToTimeString(date) });
@@ -68,7 +71,11 @@ export const TimeRangeField: React.FC<TimeRangeFieldProps> = ({
 
   const renderButton = (bound: Bound, title: string) => (
     <TouchableOpacity
-      style={[styles.button, openBound === bound && styles.buttonActive, disabled && styles.disabled]}
+      style={[
+        styles.button,
+        openBound === bound && styles.buttonActive,
+        disabled && styles.disabled,
+      ]}
       onPress={() => setOpenBound(bound)}
       disabled={disabled}
       activeOpacity={opacity.pressed}
@@ -91,7 +98,9 @@ export const TimeRangeField: React.FC<TimeRangeFieldProps> = ({
       </View>
       {valid ? null : (
         <Text style={styles.error} testID={`${testID}-error`}>
-          L’heure de fin doit être après l’heure de début.
+          {allowOvernight
+            ? 'L’heure de fin doit être différente de l’heure de début.'
+            : 'L’heure de fin doit être après l’heure de début.'}
         </Text>
       )}
       <ThemedDateTimePicker

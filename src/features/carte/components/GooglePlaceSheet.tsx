@@ -8,8 +8,8 @@ import { OutingTargetKind, PlaceItem } from '../types/carte';
 import { GoogleAttribution } from './GoogleAttribution';
 import { PlaceContactChips } from './PlaceContactChips';
 import { PlaceDetailActions } from './PlaceDetailActions';
-import { PlaceOpeningHours } from './PlaceOpeningHours';
-import { PlacePhotoGallery } from './PlacePhotoGallery';
+import { PlaceCommunityHours } from './PlaceCommunityHours';
+import { PlaceCommunityPhotos } from './PlaceCommunityPhotos';
 
 export interface GooglePlaceSheetProps {
   /** Google place to show; the sheet is hidden while `null`. */
@@ -55,12 +55,7 @@ export const GooglePlaceSheet: React.FC<GooglePlaceSheetProps> = ({
     const place = googlePlaceToPlaceItem(lookup.place, placeItemId);
     return (
       <>
-        <PlacePhotoGallery
-          photos={place.images ?? []}
-          credits={place.imageCredits}
-          placeTitle={place.title}
-          isExpanded
-        />
+        <PlaceCommunityPhotos place={place} />
         <AppText variant="h3" weight="bold">
           {place.title}
         </AppText>
@@ -73,16 +68,9 @@ export const GooglePlaceSheet: React.FC<GooglePlaceSheetProps> = ({
             {place.priceRange ? ` · ${place.priceRange}` : ''}
           </AppText>
         ) : null}
-        {place.isOpenNow !== undefined ? (
-          <AppText variant="bodySmall" color={place.isOpenNow ? 'success' : 'error'}>
-            {place.isOpenNow ? 'Ouvert maintenant' : 'Fermé maintenant'}
-          </AppText>
-        ) : null}
         <PlaceContactChips phone={place.phone} website={place.website} />
-        {place.openingHours && place.openingHours.length > 0 ? (
-          <PlaceOpeningHours hours={place.openingHours} expanded onToggle={() => undefined} />
-        ) : null}
-        <GoogleAttribution googleMapsUri={place.googleMapsUri} />
+        <PlaceCommunityHours place={place} />
+        <GoogleAttribution googleMapsUri={place.googleMapsUri} withCrazer />
         <View style={styles.actions}>
           <PlaceDetailActions
             isTargetMode={isTargetMode}

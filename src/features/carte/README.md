@@ -50,6 +50,8 @@ Under the Google Maps Platform **EEA terms** (billing account in the EEA), Place
 - **Full-screen sheet**: **`GooglePlaceSheet`** (`AppModal` `slideOver`, opened by `useGooglePlaceSheet` as soon as a Google place is selected) loads the details live (`useGooglePlaceDetails`): photos with their authors (`PlacePhotoGallery` `credits`), rating, open now, contact, hours, **`GoogleAttribution`** (« Google Maps » + « Voir sur Google Maps » link to `googleMapsUri`), and the usual actions.
 - **Attributions** elsewhere: under the autocomplete suggestions (`PlacePredictionsDropdown`), in the place summary of `AddPlaceToOutingModal` (`PlaceSummaryBanner`), and in `PlaceNameLabel`.
 - **Steps**: `buildPlannedStepValues` pre-fills only the (editable) title for a Google place; its address, phone, hours… are no longer copied into `planned_outings.notes`.
+- **Community hours**: `PlaceCommunityHours` (feature `place-contributions`) shows confirmed community hours first with a discreet ✓, Google's hours one tap away; the sheet's footer « Google Maps · Crazer » is the card's only source line.
+- **Photos**: `PlaceCommunityPhotos` (feature `place-contributions`) shows one merged strip — « + » tile, community photos, then Google's (or the stored images) — each credited « © author », in `GooglePlaceSheet` and in the expanded `PlaceDetailCard`.
 - **Map loads**: `usePlaces` keeps the selected Google place when the visible area is reloaded (the database never returns Google places).
 
 ## 🗺️ Basemap tiles (OpenFreeMap)

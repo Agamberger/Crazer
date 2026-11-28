@@ -6,6 +6,8 @@ import { spacing } from '@/shared/constants/theme';
 export interface GoogleAttributionProps {
   /** Link to the place on Google Maps; shows « Voir sur Google Maps » when given. */
   googleMapsUri?: string;
+  /** The block also shows Crazer community data: « Google Maps · Crazer ». */
+  withCrazer?: boolean;
   testID?: string;
 }
 
@@ -15,11 +17,12 @@ export interface GoogleAttributionProps {
  */
 export const GoogleAttribution: React.FC<GoogleAttributionProps> = ({
   googleMapsUri,
+  withCrazer = false,
   testID = 'google-attribution',
 }) => (
   <View style={styles.container} testID={testID}>
-    <AppText variant="caption" color="muted" style={styles.label}>
-      Google Maps
+    <AppText variant="caption" color="muted" style={styles.label} testID={`${testID}-sources`}>
+      {withCrazer ? 'Google Maps · Crazer' : 'Google Maps'}
     </AppText>
     {googleMapsUri ? (
       <Button

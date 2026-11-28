@@ -94,3 +94,39 @@ export function formatOpeningPeriods(periods: readonly OpeningPeriod[]): string[
     return `${DAY_LABELS[day]}: ${text}`;
   });
 }
+
+const toMinutes = (time: string): number => {
+  const [hours, minutes] = time.split(':').map(Number);
+  return hours * 60 + minutes;
+};
+
+/**
+ * Day of the week of a date, 0 = Monday … 6 = Sunday.
+ *
+ * @param date - local date
+ * @returns the week day
+ */
+export function toWeekDay(date: Date): WeekDay {
+  return ((date.getDay() + 6) % 7) as WeekDay;
+}
+
+/**
+ * Whether the place is open at a given moment, including periods started the day before
+ * and ending after midnight.
+ *
+ * @param periods - opening periods of the week
+ * @param date - moment to check (local time)
+ * @returns `true` when a period covers that moment
+ */
+export function isOpenAt(periods: readonly OpeningPeriod[], date: Date): boolean {
+  const today = toWeekDay(date);
+  const yesterday = ((today + 6) % 7) as WeekDay;
+  const now = date.getHours() * 60 + date.getMinutes();
+  return periods.some((period) => {
+    const open = toMinutes(period.open);
+    const close = toMinutes(period.close);
+    const isOvernight = close < open;
+    if (period.day === today) return isOvernight ? now >= open : now >= open && now < close;
+    return period.day === yesterday && isOvernight && now < close;
+  });
+}
