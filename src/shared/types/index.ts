@@ -26,10 +26,7 @@ export type OutingUpdate = Database['public']['Tables']['outings']['Update'];
 export type OutingStatus = Enums<'outing_status'>;
 
 /** Configuration UI (libellés & émojis) strictement typée sur l'enum de la base de données */
-export const OUTING_STATUS_CONFIG: Record<
-  OutingStatus,
-  { label: string; emoji: string }
-> = {
+export const OUTING_STATUS_CONFIG: Record<OutingStatus, { label: string; emoji: string }> = {
   draft: { label: 'Brouillon', emoji: '📝' },
   planned: { label: 'Planifiée', emoji: '📅' },
   ongoing: { label: 'En cours', emoji: '⚡' },
@@ -82,7 +79,6 @@ export const PARTICIPANT_STATUS_CONFIG: Record<
 /** Alias rétro-compatible */
 export type SortieRow = OutingRow;
 export type Sortie = OutingRow;
-
 
 /** Activité : quelque chose à faire (proposé par un établissement, etc.) */
 export interface Activite {
@@ -153,3 +149,9 @@ export interface Badge {
 export type ActivityVote = Enums<'activity_vote'>;
 export type OutingActivityRow = Database['public']['Tables']['outing_activities']['Row'];
 export type OutingActivityVoteRow = Database['public']['Tables']['outing_activity_votes']['Row'];
+
+/** User contributions on places (roadmap phase 2) */
+export type PlaceHoursStatus = Enums<'place_hours_status'>;
+export type PlacePhotoRow = Database['public']['Tables']['place_photos']['Row'];
+export type PlaceHoursProposalRow = Database['public']['Tables']['place_hours_proposals']['Row'];
+export type PlaceReviewRow = Database['public']['Tables']['place_reviews']['Row'];
