@@ -98,6 +98,24 @@ export const placeContributionsService = {
   },
 
   /**
+   * `places` row of a Google place already saved by someone, if any.
+   *
+   * @param googlePlaceId - Google place ID
+   * @returns the row id, or `null` when nobody saved this place yet
+   * @throws ContributionError on failure
+   */
+  async findPlaceIdByGooglePlaceId(googlePlaceId: string): Promise<string | null> {
+    const { data, error } = await supabase
+      .from('places')
+      .select('id')
+      .eq('source', 'google')
+      .eq('source_id', googlePlaceId)
+      .maybeSingle();
+    if (error) throw toContributionError(error);
+    return data?.id ?? null;
+  },
+
+  /**
    * Photos of a place, newest first (hidden ones only for their uploader).
    *
    * @param placeId - `places` id
@@ -131,6 +149,26 @@ export const placeContributionsService = {
       (data ?? []).flatMap((entry) =>
         entry.path && entry.signedUrl && !entry.error ? [[entry.path, entry.signedUrl]] : [],
       ),
+    );
+  },
+
+  /**
+   * Display names of photo uploaders, for their credit under the photo.
+   *
+   * @param userIds - user ids (duplicates ignored)
+   * @returns name per user id; users without a name are missing
+   * @throws ContributionError on failure
+   */
+  async fetchUploaderNames(userIds: readonly string[]): Promise<Record<string, string>> {
+    const ids = Array.from(new Set(userIds));
+    if (ids.length === 0) return {};
+    const { data, error } = await supabase.rpc('get_profiles', { p_ids: ids });
+    if (error) throw toContributionError(error);
+    return Object.fromEntries(
+      (data ?? []).flatMap((profile) => {
+        const name = profile.full_name?.trim();
+        return name ? [[profile.id, name]] : [];
+      }),
     );
   },
 

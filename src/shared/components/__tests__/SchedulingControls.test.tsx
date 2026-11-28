@@ -70,6 +70,28 @@ describe('TimeRangeField', () => {
     expect(getByTestId('slot-error')).toBeTruthy();
   });
 
+  it('accepte un créneau qui finit après minuit avec allowOvernight', () => {
+    const { queryByTestId, rerender, getByTestId } = render(
+      <TimeRangeField
+        value={{ start: '19:00', end: '02:00' }}
+        onChange={jest.fn()}
+        allowOvernight
+        testID="slot"
+      />,
+    );
+    expect(queryByTestId('slot-error')).toBeNull();
+
+    rerender(
+      <TimeRangeField
+        value={{ start: '19:00', end: '19:00' }}
+        onChange={jest.fn()}
+        allowOvernight
+        testID="slot"
+      />,
+    );
+    expect(getByTestId('slot-error')).toBeTruthy();
+  });
+
   it('met à jour la borne choisie depuis le sélecteur', () => {
     const onChange = jest.fn();
     const { getByTestId, queryByTestId } = render(

@@ -52,7 +52,7 @@ describe('GooglePlaceSheet', () => {
     expect(await screen.findByText('Tour Eiffel')).toBeTruthy();
     expect(screen.getByTestId('google-place-rating')).toBeTruthy();
     expect(screen.getByText('Ouvert maintenant')).toBeTruthy();
-    expect(screen.getByTestId('place-photo-credit-0')).toBeTruthy();
+    expect(screen.getByTestId('place-other-photo-0-credit')).toBeTruthy();
     expect(screen.getByTestId('google-attribution')).toBeTruthy();
     expect(screen.getByTestId('google-attribution-link')).toBeTruthy();
     expect(mockRepository.getGooglePlaceDetails).toHaveBeenCalledWith('ChIJ1');

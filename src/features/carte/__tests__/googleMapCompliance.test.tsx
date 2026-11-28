@@ -97,6 +97,11 @@ describe('GoogleAttribution', () => {
     expect(openURL).toHaveBeenCalledWith('https://maps.google.com/?cid=1');
   });
 
+  it('names both sources discreetly when Crazer data is shown too', () => {
+    render(<GoogleAttribution withCrazer />);
+    expect(screen.getByText('Google Maps · Crazer')).toBeTruthy();
+  });
+
   it('shows only the credit without a link', () => {
     render(<GoogleAttribution />);
     expect(screen.queryByTestId('google-attribution-link')).toBeNull();

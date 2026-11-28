@@ -164,6 +164,22 @@ describe('placeContributionsService', () => {
     expect(createSignedUrls).toHaveBeenCalledWith(['p1/ph1_thumb.jpg', 'p1/gone.jpg'], 3600);
   });
 
+  it('fetchUploaderNames reads the profile names and skips empty ones', async () => {
+    rpc.mockResolvedValue({
+      data: [
+        { id: 'bob', full_name: ' Bob Martin ', avatar_url: null, email: null },
+        { id: 'eve', full_name: null, avatar_url: null, email: null },
+      ],
+      error: null,
+    });
+
+    await expect(service.fetchUploaderNames(['bob', 'bob', 'eve'])).resolves.toEqual({
+      bob: 'Bob Martin',
+    });
+    expect(rpc).toHaveBeenCalledWith('get_profiles', { p_ids: ['bob', 'eve'] });
+    await expect(service.fetchUploaderNames([])).resolves.toEqual({});
+  });
+
   it('registerPhoto maps the quota error', async () => {
     rpc.mockResolvedValue({
       data: null,
