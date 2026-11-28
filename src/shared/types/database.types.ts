@@ -434,6 +434,193 @@ export type Database = {
           },
         ]
       }
+      place_hours_proposals: {
+        Row: {
+          created_at: string
+          id: string
+          no_count: number
+          periods: Json
+          place_id: string
+          proposed_by: string
+          status: Database["public"]["Enums"]["place_hours_status"]
+          updated_at: string
+          yes_count: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          no_count?: number
+          periods: Json
+          place_id: string
+          proposed_by: string
+          status?: Database["public"]["Enums"]["place_hours_status"]
+          updated_at?: string
+          yes_count?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          no_count?: number
+          periods?: Json
+          place_id?: string
+          proposed_by?: string
+          status?: Database["public"]["Enums"]["place_hours_status"]
+          updated_at?: string
+          yes_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_hours_proposals_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_hours_votes: {
+        Row: {
+          created_at: string
+          is_correct: boolean
+          proposal_id: string
+          voter_id: string
+        }
+        Insert: {
+          created_at?: string
+          is_correct: boolean
+          proposal_id: string
+          voter_id: string
+        }
+        Update: {
+          created_at?: string
+          is_correct?: boolean
+          proposal_id?: string
+          voter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_hours_votes_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "place_hours_proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_photo_reports: {
+        Row: {
+          created_at: string
+          photo_id: string
+          reason: string
+          reported_by: string
+        }
+        Insert: {
+          created_at?: string
+          photo_id: string
+          reason: string
+          reported_by: string
+        }
+        Update: {
+          created_at?: string
+          photo_id?: string
+          reason?: string
+          reported_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_photo_reports_photo_id_fkey"
+            columns: ["photo_id"]
+            isOneToOne: false
+            referencedRelation: "place_photos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_photos: {
+        Row: {
+          created_at: string
+          height: number
+          id: string
+          is_hidden: boolean
+          place_id: string
+          report_count: number
+          storage_path: string
+          thumbnail_path: string
+          uploaded_by: string
+          width: number
+        }
+        Insert: {
+          created_at?: string
+          height: number
+          id: string
+          is_hidden?: boolean
+          place_id: string
+          report_count?: number
+          storage_path: string
+          thumbnail_path: string
+          uploaded_by: string
+          width: number
+        }
+        Update: {
+          created_at?: string
+          height?: number
+          id?: string
+          is_hidden?: boolean
+          place_id?: string
+          report_count?: number
+          storage_path?: string
+          thumbnail_path?: string
+          uploaded_by?: string
+          width?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_photos_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_reviews: {
+        Row: {
+          author_id: string
+          comment: string | null
+          created_at: string
+          id: string
+          place_id: string
+          rating: number
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          place_id: string
+          rating: number
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          place_id?: string
+          rating?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_reviews_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       places: {
         Row: {
           address: string | null
@@ -790,6 +977,32 @@ export type Database = {
         Returns: unknown
       }
       _st_within: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      add_place_photo: {
+        Args: {
+          p_height: number
+          p_photo_id: string
+          p_place_id: string
+          p_width: number
+        }
+        Returns: {
+          created_at: string
+          height: number
+          id: string
+          is_hidden: boolean
+          place_id: string
+          report_count: number
+          storage_path: string
+          thumbnail_path: string
+          uploaded_by: string
+          width: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "place_photos"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       addauth: { Args: { "": string }; Returns: boolean }
       addgeometrycolumn:
         | {
@@ -847,6 +1060,7 @@ export type Database = {
         }
         Returns: string
       }
+      delete_place_photo: { Args: { p_photo_id: string }; Returns: undefined }
       disablelongtransactions: { Args: never; Returns: string }
       draw_outing_activity: {
         Args: { p_day?: string; p_outing_id: string }
@@ -986,6 +1200,16 @@ export type Database = {
         Returns: boolean
       }
       geomfromewkt: { Args: { "": string }; Returns: unknown }
+      get_place_contribution_summaries: {
+        Args: { p_place_ids: string[] }
+        Returns: {
+          average_rating: number
+          confirmed_hours: Json
+          photo_count: number
+          place_id: string
+          review_count: number
+        }[]
+      }
       get_profiles: {
         Args: { p_ids: string[] }
         Returns: {
@@ -1018,6 +1242,9 @@ export type Database = {
         Args: { p_outing_id: string; p_user_id: string }
         Returns: boolean
       }
+      is_place_photo_object_path: { Args: { p_name: string }; Returns: boolean }
+      is_place_visible: { Args: { p_place_id: string }; Returns: boolean }
+      is_valid_opening_periods: { Args: { p_periods: Json }; Returns: boolean }
       longtransactionsenabled: { Args: never; Returns: boolean }
       lower_outing_start_date: {
         Args: { p_earliest: string; p_outing_id: string }
@@ -1031,6 +1258,7 @@ export type Database = {
         }
         Returns: string
       }
+      place_photo_uploads_last_day: { Args: never; Returns: number }
       populate_geometry_columns:
         | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }
         | { Args: { use_typmod?: boolean }; Returns: string }
@@ -1071,6 +1299,26 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
+      propose_place_hours: {
+        Args: { p_periods: Json; p_place_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          no_count: number
+          periods: Json
+          place_id: string
+          proposed_by: string
+          status: Database["public"]["Enums"]["place_hours_status"]
+          updated_at: string
+          yes_count: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "place_hours_proposals"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       reopen_outing_activities: {
         Args: { p_day?: string; p_outing_id: string }
         Returns: undefined
@@ -1078,6 +1326,10 @@ export type Database = {
       replace_outing_availabilities: {
         Args: { p_outing_id: string; p_slots: Json; p_user_id: string }
         Returns: undefined
+      }
+      report_place_photo: {
+        Args: { p_photo_id: string; p_reason: string }
+        Returns: boolean
       }
       reschedule_outing_steps: {
         Args: { p_outing_id: string; p_steps: Json }
@@ -1741,6 +1993,26 @@ export type Database = {
         }
         Returns: string
       }
+      vote_place_hours: {
+        Args: { p_is_correct: boolean; p_proposal_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          no_count: number
+          periods: Json
+          place_id: string
+          proposed_by: string
+          status: Database["public"]["Enums"]["place_hours_status"]
+          updated_at: string
+          yes_count: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "place_hours_proposals"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       activity_vote: "accepted" | "maybe"
@@ -1763,6 +2035,7 @@ export type Database = {
         | "nature"
         | "culture"
         | "autre"
+      place_hours_status: "pending" | "confirmed" | "rejected"
       place_source:
         | "osm"
         | "google"
@@ -1931,6 +2204,7 @@ export const Constants = {
         "culture",
         "autre",
       ],
+      place_hours_status: ["pending", "confirmed", "rejected"],
       place_source: [
         "osm",
         "google",

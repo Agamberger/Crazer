@@ -100,6 +100,12 @@ Pour revenir au projet distant : `npm run env:remote` puis relancer Expo avec `-
 - **Affichage** : toute donnée Google affichée hors d'une carte Google est créditée « Google Maps » (et l'auteur des photos). Avec les CGU EEA (compte de facturation dans l'EEE), le contenu Google ne doit pas être affiché sur ou à côté d'une carte non Google : la fiche détaillée s'ouvre en plein écran, hors de la carte.
 - **Migration** `20261127222229_places_store_google_place_id_only` : a vidé le contenu Google de toutes les lignes `source = 'google'` existantes (voir l'en-tête du fichier pour la liste exacte des colonnes). Les liens des étapes et activités (`place_id`) sont conservés.
 
+### 2 ter. 🤝 Contributions des utilisateurs sur les lieux (phase 2)
+- Tables `place_photos` (+ `place_photo_reports`), `place_hours_proposals` (+ `place_hours_votes`), `place_reviews` ; bucket Storage privé `place-photos` (JPEG, 2 Mo). Migration `20261128104312_place_contributions`.
+- Lecture : tout utilisateur connecté. Écriture : RPC `SECURITY DEFINER` (`add_place_photo`, `report_place_photo`, `delete_place_photo`, `propose_place_hours`, `vote_place_hours`) ; avis écrits directement par leur auteur (RLS).
+- Règles : 10 photos / utilisateur / 24 h, 20 photos visibles / lieu, photo masquée au 3e signalement ; horaires confirmés à 2 « Oui » majoritaires, rejetés à 2 « Non » majoritaires.
+- **Jamais de contenu copié depuis Google** dans ces tables. Détails : `src/features/place-contributions/README.md`.
+
 ### 3. 🏷️ Synchronisation des Types TypeScript
 - Le fichier `src/shared/types/database.types.ts` est la source de vérité pour le typage du client Supabase (`supabase.from('outings')`).
 - À chaque ajout de table, colonne ou enum dans Supabase, vous **devez** exécuter :

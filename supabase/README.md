@@ -36,6 +36,7 @@ Les données de test sont découpées de manière modulaire dans le dossier `sup
 
 - `01_users.sql` : Création des comptes de test (`auth.users`, `auth.identities` et `profiles`).
 - `02_friendships.sql` : Relations d'amitié entre utilisateurs.
+- `05_place_contributions.sql` : avis (Alice et Bob sur le Burger Gourmet, Charlie sur la Tour Eiffel) et horaires confirmés du Bowling (proposés par Alice, validés par Bob et Charlie). Pas de photo (fichiers Storage nécessaires).
 - `03_places.sql` : Lieux et POIs de test (coordonnées PostGIS) et un lieu Google (Tour Eiffel) stocké par son seul place ID, lié à l'activité « Pique-nique au Champ-de-Mars ».
 - `04_outings.sql` : Sorties, participants et étapes planifiées. Also seeds the scheduling workflow: candidate days and Alice's availability for the rooftop outing (`c2222…`), with a pending invitation for Bob.
 
@@ -64,6 +65,14 @@ Les données de test sont découpées de manière modulaire dans le dossier `sup
 9. **`outing_answers`**: guided answers (step 4), one row per member and outing (`UNIQUE (outing_id, user_id)`) with typed columns; which columns are used depends on `outings.outing_type`.
 10. **`outing_activities`** / **`outing_activity_votes`**: activity proposals and their votes (step 5, see below).
 11. **`planned_outings.activity_id`**: links a step to the retained activity it comes from (step 6, planning of the day, see below).
+
+### Place contributions (roadmap phase 2, `place_contributions`)
+
+- **`place_photos`** / **`place_photo_reports`**: photos added by users, files in the private bucket `place-photos` (`<place_id>/<photo_id>.jpg` + `_thumb.jpg`), registered by `add_place_photo` (10 / user / day, 20 visible / place), hidden at the 3rd report (`report_place_photo`), deleted by their uploader (`delete_place_photo`).
+- **`place_hours_proposals`** / **`place_hours_votes`**: weekly opening hours (`periods` JSONB checked by `is_valid_opening_periods`), `propose_place_hours`, `vote_place_hours` → `pending` / `confirmed` / `rejected`.
+- **`place_reviews`**: one review per user and place (1–5, comment ≤ 500).
+- **`get_place_contribution_summaries(place_ids)`**: photo count, review count, average rating, confirmed hours (completeness score).
+- Tests: `tests/database/place_contributions.test.sql`.
 
 ### Outing type and guided questions (step 4)
 
